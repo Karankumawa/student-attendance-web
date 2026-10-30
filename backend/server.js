@@ -56,6 +56,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root API Welcome & Health Route (Prevents "API Route not found: GET /")
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: '🎓 College Attendance & Timetable Management API is live and connected!',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth/login',
+      students: '/api/students',
+      attendance: '/api/attendance',
+      timetable: '/api/timetable',
+      notes: '/api/notes',
+    },
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -65,12 +83,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// API Routes
+// API Routes (Mounted on both /api/* and direct /* to prevent 404s if VITE_API_URL omits /api)
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
+
 app.use('/api/students', studentRoutes);
+app.use('/students', studentRoutes);
+
 app.use('/api/attendance', attendanceRoutes);
+app.use('/attendance', attendanceRoutes);
+
 app.use('/api/timetable', timetableRoutes);
+app.use('/timetable', timetableRoutes);
+
 app.use('/api/notes', noteRoutes);
+app.use('/notes', noteRoutes);
 
 // Optional: Serve frontend static build if deployed as all-in-one service
 const distPath = path.join(__dirname, '../frontend/dist');

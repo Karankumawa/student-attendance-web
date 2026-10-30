@@ -1,12 +1,25 @@
 import axios from 'axios';
 
+// Automatically normalize base API URL
+const getBaseUrl = () => {
+  let url = import.meta.env.VITE_API_URL || '/api';
+  // Remove any trailing slashes
+  url = url.trim().replace(/\/+$/, '');
+  
+  // If it's a full remote URL (http:// or https://) and doesn't end with /api, append /api
+  if (url.startsWith('http') && !url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+
 // Base API Client
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 25000, // Render free tier can take up to 20s to wake up on first call
 });
 
 // Request Interceptor: Attach JWT Token from localStorage
