@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { connectDB } = require('./config/db');
 const { seedInitialData } = require('./config/seed');
 
@@ -73,13 +74,14 @@ app.use('/api/notes', noteRoutes);
 
 // Optional: Serve frontend static build if deployed as all-in-one service
 const distPath = path.join(__dirname, '../frontend/dist');
-const fs = require('fs');
 if (fs.existsSync(distPath)) {
   console.log('[Static] Serving frontend static assets from ../frontend/dist');
   app.use(express.static(distPath));
-  app.get('*', (req, res, next) => {
-    if (req.url.startsWith('/api')) return next();
-    res.sendFile(path.join(distPath, 'index.html'));
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && !req.url.startsWith('/api')) {
+      return res.sendFile(path.join(distPath, 'index.html'));
+    }
+    next();
   });
 }
 
