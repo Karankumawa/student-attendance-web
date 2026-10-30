@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraduationCap, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle, Sparkles } from 'lucide-react';
+import { GraduationCap, Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const LoginView = () => {
@@ -23,14 +23,8 @@ export const LoginView = () => {
     setLoading(false);
 
     if (!result.success) {
-      setErrorMessage(result.message || 'Login failed. Invalid admin credentials.');
+      setErrorMessage(result.message || 'Login failed. Invalid faculty credentials.');
     }
-  };
-
-  const fillAdminCredentials = () => {
-    setEmail('admin@gmail.com');
-    setPassword('admin@gmail.com');
-    setErrorMessage('');
   };
 
   return (
@@ -54,7 +48,7 @@ export const LoginView = () => {
 
           <div className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-xs font-semibold text-indigo-700">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Strict Single-Admin Access</span>
+            <span>Faculty & Department Portal</span>
           </div>
         </div>
 
@@ -70,7 +64,7 @@ export const LoginView = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Teacher Email Address
+              Faculty Email Address
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -80,7 +74,7 @@ export const LoginView = () => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@gmail.com"
+                placeholder="faculty@college.edu"
                 required
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 transition-all font-medium placeholder:text-slate-400"
               />
@@ -99,30 +93,18 @@ export const LoginView = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
+                placeholder="Enter your password"
                 required
                 className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-600 transition-all font-medium placeholder:text-slate-400"
               />
             </div>
           </div>
 
-          {/* Quick Demo Autofill Button */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={fillAdminCredentials}
-              className="w-full py-2 px-3 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 rounded-xl transition-colors flex items-center justify-center gap-1.5 border border-indigo-100"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Click to autofill default credentials</span>
-            </button>
-          </div>
-
           {/* Submit Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-98"
+            className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed transform active:scale-98 cursor-pointer"
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -137,8 +119,8 @@ export const LoginView = () => {
 
         {/* Security Notice Footer */}
         <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-600">
-            Institutional security notice: Public self-registration is permanently disabled. Single administrative credential applies.
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Authorized faculty access only. Contact your college IT administration for credential assistance.
           </p>
         </div>
       </div>

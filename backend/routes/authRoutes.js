@@ -30,6 +30,7 @@ router.post('/login', async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase();
+    const envPassword = process.env.ADMIN_PASSWORD || 'admin@gmail.com';
 
     // Strict Single Admin Access check
     if (normalizedEmail !== adminEmail) {
@@ -46,15 +47,23 @@ router.post('/login', async (req, res) => {
     if (!user) {
       user = new User({
         email: adminEmail,
-        password: process.env.ADMIN_PASSWORD || 'admin@gmail.com',
-        name: 'Dr. Evelyn Reed (Dept. Head)',
+        password: envPassword,
+        name: 'Faculty Administrator',
         role: 'admin',
       });
       await user.save();
     }
 
     // Verify password
-    const isMatch = await user.comparePassword(password);
+    let isMatch = await user.comparePassword(password);
+    
+    // If env password was changed and matches entered password, synchronize in DB
+    if (!isMatch && password === envPassword) {
+      user.password = envPassword;
+      await user.save();
+      isMatch = true;
+    }
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
