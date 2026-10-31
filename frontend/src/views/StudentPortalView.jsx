@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
+import SnitLogo from '../components/SnitLogo';
 
 export const StudentPortalView = ({ showToast }) => {
   const { user, logout } = useAuth();
@@ -171,12 +172,10 @@ export const StudentPortalView = ({ showToast }) => {
       {/* Top Header */}
       <header className="sticky top-0 z-30 h-20 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 flex items-center justify-between">
         <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-100">
-            <GraduationCap className="w-6 h-6" />
-          </div>
+          <SnitLogo className="w-10 h-10 shadow-md shadow-indigo-100" size={40} />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-bold text-slate-900 text-lg leading-tight">EduTrack</h1>
+              <h1 className="font-extrabold text-slate-900 text-lg leading-tight">SNIT</h1>
               <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wider">
                 Student Portal
               </span>

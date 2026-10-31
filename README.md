@@ -1,189 +1,229 @@
-# EduTrack Pro | Full-Stack College Attendance, Timetable & Notes Portal
+# 🎓 SNIT | Academic Management Portal
 
-A production-ready Full-Stack College Management Web Application for teachers and faculty administrators built with the **MERN Stack** (MongoDB, Express.js, React.js, Node.js) and styled with modern **Tailwind CSS** and **Lucide Icons**.
+A modern, full-stack institutional web portal designed for colleges and universities. Built with the **MERN Stack** (MongoDB, Express.js, React 19, Node.js) and styled with **Tailwind CSS**.
 
----
-
-## 🚀 Key Features
-
-### 1. Strict Single-Teacher Authentication & Security
-- **Hardcoded / Seeded Admin Credentials**:
-  - **Email**: `admin@gmail.com`
-  - **Password**: `admin@gmail.com`
-- **Zero Public Registration**: Registration endpoint (`POST /api/auth/register`) is permanently disabled with a `403 Forbidden` response.
-- **JWT Protection**: Secure stateless JSON Web Token sessions with an Express auth middleware protecting all `/api/*` routes.
-- **Auto-Logout & Interceptors**: Axios interceptor automatically attaches the `Authorization: Bearer <token>` header to all requests and redirects to login on 401 session expiry.
-- **Convenient UI Demo Helper**: 1-click button to auto-fill default admin credentials on the login screen.
-
-### 2. Database Architecture (MongoDB & Mongoose)
-- **`Student`**:
-  - `name`: String (required)
-  - `rollNumber`: String (required, unique, uppercase)
-  - `department`: String (default: `'Computer Science & Engineering'`)
-  - `semester`: String (e.g. `'Semester 4'`)
-  - `createdAt`: Date
-- **`Attendance`**:
-  - `date`: String (`YYYY-MM-DD`, indexed)
-  - `subject`: String (required)
-  - `semester`: String
-  - `records`: Array of `{ studentId, rollNumber, name, status: ['Present', 'Absent'] }`
-  - Compound Unique Index: `{ date: 1, subject: 1, semester: 1 }` ensuring fast upserts
-- **`Timetable`**:
-  - `dayOfWeek`: Enum `['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']`
-  - `startTime`: String (e.g. `'09:00 AM'`)
-  - `endTime`: String (e.g. `'10:00 AM'`)
-  - `subject`: String (required)
-  - `semester`: String
-  - `roomNumber`: String (e.g. `'Lab 301'`)
-- **`Note`**:
-  - `title`: String (required)
-  - `subject`: String (required)
-  - `semester`: String
-  - `content`: String (supports markdown / rich text)
-  - `resourceUrl`: String (optional PDF or Google Drive link)
-  - `createdAt`: Date
-- **Automatic In-Memory Fallback**: If a local MongoDB instance is not active, the backend automatically initializes an embedded MongoDB instance for seamless instant local execution!
-
-### 3. Core REST API Endpoints
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/auth/login` | Validates `admin@gmail.com` / `admin@gmail.com` & returns JWT |
-| `GET` | `/api/auth/me` | Fetches authenticated teacher session profile |
-| `GET` | `/api/students` | Get roster (filterable by `semester`, `department`, `search`) |
-| `POST` | `/api/students` | Add new student (validates unique roll number) |
-| `PUT` | `/api/students/:id` | Update student profile |
-| `DELETE` | `/api/students/:id` | Remove student from roster & cleanup attendance records |
-| `GET` | `/api/attendance` | Fetch attendance session by `date`, `subject`, and `semester` |
-| `POST` | `/api/attendance` | Batch upsert attendance records for a class |
-| `GET` | `/api/attendance/summary` | Cumulative attendance percentage & compliance calculation |
-| `GET` | `/api/attendance/dashboard-stats` | Aggregated metrics for dashboard cards and today's classes |
-| `GET` | `/api/attendance/history` | List of historical attendance sessions |
-| `DELETE` | `/api/attendance/:id` | Delete attendance session |
-| `GET` | `/api/timetable` | List timetable slots (filterable by `dayOfWeek`, `semester`) |
-| `POST` | `/api/timetable` | Add new class period slot |
-| `PUT` | `/api/timetable/:id` | Update class period slot |
-| `DELETE` | `/api/timetable/:id` | Delete class period slot |
-| `GET` | `/api/notes` | List notes (filterable by `subject`, `semester`, `search`) |
-| `POST` | `/api/notes` | Publish new lecture note |
-| `PUT` | `/api/notes/:id` | Update lecture note |
-| `DELETE` | `/api/notes/:id` | Delete lecture note |
-
-### 4. Frontend Views & UI
-- **Dashboard Overview**:
-  - Quick stat cards: Total Students, Today's Classes, Today's Attendance Sessions, Total Notes.
-  - Today's schedule cards with direct "Take Attendance" one-click action.
-  - Low-attendance watchlist alert (<75% defaulters).
-- **Take & View Attendance**:
-  - Date picker, Semester selector, and Subject dropdown/custom entry.
-  - Student roster table with one-click green (`Present`) / red (`Absent`) toggle buttons.
-  - "Mark All Present" & "Mark All Absent" quick action buttons.
-  - Persists directly to MongoDB with visual indicator of existing vs new session.
-  - Secondary tab: **Attendance History & Percentage Analytics** with color-coded progress bars (Green $\ge$ 75%, Yellow 60-74%, Red < 60%).
-- **Student Roster Management**:
-  - Searchable by name and roll number, filterable by semester/department.
-  - Modal to enroll new students and edit existing details.
-  - Confirmation modal for safe student deletion.
-- **Timetable Manager**:
-  - Interactive day-by-day tabs (Monday–Saturday) with class count badges.
-  - Add/Edit class slot modal with room number, times, and subject.
-  - Quick "Take Attendance" jump button.
-- **Notes & Study Material**:
-  - Card grid displaying published notes.
-  - Full modal viewer with formatted markdown preview.
-  - External PDF / Drive link button that opens in a new tab.
+The portal provides a unified academic system featuring dual-role access control for **Faculty / Administrators** and **Students**, comprehensive attendance tracking, lecture scheduling, study notes distribution, and 1-click Excel report generation.
 
 ---
 
-## 🛠️ Project Structure
+## 📌 System Overview
 
-```
-d:\StudentAttandenceWeb
-├── backend/
-│   ├── config/
-│   │   ├── db.js             # Mongoose connection with in-memory fallback
-│   │   └── seed.js           # Seeder for admin, students, timetable, notes
-│   ├── middleware/
-│   │   └── authMiddleware.js # JWT Bearer authorization check
-│   ├── models/
-│   │   ├── User.js           # Admin user model
-│   │   ├── Student.js        # Student roster model
-│   │   ├── Attendance.js     # Attendance session & records model
-│   │   ├── Timetable.js      # Timetable class periods model
-│   │   └── Note.js           # Lecture notes & resources model
-│   ├── routes/
-│   │   ├── authRoutes.js
-│   │   ├── studentRoutes.js
-│   │   ├── attendanceRoutes.js
-│   │   ├── timetableRoutes.js
-│   │   └── noteRoutes.js
-│   ├── .env.example          # Environment variables template
-│   ├── .env                  # Active environment variables
-│   ├── package.json
-│   └── server.js             # Express app setup and server entry point
-├── frontend/
-│   ├── src/
-│   │   ├── api/
-│   │   │   └── axiosClient.js # Axios instance with JWT interceptor
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx # Authentication state provider
-│   │   ├── components/
-│   │   │   ├── Navbar.jsx      # Top header with date & logout
-│   │   │   ├── Sidebar.jsx     # Responsive navigation sidebar
-│   │   │   ├── Toast.jsx       # Notification toast alerts
-│   │   │   └── ConfirmModal.jsx# Reusable action confirmation dialog
-│   │   ├── views/
-│   │   │   ├── LoginView.jsx   # Admin login screen
-│   │   │   ├── DashboardView.jsx # View 1: Overview and live stats
-│   │   │   ├── AttendanceView.jsx# View 2: Take & inspect attendance
-│   │   │   ├── StudentsView.jsx  # View 3: Student roster management
-│   │   │   ├── TimetableView.jsx # View 4: Weekly schedule
-│   │   │   └── NotesView.jsx     # View 5: Notes & study materials
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   └── index.css           # Tailwind CSS styles
-│   ├── vite.config.js          # Vite config with @tailwindcss/vite & proxy
-│   └── package.json
-├── package.json                # Root scripts
-└── README.md
+SNIT Portal is structured around role-based workflows that separate administrative capabilities from student self-service:
+
+- **Faculty & Admin Suite:**
+  - **Live Dashboard:** Quick overview of daily schedules, active lectures, enrolled students, and cohort attendance rates.
+  - **Attendance Management:** Record daily class attendance (Present / Absent) by date, semester, and course.
+  - **1-Click Excel Attendance Reports:** Export detailed attendance records directly from MongoDB into Excel (`.xlsx`) format. Supports filtering across past academic years, semesters, departments, and courses.
+  - **Student Roster:** Register and manage students with auto-generated unique registration IDs (`STU-...`) and auto-provisioned student accounts.
+  - **Timetable & Schedule Planner:** Organize weekly lecture periods, timings, and lecture halls.
+  - **Notes & Study Material:** Upload and publish curriculum notes, summaries, and downloadable references.
+
+- **Student Portal:**
+  - **Personal Attendance Tracking:** View real-time subject-wise and overall attendance percentage, attended classes, and eligibility status ($\ge 75\%$).
+  - **Class Timetable:** Access personalized weekly class schedules with timings and room numbers.
+  - **Study Materials & Notes:** Read and download lecture notes shared by faculty members.
+  - **Account Security:** Self-service password management with secure Bcrypt hashing.
+  - **Data Isolation:** Enforced data privacy ensuring students can only view their own records.
+
+---
+
+## 🏗️ Architecture & Workflows
+
+### 1. System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["Frontend Client (React 19 + Vite)"]
+        UI["User Interface (Tailwind CSS)"]
+        AuthContext["Auth Context (JWT Storage)"]
+        Axios["Axios Interceptor (Bearer Token)"]
+    end
+
+    subgraph Server["Backend API (Node.js + Express 5)"]
+        AuthMW["Auth Middleware (protect / requireAdmin / requireStudent)"]
+        Controllers["API Controllers"]
+        ExcelEngine["SheetJS (XLSX) Export Engine"]
+    end
+
+    subgraph Database["Database (MongoDB Atlas)"]
+        UserCol[("Users (Roles: Admin / Student)")]
+        StudentCol[("Students (Registration IDs)")]
+        AttendanceCol[("Attendance (Session Records)")]
+        TimetableCol[("Timetable (Weekly Schedules)")]
+        NoteCol[("Notes (Curriculum Resources)")]
+    end
+
+    UI --> AuthContext --> Axios
+    Axios -->|"REST API Calls /api/*"| AuthMW
+    AuthMW --> Controllers
+    Controllers --> UserCol
+    Controllers --> StudentCol
+    Controllers --> AttendanceCol
+    Controllers --> TimetableCol
+    Controllers --> NoteCol
+    Controllers --> ExcelEngine -->|"Binary .xlsx Stream"| Axios
 ```
 
 ---
 
-## ⚙️ Quick Start Guide
+### 2. Authentication & Role-Based Routing Workflow
 
-### 1. Prerequisites
-- Node.js (v18 or newer recommended, tested on v24)
-- npm (v9 or newer)
-- MongoDB (Optional: local service or MongoDB Atlas; an embedded in-memory database will run automatically if MongoDB is not locally running)
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User (Faculty or Student)
+    participant Client as Frontend (LoginView)
+    participant API as Backend (/api/auth/login)
+    participant DB as MongoDB Atlas
 
-### 2. Environment Configuration
-The backend contains a `.env` file pre-configured with:
+    User->>Client: Enter Email & Password, Select Role Tab
+    Client->>API: POST /api/auth/login { email, password, role }
+    API->>DB: Query User by email & verify role
+    DB-->>API: Return User document (with hashed password)
+    API->>API: Verify password with bcrypt.compare()
+    
+    alt Invalid Credentials or Role Mismatch
+        API-->>Client: 401 Unauthorized / Error message
+        Client-->>User: Display alert toast
+    else Valid Credentials
+        API->>API: Generate signed JWT token (id, role, registrationId)
+        API-->>Client: 200 OK { token, user: { name, email, role, registrationId } }
+        Client->>Client: Store JWT in localStorage
+        
+        alt Role is Admin
+            Client->>User: Route to Admin Dashboard & Faculty Suite
+        else Role is Student
+            Client->>User: Route to Student Portal (Personal Scoped Data)
+        end
+    end
+```
+
+---
+
+### 3. Attendance Reporting & Excel Export Workflow
+
+```mermaid
+flowchart LR
+    A["Admin selects filters<br/>(Year, Semester, Subject)"] --> B["API: GET /api/reports/preview"]
+    B --> C["Query MongoDB Attendance & Student"]
+    C --> D["Calculate % & Defaulters (<75%)"]
+    D --> E["Render Preview Table on Screen"]
+
+    E --> F["Admin clicks 'Download Excel (.xlsx)'"]
+    F --> G["API: GET /api/reports/export-excel"]
+    G --> H["SheetJS generates Multi-sheet Workbook"]
+    H --> I["Sheet 1: Summary<br/>Sheet 2: Session Matrix<br/>Sheet 3: Defaulters Notice<br/>Sheet 4: Sessions Log"]
+    I --> J["Stream .xlsx to Browser via Blob Download"]
+```
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 19, Vite, Tailwind CSS, Lucide React, Axios |
+| **Backend** | Node.js, Express.js 5, JSON Web Tokens (JWT), Bcrypt.js, SheetJS (`xlsx`) |
+| **Database** | MongoDB Atlas (Cloud Cluster) with Mongoose ODM |
+| **Hosting & Cloud** | Vercel (Frontend SPA) + Render (Backend Web Service) |
+
+---
+
+## 📋 API Endpoints Reference
+
+### Authentication & Profiles
+- `POST /api/auth/login` — Authenticate faculty admin or student and receive JWT.
+- `GET /api/auth/me` — Fetch authenticated user profile.
+
+### Student Management (Admin Only)
+- `GET /api/students` — List students (filtered by semester or department).
+- `POST /api/students` — Register a student; auto-generates `registrationId` and student login account.
+- `PUT /api/students/:id` — Update student profile.
+- `DELETE /api/students/:id` — Remove student and associated records.
+
+### Attendance & Reports (Admin Only)
+- `GET /api/attendance` — Fetch attendance records for a specific date and course.
+- `POST /api/attendance` — Record or upsert attendance for an entire class.
+- `GET /api/attendance/summary` — Aggregate overall attendance percentages.
+- `GET /api/attendance/dashboard-stats` — Fetch dashboard counts and daily schedules.
+- `GET /api/reports/filters` — Get available past years, semesters, and departments from database.
+- `GET /api/reports/preview` — Get attendance calculation preview for selected filters.
+- `GET /api/reports/export-excel` — Download full Excel `.xlsx` workbook.
+
+### Timetable & Notes (Admin Only)
+- `GET /api/timetable` — Fetch weekly lecture schedules.
+- `POST /api/timetable` — Add a new timetable entry.
+- `DELETE /api/timetable/:id` — Delete a timetable entry.
+- `GET /api/notes` — Fetch study materials.
+- `POST /api/notes` — Create or update a note.
+- `DELETE /api/notes/:id` — Remove a note.
+
+### Student Portal (Student Only)
+- `GET /api/student-portal/dashboard` — Fetch personal attendance record, timetable, and notes.
+- `POST /api/student-portal/change-password` — Change student login password.
+
+---
+
+## ⚙️ Environment Configuration
+
+To run locally or configure cloud hosting, set the following environment variables:
+
+### Backend (`backend/.env`)
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/college_portal
-JWT_SECRET=supersecretkey
-ADMIN_EMAIL=admin@gmail.com
-ADMIN_PASSWORD=admin@gmail.com
+NODE_ENV=production
+MONGO_URI=mongodb+srv://<db_username>:<db_password>@<cluster-address>/college_portal?retryWrites=true&w=majority
+JWT_SECRET=your_secure_random_jwt_secret_key
+ADMIN_EMAIL=admin@institution.edu
+ADMIN_PASSWORD=your_secure_admin_password
+FRONTEND_URL=https://your-frontend-domain.vercel.app
 ```
 
-### 3. Running the Backend Server
-```bash
-cd backend
-npm install
-npm run dev
+### Frontend (`frontend/.env`)
+```env
+VITE_API_URL=https://your-backend-service.onrender.com
 ```
-The server will start at `http://localhost:5000`.
 
-### 4. Running the Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-The Vite development server will start at `http://localhost:5173`.
+---
 
-### 5. Logging In
-Open your browser to `http://localhost:5173`:
-- **Email**: `admin@gmail.com`
-- **Password**: `admin@gmail.com`
-*(Or click the "Click to autofill default credentials" helper button on the login form)*.
+## 💻 Local Development Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Karankumawa/student-attendance-web.git
+   cd student-attendance-web
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   npm run install:all
+   ```
+
+3. **Start backend server:**
+   ```bash
+   npm run dev:backend
+   ```
+
+4. **Start frontend development server:**
+   ```bash
+   npm run dev:frontend
+   ```
+
+5. **Build for production:**
+   ```bash
+   npm run build:frontend
+   ```
+
+---
+
+## 🔒 Security & Privacy Practices
+
+- **Zero Plain-Text Passwords:** All credentials are encrypted with salted Bcrypt hashing before storage.
+- **Strict Role-Based Scoping:** Middleware functions (`requireAdmin`, `requireStudent`) prevent horizontal and vertical privilege escalation.
+- **Credential Protection:** Passwords and private API keys are excluded from git history via `.gitignore` and dynamic environment variables.
+
+---
+
+## 📄 License
+
+This project is licensed under the ISC License.

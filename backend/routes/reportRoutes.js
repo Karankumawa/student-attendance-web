@@ -288,7 +288,7 @@ router.get('/export-excel', async (req, res) => {
     // Sheet 1: ATTENDANCE SUMMARY SHEET
     // ----------------------------------------------------
     const summaryRows = [
-      ['COLLEGE ACADEMIC PORTAL - ATTENDANCE REPORT'],
+      ['SNIT - ATTENDANCE REPORT'],
       [`Report Generated On: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`],
       [
         `Filters: Year [${year || 'All'}] | Semester [${semester || 'All'}] | Department [${
@@ -413,7 +413,7 @@ router.get('/export-excel', async (req, res) => {
     // ----------------------------------------------------
     const defaulters = allStudents.filter((s) => s.isDefaulter);
     const defaulterRows = [
-      ['ACADEMIC DISCIPLINE COMMITTEE - DEFAULTERS LIST (< 75% ATTENDANCE)'],
+      ['SNIT - STUDENTS BELOW 75% ATTENDANCE NOTICE'],
       [`Academic Requirement: Mandatory Minimum ${threshold}% Attendance`],
       [`Generated On: ${new Date().toLocaleString('en-IN')}`],
       [],

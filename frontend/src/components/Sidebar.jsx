@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SnitLogo from './SnitLogo';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
@@ -52,14 +53,12 @@ export const Sidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOp
         <div>
           <div className="h-20 px-6 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-indigo-100">
-                <GraduationCap className="w-6 h-6" />
-              </div>
+              <SnitLogo className="w-10 h-10 shadow-md shadow-indigo-100" size={40} />
               <div>
-                <h1 className="font-bold text-slate-900 text-lg tracking-tight leading-none">
-                  EduTrack <span className="text-indigo-600 text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 bg-indigo-50 rounded-md ml-1">Pro</span>
+                <h1 className="font-extrabold text-slate-900 text-xl tracking-tight leading-none">
+                  SNIT
                 </h1>
-                <p className="text-xs text-slate-600 mt-1">Faculty & Roster Suite</p>
+                <p className="text-[11px] font-semibold text-slate-500 mt-1 uppercase tracking-wider">Academic Portal</p>
               </div>
             </div>
           </div>

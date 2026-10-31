@@ -10,6 +10,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import SnitLogo from '../components/SnitLogo';
 
 export const LoginView = () => {
   const { login } = useAuth();
@@ -55,11 +56,11 @@ export const LoginView = () => {
       <div className="relative w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-7 sm:p-9 border border-white/20">
         {/* Brand Header */}
         <div className="flex flex-col items-center text-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-xl shadow-indigo-500/20 mb-3.5 transform hover:scale-105 transition-transform duration-300">
-            {isStudent ? <BookOpen className="w-8 h-8" /> : <GraduationCap className="w-8 h-8" />}
+          <div className="mb-3.5 transform hover:scale-105 transition-transform duration-300">
+            <SnitLogo size={58} className="w-14 h-14" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            EduTrack Portal
+            SNIT Portal
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1 font-medium">
             {isStudent

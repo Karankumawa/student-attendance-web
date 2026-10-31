@@ -214,11 +214,11 @@ export const ReportsView = ({ showToast }) => {
               <span>Admin Exclusive Feature</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Attendance Reports & 1-Click Excel Export
+              Attendance Reports & Excel Download
             </h1>
             <p className="text-sm md:text-base text-emerald-100 leading-relaxed">
-              Export past years' and current student attendance records directly from your live MongoDB
-              database in native Excel (.xlsx) format with multiple sheets, defaulter analyses, and session breakdowns.
+              Download student attendance reports for past and current years in clean Excel (.xlsx) format
+              with percentage summaries and attendance lists.
             </p>
           </div>
 
@@ -373,7 +373,7 @@ export const ReportsView = ({ showToast }) => {
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Defaulters Only ({stats.defaultersCount})</span>
+              <span>Below 75% ({stats.defaultersCount})</span>
             </button>
             <button
               onClick={() => setReportType('eligible')}
@@ -384,7 +384,7 @@ export const ReportsView = ({ showToast }) => {
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Eligible Only ({stats.eligibleCount})</span>
+              <span>Above 75% ({stats.eligibleCount})</span>
             </button>
           </div>
 
@@ -411,7 +411,7 @@ export const ReportsView = ({ showToast }) => {
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Students In Filter</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Students</p>
             <h3 className="text-2xl font-black text-slate-800">{stats.matchedStudents}</h3>
           </div>
         </div>
@@ -422,7 +422,7 @@ export const ReportsView = ({ showToast }) => {
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Lectures Held</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Classes</p>
             <h3 className="text-2xl font-black text-slate-800">{stats.totalSessions}</h3>
           </div>
         </div>
@@ -433,7 +433,7 @@ export const ReportsView = ({ showToast }) => {
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Cohort Average</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Average Attendance</p>
             <h3 className="text-2xl font-black text-emerald-600">{stats.overallAvg}%</h3>
           </div>
         </div>
@@ -444,7 +444,7 @@ export const ReportsView = ({ showToast }) => {
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Defaulters (&lt;75%)</p>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Students Below 75%</p>
             <h3 className="text-2xl font-black text-rose-600">{stats.defaultersCount}</h3>
           </div>
         </div>
@@ -454,7 +454,7 @@ export const ReportsView = ({ showToast }) => {
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
         <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-800">Attendance Preview (Live Database)</h3>
+            <h3 className="text-base font-bold text-slate-800">Attendance Preview</h3>
             <p className="text-xs text-slate-500">
               Showing preview for {selectedYear} ({selectedSemester}) • Click Excel button above to download full file
             </p>
@@ -509,12 +509,12 @@ export const ReportsView = ({ showToast }) => {
                   <th className="py-3 px-4">Registration ID</th>
                   <th className="py-3 px-4">Student Name</th>
                   <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4 text-center">Held</th>
-                  <th className="py-3 px-4 text-center">Attended</th>
+                  <th className="py-3 px-4 text-center">Classes</th>
+                  <th className="py-3 px-4 text-center">Present</th>
                   <th className="py-3 px-4 text-center">Absent</th>
                   <th className="py-3 px-4 text-center">Attendance %</th>
-                  <th className="py-3 px-4">Eligibility Status</th>
-                  <th className="py-3 px-4 text-right">Remarks</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Note</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">

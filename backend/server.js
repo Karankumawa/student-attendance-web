@@ -62,7 +62,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: '🎓 College Attendance & Timetable Management API is live and connected!',
+    message: '🎓 SNIT Academic Portal API is live and connected!',
     status: 'healthy',
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -82,7 +82,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'College Attendance & Timetable Management API',
+    service: 'SNIT College Management API',
   });
 });
 
