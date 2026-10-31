@@ -1,6 +1,6 @@
 const express = require('express');
 const Timetable = require('../models/Timetable');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
  * @desc    Create a new timetable class slot
  * @access  Private
  */
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { dayOfWeek, startTime, endTime, subject, semester, roomNumber } = req.body;
 
@@ -96,7 +96,7 @@ router.post('/', async (req, res) => {
  * @desc    Update an existing timetable slot
  * @access  Private
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const slot = await Timetable.findById(req.params.id);
     if (!slot) {
@@ -147,7 +147,7 @@ router.put('/:id', async (req, res) => {
  * @desc    Delete a timetable slot
  * @access  Private
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const slot = await Timetable.findById(req.params.id);
     if (!slot) {

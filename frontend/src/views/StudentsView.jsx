@@ -12,6 +12,10 @@ import {
   GraduationCap,
   Sparkles,
   BookOpen,
+  Mail,
+  Lock,
+  Key,
+  ShieldCheck,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -51,6 +55,8 @@ export const StudentsView = ({ showToast }) => {
     rollNumber: '',
     department: 'Computer Science & Engineering',
     semester: 'Semester 4',
+    email: '',
+    password: 'student123',
   });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -93,6 +99,8 @@ export const StudentsView = ({ showToast }) => {
       rollNumber: '',
       department: 'Computer Science & Engineering',
       semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
+      email: '',
+      password: 'student123',
     });
     setFormError('');
     setIsModalOpen(true);
@@ -105,9 +113,22 @@ export const StudentsView = ({ showToast }) => {
       rollNumber: student.rollNumber,
       department: student.department || 'Computer Science & Engineering',
       semester: student.semester || 'Semester 4',
+      email: student.email || '',
+      password: '', // Blank unless admin wants to reset it
     });
     setFormError('');
     setIsModalOpen(true);
+  };
+
+  const handleRollNumberChange = (value) => {
+    const uppercase = value.toUpperCase();
+    const updated = { ...formData, rollNumber: uppercase };
+    // Auto suggest email if not already manually filled
+    if (!editingStudent && (!formData.email || formData.email.endsWith('@student.edu'))) {
+      const clean = uppercase.toLowerCase().replace(/[^a-z0-9]/g, '');
+      updated.email = clean ? `${clean}@student.edu` : '';
+    }
+    setFormData(updated);
   };
 
   const handleFormSubmit = async (e) => {
@@ -125,7 +146,7 @@ export const StudentsView = ({ showToast }) => {
         // Update Student
         const res = await axiosClient.put(`/students/${editingStudent._id}`, formData);
         if (res.data.success) {
-          showToast?.({ message: 'Student profile updated successfully', type: 'success' });
+          showToast?.({ message: 'Student and login credentials updated', type: 'success' });
           setIsModalOpen(false);
           fetchStudents();
         }
@@ -133,7 +154,10 @@ export const StudentsView = ({ showToast }) => {
         // Create Student
         const res = await axiosClient.post('/students', formData);
         if (res.data.success) {
-          showToast?.({ message: 'New student added to roster', type: 'success' });
+          showToast?.({
+            message: `New student registered with portal email: ${res.data.data.email}`,
+            type: 'success',
+          });
           setIsModalOpen(false);
           fetchStudents();
         }
@@ -151,7 +175,10 @@ export const StudentsView = ({ showToast }) => {
     try {
       const res = await axiosClient.delete(`/students/${deleteTarget._id}`);
       if (res.data.success) {
-        showToast?.({ message: `Student ${deleteTarget.name} removed from roster`, type: 'info' });
+        showToast?.({
+          message: `Student ${deleteTarget.name} and portal account deleted`,
+          type: 'info',
+        });
         setDeleteTarget(null);
         fetchStudents();
       }
@@ -168,10 +195,10 @@ export const StudentsView = ({ showToast }) => {
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-600" />
-            <span>Student Roster Management</span>
+            <span>Student Roster & Portal Accounts</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Maintain official records, roll numbers, and academic semester assignments
+            Enroll students, generate unique portal registration IDs, and manage student login accounts
           </p>
         </div>
 
@@ -180,7 +207,7 @@ export const StudentsView = ({ showToast }) => {
           className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto"
         >
           <UserPlus className="w-4 h-4" />
-          <span>Add New Student</span>
+          <span>Register New Student</span>
         </button>
       </div>
 
@@ -226,7 +253,7 @@ export const StudentsView = ({ showToast }) => {
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
-            placeholder="Search name or roll number..."
+            placeholder="Search name, roll, or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-16 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -261,7 +288,7 @@ export const StudentsView = ({ showToast }) => {
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-slate-800">No students found</h4>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              There are no students matching your filter criteria. Click "Add New Student" to enroll one.
+              There are no students matching your filter criteria. Click "Register New Student" to enroll one.
             </p>
             <button
               onClick={openAddModal}
@@ -275,11 +302,11 @@ export const StudentsView = ({ showToast }) => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                  <th className="py-3 px-6">Roll Number</th>
-                  <th className="py-3 px-6">Student Name</th>
+                  <th className="py-3 px-6">Unique Reg ID / Roll #</th>
+                  <th className="py-3 px-6">Student Name & Login Email</th>
                   <th className="py-3 px-6">Department</th>
                   <th className="py-3 px-6">Semester</th>
-                  <th className="py-3 px-6">Enrolled Date</th>
+                  <th className="py-3 px-6 text-center">Portal Access</th>
                   <th className="py-3 px-6 text-right">Actions</th>
                 </tr>
               </thead>
@@ -289,8 +316,13 @@ export const StudentsView = ({ showToast }) => {
 
                   return (
                     <tr key={student._id} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-6 font-mono font-bold text-xs text-indigo-700">
-                        {student.rollNumber}
+                      <td className="py-3.5 px-6">
+                        <div className="font-mono font-bold text-xs text-indigo-700">
+                          {student.rollNumber}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          {student.registrationId || `STU-${student.rollNumber}`}
+                        </div>
                       </td>
                       <td className="py-3.5 px-6">
                         <div className="flex items-center gap-3">
@@ -299,6 +331,9 @@ export const StudentsView = ({ showToast }) => {
                           </div>
                           <div>
                             <div className="font-bold text-slate-800">{student.name}</div>
+                            <div className="text-xs text-slate-500 font-medium">
+                              {student.email || 'No email assigned'}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -310,15 +345,18 @@ export const StudentsView = ({ showToast }) => {
                           {student.semester}
                         </span>
                       </td>
-                      <td className="py-3.5 px-6 text-xs text-slate-400">
-                        {new Date(student.createdAt).toLocaleDateString()}
+                      <td className="py-3.5 px-6 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Student Portal Active</span>
+                        </span>
                       </td>
                       <td className="py-3.5 px-6 text-right">
                         <div className="inline-flex items-center gap-1.5">
                           <button
                             onClick={() => openEditModal(student)}
                             className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-                            title="Edit Student"
+                            title="Edit Student & Credentials"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -342,8 +380,8 @@ export const StudentsView = ({ showToast }) => {
 
       {/* Add / Edit Student Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-7 border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-7 border border-slate-100 my-8">
             <button
               onClick={() => setIsModalOpen(false)}
               className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
@@ -357,12 +395,12 @@ export const StudentsView = ({ showToast }) => {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  {editingStudent ? 'Edit Student Details' : 'Add New Student'}
+                  {editingStudent ? 'Edit Student & Credentials' : 'Register New Student'}
                 </h3>
                 <p className="text-xs text-slate-500">
                   {editingStudent
-                    ? 'Update profile information for this student'
-                    : 'Enroll a new student to the academic roster'}
+                    ? 'Update profile or reset student portal password'
+                    : 'Enroll student and automatically provision login access'}
                 </p>
               </div>
             </div>
@@ -374,7 +412,7 @@ export const StudentsView = ({ showToast }) => {
               </div>
             )}
 
-            <form onSubmit={handleFormSubmit} className="space-y-4">
+            <form onSubmit={handleFormSubmit} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                   Full Name *
@@ -382,7 +420,7 @@ export const StudentsView = ({ showToast }) => {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Johnathan Doe"
+                  placeholder="e.g. Aarav Sharma"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
@@ -398,46 +436,88 @@ export const StudentsView = ({ showToast }) => {
                   required
                   placeholder="e.g. CS2026-042"
                   value={formData.rollNumber}
-                  onChange={(e) => setFormData({ ...formData, rollNumber: e.target.value })}
+                  onChange={(e) => handleRollNumberChange(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-medium text-slate-800 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Department
-                </label>
-                <select
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                >
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Semester
+                  </label>
+                  <select
+                    value={formData.semester}
+                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  >
+                    {SEMESTERS.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Department
+                  </label>
+                  <select
+                    value={formData.department}
+                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                  Assigned Semester
-                </label>
-                <select
-                  value={formData.semester}
-                  onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                >
-                  {SEMESTERS.map((sem) => (
-                    <option key={sem} value={sem}>
-                      {sem}
-                    </option>
-                  ))}
-                </select>
+              {/* Login Credentials Section */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100/80 space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Student Portal Login Credentials</span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Student Login Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="student@student.edu"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    {editingStudent ? 'New Password (Leave blank to keep current)' : 'Initial Password *'}
+                  </label>
+                  <input
+                    type="password"
+                    placeholder={editingStudent ? '••••••••' : 'Default: student123'}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                  {!editingStudent && (
+                    <span className="text-[10px] text-slate-500 mt-0.5 block">
+                      Default password is <strong>student123</strong> (Student can change this after logging in).
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="pt-3 flex items-center justify-end gap-3">
+              <div className="pt-2 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -450,7 +530,11 @@ export const StudentsView = ({ showToast }) => {
                   disabled={submitting}
                   className="px-5 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : editingStudent ? 'Update Student' : 'Add Student'}
+                  {submitting
+                    ? 'Saving...'
+                    : editingStudent
+                    ? 'Update Student'
+                    : 'Register Student'}
                 </button>
               </div>
             </form>
@@ -461,8 +545,8 @@ export const StudentsView = ({ showToast }) => {
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={Boolean(deleteTarget)}
-        title="Delete Student Record"
-        message={`Are you sure you want to delete ${deleteTarget?.name} (${deleteTarget?.rollNumber})? This will also remove the student from any past attendance records.`}
+        title="Delete Student & Login Account"
+        message={`Are you sure you want to delete ${deleteTarget?.name} (${deleteTarget?.rollNumber})? This will permanently delete both their student profile, attendance logs, and their student portal login access.`}
         onConfirm={confirmDelete}
         onCancel={() => setDeleteTarget(null)}
         confirmText="Confirm Delete"

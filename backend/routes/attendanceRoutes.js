@@ -3,12 +3,13 @@ const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
 const Timetable = require('../models/Timetable');
 const Note = require('../models/Note');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Apply auth protection to all attendance routes
+// Apply auth protection & Admin check to all faculty attendance management routes
 router.use(protect);
+router.use(requireAdmin);
 
 /**
  * @route   GET /api/attendance

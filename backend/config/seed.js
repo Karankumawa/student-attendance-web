@@ -6,23 +6,29 @@ const Attendance = require('../models/Attendance');
 
 const seedInitialData = async () => {
   try {
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase();
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin@gmail.com';
 
     // 1. Ensure Single Admin User exists
-    let admin = await User.findOne({ email: adminEmail.toLowerCase() });
+    let admin = await User.findOne({ email: adminEmail });
     if (!admin) {
       console.log(`[Seed] Creating default Admin/Teacher: ${adminEmail}`);
       admin = new User({
-        email: adminEmail.toLowerCase(),
+        email: adminEmail,
         password: adminPassword,
-        name: 'Dr. Evelyn Reed (Dept. Head)',
+        name: 'Faculty Administrator',
         role: 'admin',
       });
       await admin.save();
       console.log('[Seed] Admin user successfully created.');
     } else {
-      console.log(`[Seed] Admin user already exists: ${admin.email}`);
+      const isSame = await admin.comparePassword(adminPassword);
+      if (!isSame) {
+        admin.password = adminPassword;
+        await admin.save();
+        console.log('[Seed] Admin password synchronized with env configuration.');
+      }
+      console.log(`[Seed] Admin user verified: ${admin.email}`);
     }
 
     // 2. Seed Students if none exist
@@ -31,23 +37,53 @@ const seedInitialData = async () => {
     if (studentCount === 0) {
       console.log('[Seed] Seeding sample student roster...');
       const sampleStudents = [
-        { name: 'Aarav Sharma', rollNumber: 'CS2024-001', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Ananya Verma', rollNumber: 'CS2024-002', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Rohan Patel', rollNumber: 'CS2024-003', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Priya Nair', rollNumber: 'CS2024-004', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Vikram Aditya', rollNumber: 'CS2024-005', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Sneha Kulkarni', rollNumber: 'CS2024-006', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Devendra Rao', rollNumber: 'CS2024-007', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Ishita Sen', rollNumber: 'CS2024-008', department: 'Computer Science & Engineering', semester: 'Semester 4' },
-        { name: 'Kavya Deshmukh', rollNumber: 'CS2024-009', department: 'Computer Science & Engineering', semester: 'Semester 6' },
-        { name: 'Manish Gupta', rollNumber: 'CS2024-010', department: 'Computer Science & Engineering', semester: 'Semester 6' },
-        { name: 'Tanvi Joshi', rollNumber: 'CS2024-011', department: 'Information Technology', semester: 'Semester 2' },
-        { name: 'Rahul Roy', rollNumber: 'CS2024-012', department: 'Information Technology', semester: 'Semester 2' },
+        { name: 'Aarav Sharma', rollNumber: 'CS2024-001', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'aarav@student.edu', registrationId: 'STU-CS2024001' },
+        { name: 'Ananya Verma', rollNumber: 'CS2024-002', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'ananya@student.edu', registrationId: 'STU-CS2024002' },
+        { name: 'Rohan Patel', rollNumber: 'CS2024-003', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'rohan@student.edu', registrationId: 'STU-CS2024003' },
+        { name: 'Priya Nair', rollNumber: 'CS2024-004', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'priya@student.edu', registrationId: 'STU-CS2024004' },
+        { name: 'Vikram Aditya', rollNumber: 'CS2024-005', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'vikram@student.edu', registrationId: 'STU-CS2024005' },
+        { name: 'Sneha Kulkarni', rollNumber: 'CS2024-006', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'sneha@student.edu', registrationId: 'STU-CS2024006' },
+        { name: 'Devendra Rao', rollNumber: 'CS2024-007', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'devendra@student.edu', registrationId: 'STU-CS2024007' },
+        { name: 'Ishita Sen', rollNumber: 'CS2024-008', department: 'Computer Science & Engineering', semester: 'Semester 4', email: 'ishita@student.edu', registrationId: 'STU-CS2024008' },
+        { name: 'Kavya Deshmukh', rollNumber: 'CS2024-009', department: 'Computer Science & Engineering', semester: 'Semester 6', email: 'kavya@student.edu', registrationId: 'STU-CS2024009' },
+        { name: 'Manish Gupta', rollNumber: 'CS2024-010', department: 'Computer Science & Engineering', semester: 'Semester 6', email: 'manish@student.edu', registrationId: 'STU-CS2024010' },
+        { name: 'Tanvi Joshi', rollNumber: 'CS2024-011', department: 'Information Technology', semester: 'Semester 2', email: 'tanvi@student.edu', registrationId: 'STU-CS2024011' },
+        { name: 'Rahul Roy', rollNumber: 'CS2024-012', department: 'Information Technology', semester: 'Semester 2', email: 'rahul@student.edu', registrationId: 'STU-CS2024012' },
       ];
       seededStudents = await Student.insertMany(sampleStudents);
       console.log(`[Seed] Seeded ${seededStudents.length} students.`);
-    } else {
-      seededStudents = await Student.find({ semester: 'Semester 4' });
+    }
+
+    // Ensure all students have student login accounts & registration IDs
+    const allStudents = await Student.find({});
+    for (const st of allStudents) {
+      let changed = false;
+      if (!st.registrationId) {
+        st.registrationId = `STU-${st.rollNumber.replace(/[^A-Za-z0-9]/g, '')}`;
+        changed = true;
+      }
+      if (!st.email) {
+        st.email = `${st.rollNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.edu`;
+        changed = true;
+      }
+      if (changed) {
+        await st.save();
+      }
+
+      const existingAccount = await User.findOne({ email: st.email });
+      if (!existingAccount) {
+        const studentUser = new User({
+          email: st.email,
+          password: 'student123',
+          name: st.name,
+          role: 'student',
+          studentId: st._id,
+        });
+        await studentUser.save();
+        st.userId = studentUser._id;
+        await st.save();
+        console.log(`[Seed] Provisioned login account for ${st.name} (${st.email})`);
+      }
     }
 
     // 3. Seed Timetable if none exist
@@ -105,48 +141,49 @@ const seedInitialData = async () => {
 
     // 5. Seed Attendance records if none exist
     const attendanceCount = await Attendance.countDocuments();
-    if (attendanceCount === 0 && seededStudents.length > 0) {
-      console.log('[Seed] Seeding initial attendance sessions for analytics...');
+    if (attendanceCount === 0) {
       const sem4Students = await Student.find({ semester: 'Semester 4' });
-      
-      const session1 = {
-        date: '2026-10-27',
-        subject: 'Data Structures & Algorithms',
-        semester: 'Semester 4',
-        records: sem4Students.map((s, idx) => ({
-          studentId: s._id,
-          rollNumber: s.rollNumber,
-          name: s.name,
-          status: idx === 2 || idx === 6 ? 'Absent' : 'Present',
-        })),
-      };
+      if (sem4Students.length > 0) {
+        console.log('[Seed] Seeding initial attendance sessions for analytics...');
+        const session1 = {
+          date: '2026-10-27',
+          subject: 'Data Structures & Algorithms',
+          semester: 'Semester 4',
+          records: sem4Students.map((s, idx) => ({
+            studentId: s._id,
+            rollNumber: s.rollNumber,
+            name: s.name,
+            status: idx === 2 || idx === 6 ? 'Absent' : 'Present',
+          })),
+        };
 
-      const session2 = {
-        date: '2026-10-28',
-        subject: 'Database Management Systems',
-        semester: 'Semester 4',
-        records: sem4Students.map((s, idx) => ({
-          studentId: s._id,
-          rollNumber: s.rollNumber,
-          name: s.name,
-          status: idx === 4 ? 'Absent' : 'Present',
-        })),
-      };
+        const session2 = {
+          date: '2026-10-28',
+          subject: 'Database Management Systems',
+          semester: 'Semester 4',
+          records: sem4Students.map((s, idx) => ({
+            studentId: s._id,
+            rollNumber: s.rollNumber,
+            name: s.name,
+            status: idx === 4 ? 'Absent' : 'Present',
+          })),
+        };
 
-      const session3 = {
-        date: '2026-10-29',
-        subject: 'Operating Systems',
-        semester: 'Semester 4',
-        records: sem4Students.map((s, idx) => ({
-          studentId: s._id,
-          rollNumber: s.rollNumber,
-          name: s.name,
-          status: 'Present',
-        })),
-      };
+        const session3 = {
+          date: '2026-10-29',
+          subject: 'Operating Systems',
+          semester: 'Semester 4',
+          records: sem4Students.map((s, idx) => ({
+            studentId: s._id,
+            rollNumber: s.rollNumber,
+            name: s.name,
+            status: 'Present',
+          })),
+        };
 
-      await Attendance.insertMany([session1, session2, session3]);
-      console.log('[Seed] Seeded sample attendance records.');
+        await Attendance.insertMany([session1, session2, session3]);
+        console.log('[Seed] Seeded sample attendance records.');
+      }
     }
 
     console.log('[Seed] Initialization completed successfully.');

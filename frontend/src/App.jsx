@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginView from './views/LoginView';
+import StudentPortalView from './views/StudentPortalView';
 import DashboardView from './views/DashboardView';
 import AttendanceView from './views/AttendanceView';
 import StudentsView from './views/StudentsView';
@@ -11,7 +12,7 @@ import Navbar from './components/Navbar';
 import Toast from './components/Toast';
 
 const MainApp = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, user, isStudent, loading } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -40,6 +41,17 @@ const MainApp = () => {
     return <LoginView />;
   }
 
+  // If authenticated user is a student, render dedicated Student Portal
+  if (isStudent || user?.role === 'student') {
+    return (
+      <>
+        <StudentPortalView showToast={showToast} />
+        <Toast toast={toast} onClose={handleCloseToast} />
+      </>
+    );
+  }
+
+  // Otherwise render Admin / Faculty Dashboard
   const renderActiveView = () => {
     switch (activeView) {
       case 'dashboard':

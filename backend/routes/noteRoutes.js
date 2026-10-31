@@ -1,6 +1,6 @@
 const express = require('express');
 const Note = require('../models/Note');
-const { protect } = require('../middleware/authMiddleware');
+const { protect, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -55,7 +55,7 @@ router.get('/', async (req, res) => {
  * @desc    Create a new lecture note
  * @access  Private
  */
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { title, subject, semester, content, resourceUrl } = req.body;
 
@@ -96,7 +96,7 @@ router.post('/', async (req, res) => {
  * @desc    Update an existing lecture note
  * @access  Private
  */
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
     if (!note) {
@@ -136,7 +136,7 @@ router.put('/:id', async (req, res) => {
  * @desc    Delete a lecture note
  * @access  Private
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const note = await Note.findById(req.params.id);
     if (!note) {

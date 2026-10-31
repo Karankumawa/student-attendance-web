@@ -15,13 +15,17 @@ const userSchema = new mongoose.Schema({
   },
   name: {
     type: String,
-    default: 'Prof. Admin',
+    default: 'Faculty Administrator',
     trim: true,
   },
   role: {
     type: String,
     default: 'admin',
-    enum: ['admin'],
+    enum: ['admin', 'student'],
+  },
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Student',
   },
   createdAt: {
     type: Date,

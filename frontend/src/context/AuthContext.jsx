@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
         setUser(receivedUser);
         localStorage.setItem('edu_auth_token', receivedToken);
         localStorage.setItem('edu_user', JSON.stringify(receivedUser));
-        return { success: true };
+        return { success: true, role: receivedUser.role };
       }
       return { success: false, message: response.data.message || 'Login failed' };
     } catch (err) {
@@ -73,6 +73,8 @@ export const AuthProvider = ({ children }) => {
     user,
     token,
     isAuthenticated: Boolean(token),
+    isAdmin: user?.role === 'admin',
+    isStudent: user?.role === 'student',
     loading,
     login,
     logout,
