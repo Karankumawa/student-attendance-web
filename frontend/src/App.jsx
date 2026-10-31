@@ -4,6 +4,7 @@ import LoginView from './views/LoginView';
 import StudentPortalView from './views/StudentPortalView';
 import DashboardView from './views/DashboardView';
 import AttendanceView from './views/AttendanceView';
+import ReportsView from './views/ReportsView';
 import StudentsView from './views/StudentsView';
 import TimetableView from './views/TimetableView';
 import NotesView from './views/NotesView';
@@ -66,8 +67,11 @@ const MainApp = () => {
           <AttendanceView
             initialSession={selectedAttendanceSession}
             showToast={showToast}
+            setActiveView={setActiveView}
           />
         );
+      case 'reports':
+        return <ReportsView showToast={showToast} />;
       case 'students':
         return <StudentsView showToast={showToast} />;
       case 'timetable':

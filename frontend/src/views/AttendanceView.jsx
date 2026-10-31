@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Trash2,
   AlertCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 
@@ -42,7 +43,7 @@ const DEFAULT_SUBJECTS = [
   'Seminar & Project Mentorship',
 ];
 
-export const AttendanceView = ({ initialSession, showToast }) => {
+export const AttendanceView = ({ initialSession, showToast, setActiveView }) => {
   const [activeTab, setActiveTab] = useState('take'); // 'take' or 'summary'
 
   // Take Attendance Controls
@@ -288,6 +289,16 @@ export const AttendanceView = ({ initialSession, showToast }) => {
           <BarChart3 className="w-4 h-4" />
           <span>Attendance History & Percentage Analytics</span>
         </button>
+        {setActiveView && (
+          <button
+            onClick={() => setActiveView('reports')}
+            className="flex items-center gap-2 py-3 px-5 text-sm font-bold border-b-2 border-transparent text-emerald-600 hover:text-emerald-700 transition-all cursor-pointer sm:ml-auto"
+            title="Download Past Years Attendance in Excel format"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Excel Reports Download</span>
+          </button>
+        )}
       </div>
 
       {activeTab === 'take' ? (

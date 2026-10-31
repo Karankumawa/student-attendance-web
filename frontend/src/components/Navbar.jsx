@@ -11,6 +11,8 @@ export const Navbar = ({ activeView, setIsMobileOpen }) => {
         return { title: 'Dashboard Overview', subtitle: 'Live metrics, today\'s classes, and faculty summary' };
       case 'attendance':
         return { title: 'Attendance Management', subtitle: 'Record student attendance and inspect compliance rates' };
+      case 'reports':
+        return { title: 'Attendance Reports (Excel)', subtitle: 'Export past years and semester student attendance directly into Excel format' };
       case 'students':
         return { title: 'Student Roster', subtitle: 'Manage student profiles across departments and semesters' };
       case 'timetable':
