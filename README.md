@@ -14,7 +14,7 @@ SNIT Portal is structured around role-based workflows that separate administrati
   - **Live Dashboard:** Quick overview of daily schedules, active lectures, enrolled students, and cohort attendance rates.
   - **Attendance Management:** Record daily class attendance (Present / Absent) by date, semester, and course.
   - **1-Click Excel Attendance Reports:** Export detailed attendance records directly from MongoDB into Excel (`.xlsx`) format. Supports filtering across past academic years, semesters, departments, and courses.
-  - **Student Roster:** Register and manage students with auto-generated unique registration IDs (`STU-...`) and auto-provisioned student accounts.
+  - **Student Register:** Register and manage students with auto-generated unique registration IDs (`STU-...`) and auto-provisioned student accounts.
   - **Timetable & Schedule Planner:** Organize weekly lecture periods, timings, and lecture halls.
   - **Notes & Study Material:** Upload and publish curriculum notes, summaries, and downloadable references.
 

@@ -465,7 +465,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">
-                  Class Student Roster ({students.length} Students)
+                  Class Student List ({students.length} Students)
                 </h3>
                 <p className="text-xs text-slate-500">
                   Click the toggle buttons to switch attendance status between Present and Absent
@@ -479,14 +479,14 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
             {loadingRoster ? (
               <div className="py-16 text-center">
                 <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-500">Loading student roster...</p>
+                <p className="text-xs font-semibold text-slate-500">Loading students...</p>
               </div>
             ) : students.length === 0 ? (
               <div className="py-16 text-center">
                 <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700">No students found in {semester}</p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Add students to this semester in the Student Roster view to take attendance.
+                  Add students to this semester in the Student Register view to take attendance.
                 </p>
               </div>
             ) : (

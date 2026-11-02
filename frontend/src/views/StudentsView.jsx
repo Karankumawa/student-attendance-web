@@ -195,10 +195,10 @@ export const StudentsView = ({ showToast }) => {
         <div>
           <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-600" />
-            <span>Student Roster & Portal Accounts</span>
+            <span>Student Register</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Enroll students, generate unique portal registration IDs, and manage student login accounts
+            Register students, generate unique portal registration IDs, and manage student login accounts
           </p>
         </div>
 
@@ -281,7 +281,7 @@ export const StudentsView = ({ showToast }) => {
         {loading ? (
           <div className="py-16 text-center">
             <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-500">Loading student roster...</p>
+            <p className="text-xs font-semibold text-slate-500">Loading students...</p>
           </div>
         ) : students.length === 0 ? (
           <div className="py-16 text-center">

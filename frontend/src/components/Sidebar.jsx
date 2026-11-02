@@ -18,7 +18,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard Overview', icon: LayoutDashboard },
   { id: 'attendance', label: 'Take & View Attendance', icon: ClipboardCheck },
   { id: 'reports', label: 'Attendance Reports (Excel)', icon: FileSpreadsheet },
-  { id: 'students', label: 'Student Roster', icon: Users },
+  { id: 'students', label: 'Student Register', icon: Users },
   { id: 'timetable', label: 'Timetable Manager', icon: CalendarClock },
   { id: 'notes', label: 'Notes & Materials', icon: BookOpenCheck },
 ];
