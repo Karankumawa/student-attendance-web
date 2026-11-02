@@ -57,35 +57,41 @@ router.get('/', async (req, res) => {
  */
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { title, subject, semester, content, resourceUrl } = req.body;
+    const { title, subject, semester, content, resourceUrl } = req.body || {};
 
-    if (!title || !subject || !content) {
+    const cleanTitle = (title || '').toString().trim();
+    const cleanSubject = (subject || '').toString().trim();
+    const cleanSemester = (semester || 'Semester 1').toString().trim();
+    const cleanContent = (content || '').toString().trim();
+    const cleanResourceUrl = (resourceUrl || '').toString().trim();
+
+    if (!cleanTitle || !cleanSubject || !cleanContent) {
       return res.status(400).json({
         success: false,
-        message: 'Title, subject, and content are required',
+        message: 'Title, subject, and content are required fields',
       });
     }
 
     const newNote = new Note({
-      title: title.trim(),
-      subject: subject.trim(),
-      semester: semester ? semester.trim() : 'Semester 1',
-      content: content.trim(),
-      resourceUrl: resourceUrl ? resourceUrl.trim() : '',
+      title: cleanTitle,
+      subject: cleanSubject,
+      semester: cleanSemester,
+      content: cleanContent,
+      resourceUrl: cleanResourceUrl,
     });
 
-    await newNote.save();
+    const savedNote = await newNote.save();
 
     return res.status(201).json({
       success: true,
       message: 'Note created successfully',
-      data: newNote,
+      data: savedNote,
     });
   } catch (error) {
     console.error('[Note POST Error]:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to create note',
+      message: error.message || 'Failed to create note',
       error: error.message,
     });
   }
@@ -106,26 +112,26 @@ router.put('/:id', requireAdmin, async (req, res) => {
       });
     }
 
-    const { title, subject, semester, content, resourceUrl } = req.body;
+    const { title, subject, semester, content, resourceUrl } = req.body || {};
 
-    if (title) note.title = title.trim();
-    if (subject) note.subject = subject.trim();
-    if (semester) note.semester = semester.trim();
-    if (content) note.content = content.trim();
-    if (resourceUrl !== undefined) note.resourceUrl = resourceUrl.trim();
+    if (title !== undefined) note.title = (title || '').toString().trim();
+    if (subject !== undefined) note.subject = (subject || '').toString().trim();
+    if (semester !== undefined) note.semester = (semester || '').toString().trim();
+    if (content !== undefined) note.content = (content || '').toString().trim();
+    if (resourceUrl !== undefined) note.resourceUrl = (resourceUrl || '').toString().trim();
 
-    await note.save();
+    const updatedNote = await note.save();
 
     return res.status(200).json({
       success: true,
       message: 'Note updated successfully',
-      data: note,
+      data: updatedNote,
     });
   } catch (error) {
     console.error('[Note PUT Error]:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to update note',
+      message: error.message || 'Failed to update note',
       error: error.message,
     });
   }

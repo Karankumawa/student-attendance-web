@@ -20,6 +20,7 @@ import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
 
 const SEMESTERS = [
+  'All Semesters',
   'Semester 1',
   'Semester 2',
   'Semester 3',
@@ -130,9 +131,14 @@ export const NotesView = ({ showToast }) => {
     setFormError('');
 
     const effectiveSubject =
-      formData.subject === 'Other' ? customSubject.trim() : formData.subject;
+      formData.subject === 'Other' ? (customSubject || '').trim() : (formData.subject || '').trim();
 
-    if (!formData.title.trim() || !effectiveSubject || !formData.content.trim()) {
+    const cleanTitle = (formData.title || '').trim();
+    const cleanContent = (formData.content || '').trim();
+    const cleanResourceUrl = (formData.resourceUrl || '').trim();
+    const cleanSemester = formData.semester || 'Semester 1';
+
+    if (!cleanTitle || !effectiveSubject || !cleanContent) {
       setFormError('Title, subject, and content are required fields.');
       return;
     }
@@ -140,11 +146,11 @@ export const NotesView = ({ showToast }) => {
     try {
       setSubmitting(true);
       const payload = {
-        title: formData.title.trim(),
+        title: cleanTitle,
         subject: effectiveSubject,
-        semester: formData.semester,
-        content: formData.content.trim(),
-        resourceUrl: formData.resourceUrl.trim(),
+        semester: cleanSemester,
+        content: cleanContent,
+        resourceUrl: cleanResourceUrl,
       };
 
       if (editingNote) {
@@ -164,7 +170,13 @@ export const NotesView = ({ showToast }) => {
       }
     } catch (err) {
       console.error('Error saving note:', err);
-      setFormError(err.response?.data?.message || 'Failed to save note.');
+      const errorMsg =
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' && err.response.data) ||
+        (err.code === 'ECONNABORTED'
+          ? 'Server response timed out. The server may be waking up, please try again in a few seconds.'
+          : err.message || 'Failed to save note. Please check your network connection.');
+      setFormError(errorMsg);
     } finally {
       setSubmitting(false);
     }

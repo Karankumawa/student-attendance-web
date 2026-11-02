@@ -75,7 +75,7 @@ router.get('/dashboard', async (req, res) => {
 
     // 3. Fetch recent notes for student's semester
     const recentNotes = await Note.find({
-      semester: { $in: [student.semester, 'All'] },
+      semester: { $in: [student.semester, 'All', 'All Semesters'] },
     })
       .sort({ createdAt: -1 })
       .limit(3);
@@ -272,7 +272,7 @@ router.get('/notes', async (req, res) => {
 
     const { search, subject } = req.query;
     const filter = {
-      semester: { $in: [student.semester, 'All'] },
+      semester: { $in: [student.semester, 'All', 'All Semesters'] },
     };
 
     if (subject && subject !== 'All') {

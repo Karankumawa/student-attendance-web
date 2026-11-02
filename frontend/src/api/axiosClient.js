@@ -19,7 +19,7 @@ const axiosClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 25000, // Render free tier can take up to 20s to wake up on first call
+  timeout: 60000, // 60s timeout accommodates Render free tier cold-starts
 });
 
 // Request Interceptor: Attach JWT Token from localStorage
