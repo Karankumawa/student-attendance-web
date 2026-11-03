@@ -192,14 +192,6 @@ router.get('/me', protect, async (req, res) => {
     });
   }
 });
-  } catch (error) {
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve current user',
-      error: error.message,
-    });
-  }
-});
 
 /**
  * @route   PUT /api/auth/change-password

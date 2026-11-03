@@ -224,13 +224,6 @@ router.get('/attendance', async (req, res) => {
         history: personalHistory,
       },
     });
-              ? 'Warning Zone'
-              : 'Defaulter (Short Attendance)',
-        },
-        subjectWise,
-        history: personalHistory,
-      },
-    });
   } catch (error) {
     console.error('[Student Attendance Error]:', error);
     return res.status(500).json({
