@@ -277,13 +277,15 @@ export const StudentPortalView = ({ showToast }) => {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
-                      {overall?.percentage || 0}%
+                      {overall && overall.totalClasses > 0 ? `${overall.percentage}%` : 'N/A'}
                     </div>
                     <span
                       className={`inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-bold ${
-                        (overall?.percentage || 0) >= 75
+                        !overall || overall.totalClasses === 0
+                          ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                          : overall.percentage >= 75
                           ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : (overall?.percentage || 0) >= 60
+                          : overall.percentage >= 60
                           ? 'bg-amber-50 text-amber-700 border border-amber-200'
                           : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}
@@ -762,7 +764,7 @@ export const StudentPortalView = ({ showToast }) => {
                 {viewingNote.title}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Published on {new Date(viewingNote.createdAt).toLocaleDateString()}
+                Published on {viewingNote.createdAt ? new Date(viewingNote.createdAt).toLocaleDateString() : 'Recent'}
               </p>
             </div>
 

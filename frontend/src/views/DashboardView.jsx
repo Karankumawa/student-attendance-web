@@ -16,6 +16,14 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 
+const getLocalDateString = (d = new Date()) => {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) => {
   const [stats, setStats] = useState(null);
   const [defaulters, setDefaulters] = useState([]);
@@ -61,7 +69,7 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
       setSelectedAttendanceSession({
         subject: classSlot.subject,
         semester: classSlot.semester,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
       });
     }
     setActiveView('attendance');

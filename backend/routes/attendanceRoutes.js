@@ -4,6 +4,7 @@ const Student = require('../models/Student');
 const Timetable = require('../models/Timetable');
 const Note = require('../models/Note');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { getLocalDateString, sortSlotsByTime } = require('../utils/timeHelper');
 
 const router = express.Router();
 
@@ -35,16 +36,16 @@ router.get('/', async (req, res) => {
       query.semester = semester;
     }
 
-    const attendanceRecords = await Attendance.find(query).sort({ subject: 1 });
-
-    // If specific subject & semester requested, return the single matching document
-    if (subject && semester) {
+    // If specific subject & semester requested, fetch single document efficiently
+    if (subject && semester && semester !== 'All') {
       const single = await Attendance.findOne({ date, subject: subject.trim(), semester });
       return res.status(200).json({
         success: true,
         data: single,
       });
     }
+
+    const attendanceRecords = await Attendance.find(query).sort({ subject: 1 });
 
     return res.status(200).json({
       success: true,
@@ -218,7 +219,7 @@ router.get('/dashboard-stats', async (req, res) => {
     const today = new Date();
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const currentDay = days[today.getDay()];
-    const todayDateString = today.toISOString().split('T')[0];
+    const todayDateString = getLocalDateString(today);
 
     // Total Students
     const totalStudents = await Student.countDocuments();
@@ -226,8 +227,9 @@ router.get('/dashboard-stats', async (req, res) => {
     // Total Notes
     const totalNotes = await Note.countDocuments();
 
-    // Today's classes from Timetable
-    const todaysClasses = await Timetable.find({ dayOfWeek: currentDay }).sort({ startTime: 1 });
+    // Today's classes from Timetable sorted chronologically
+    const rawTodaysClasses = await Timetable.find({ dayOfWeek: currentDay });
+    const todaysClasses = sortSlotsByTime(rawTodaysClasses);
 
     // Today's attendance sessions recorded
     const todaysAttendanceSessions = await Attendance.find({ date: todayDateString });

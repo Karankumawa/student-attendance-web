@@ -1,8 +1,11 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+// Load environment variables from backend/.env or root
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config();
+
+const express = require('express');
+const cors = require('cors');
 const { connectDB } = require('./config/db');
 const { seedInitialData } = require('./config/seed');
 

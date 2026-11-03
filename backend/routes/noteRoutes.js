@@ -21,8 +21,8 @@ router.get('/', async (req, res) => {
       filter.subject = subject;
     }
 
-    if (semester && semester !== 'All') {
-      filter.semester = semester;
+    if (semester && semester !== 'All' && semester !== 'All Semesters') {
+      filter.semester = { $in: [semester, 'All', 'All Semesters'] };
     }
 
     if (search && search.trim() !== '') {

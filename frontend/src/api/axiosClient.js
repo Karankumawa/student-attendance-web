@@ -43,11 +43,15 @@ axiosClient.interceptors.response.use(
   },
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Clear expired or invalid credentials
-      localStorage.removeItem('edu_auth_token');
-      localStorage.removeItem('edu_user');
-      // Dispatch custom event so AuthContext updates reactively
-      window.dispatchEvent(new Event('auth:unauthorized'));
+      // Don't trigger global logout event on initial login attempt failure
+      const isLoginRequest = error.config?.url?.includes('/login');
+      if (!isLoginRequest) {
+        // Clear expired or invalid credentials
+        localStorage.removeItem('edu_auth_token');
+        localStorage.removeItem('edu_user');
+        // Dispatch custom event so AuthContext updates reactively
+        window.dispatchEvent(new Event('auth:unauthorized'));
+      }
     }
     return Promise.reject(error);
   }

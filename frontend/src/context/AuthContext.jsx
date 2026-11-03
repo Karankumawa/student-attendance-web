@@ -43,9 +43,11 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, role) => {
     try {
-      const response = await axiosClient.post('/auth/login', { email, password });
+      const payload = { email, password };
+      if (role) payload.role = role;
+      const response = await axiosClient.post('/auth/login', payload);
       if (response.data.success) {
         const { token: receivedToken, user: receivedUser } = response.data;
         setToken(receivedToken);

@@ -37,7 +37,11 @@ export const LoginView = () => {
     }
 
     setLoading(true);
-    const result = await login(email, password);
+    const result = await login(
+      email.trim(),
+      password,
+      activeRole === 'faculty' ? 'admin' : 'student'
+    );
     setLoading(false);
 
     if (!result.success) {

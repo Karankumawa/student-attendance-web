@@ -20,7 +20,7 @@ const generateToken = (id) => {
  */
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -33,79 +33,100 @@ router.post('/login', async (req, res) => {
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase();
     const envPassword = process.env.ADMIN_PASSWORD || 'admin@gmail.com';
 
-    // 1. Check if login attempt is for Admin / Teacher
-    if (normalizedEmail === adminEmail) {
-      let admin = await User.findOne({ email: adminEmail });
+    // 1. Look up user by email
+    let user = await User.findOne({ email: normalizedEmail });
 
-      if (!admin) {
-        admin = new User({
-          email: adminEmail,
-          password: envPassword,
-          name: 'Faculty Administrator',
-          role: 'admin',
-        });
-        await admin.save();
-      }
-
-      let isMatch = await admin.comparePassword(password);
-      if (!isMatch && password === envPassword) {
-        admin.password = envPassword;
-        await admin.save();
-        isMatch = true;
-      }
-
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid administrator credentials.',
-        });
-      }
-
-      const token = generateToken(admin._id);
-      return res.status(200).json({
-        success: true,
-        message: 'Admin login successful',
-        token,
-        user: {
-          id: admin._id,
-          email: admin.email,
-          name: admin.name,
-          role: 'admin',
-        },
+    // Auto-create or ensure default admin user if matches ADMIN_EMAIL
+    if (!user && normalizedEmail === adminEmail) {
+      user = new User({
+        email: adminEmail,
+        password: envPassword,
+        name: 'Faculty Administrator',
+        role: 'admin',
       });
+      await user.save();
     }
 
-    // 2. Check if login attempt is for a Student
-    const studentUser = await User.findOne({ email: normalizedEmail, role: 'student' });
-    if (!studentUser) {
+    if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Account not found with this email. Please check your credentials.',
       });
     }
 
-    const isStudentMatch = await studentUser.comparePassword(password);
-    if (!isStudentMatch) {
+    // Role check: If client explicitly specified faculty/admin or student, verify matching
+    if (role) {
+      const normalizedRole = role.toLowerCase();
+      if ((normalizedRole === 'faculty' || normalizedRole === 'admin') && user.role !== 'admin') {
+        return res.status(401).json({
+          success: false,
+          message: 'This email belongs to a Student account. Please switch to the "Student Login" tab.',
+        });
+      }
+      if (normalizedRole === 'student' && user.role !== 'student') {
+        return res.status(401).json({
+          success: false,
+          message: 'This email belongs to a Faculty Administrator account. Please switch to the "Faculty Login" tab.',
+        });
+      }
+    }
+
+    // Verify Password
+    let isMatch = await user.comparePassword(password);
+    if (!isMatch && user.role === 'admin' && normalizedEmail === adminEmail && password === envPassword) {
+      user.password = envPassword;
+      await user.save();
+      isMatch = true;
+    }
+
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid password. Please verify your credentials.',
+        message: user.role === 'admin' ? 'Invalid administrator credentials.' : 'Invalid student credentials.',
       });
     }
 
-    // Fetch linked student profile
-    const studentProfile = await Student.findById(studentUser.studentId);
+    const token = generateToken(user._id);
 
-    const token = generateToken(studentUser._id);
+    if (user.role === 'admin') {
+      return res.status(200).json({
+        success: true,
+        message: 'Admin login successful',
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: 'admin',
+        },
+      });
+    }
+
+    // Student Login: Fetch or ensure linked student profile
+    let studentProfile = null;
+    if (user.studentId) {
+      studentProfile = await Student.findById(user.studentId);
+    }
+    if (!studentProfile) {
+      studentProfile = await Student.findOne({
+        $or: [{ userId: user._id }, { email: user.email }],
+      });
+      if (studentProfile && !user.studentId) {
+        user.studentId = studentProfile._id;
+        await user.save();
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: 'Student login successful',
       token,
       user: {
-        id: studentUser._id,
-        email: studentUser.email,
-        name: studentProfile ? studentProfile.name : studentUser.name,
+        id: user._id,
+        email: user.email,
+        name: studentProfile ? studentProfile.name : user.name,
         role: 'student',
-        studentId: studentUser.studentId,
+        studentId: studentProfile ? studentProfile._id : user.studentId,
         rollNumber: studentProfile ? studentProfile.rollNumber : '',
         semester: studentProfile ? studentProfile.semester : '',
         department: studentProfile ? studentProfile.department : '',
@@ -132,8 +153,16 @@ router.get('/me', protect, async (req, res) => {
     const user = req.user;
     let extra = {};
 
-    if (user.role === 'student' && user.studentId) {
-      const student = await Student.findById(user.studentId);
+    if (user.role === 'student') {
+      let student = null;
+      if (user.studentId) {
+        student = await Student.findById(user.studentId);
+      }
+      if (!student) {
+        student = await Student.findOne({
+          $or: [{ userId: user._id }, { email: user.email }],
+        });
+      }
       if (student) {
         extra = {
           studentId: student._id,
@@ -155,6 +184,14 @@ router.get('/me', protect, async (req, res) => {
         ...extra,
       },
     });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve current user',
+      error: error.message,
+    });
+  }
+});
   } catch (error) {
     return res.status(500).json({
       success: false,

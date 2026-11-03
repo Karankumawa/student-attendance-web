@@ -37,4 +37,6 @@ const timetableSchema = new mongoose.Schema({
   },
 });
 
+timetableSchema.index({ dayOfWeek: 1, semester: 1 });
+
 module.exports = mongoose.model('Timetable', timetableSchema);

@@ -62,5 +62,7 @@ const attendanceSchema = new mongoose.Schema(
 
 // Compound index on date, subject, and semester to quickly find or upsert a session
 attendanceSchema.index({ date: 1, subject: 1, semester: 1 }, { unique: true });
+attendanceSchema.index({ date: -1 });
+attendanceSchema.index({ semester: 1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

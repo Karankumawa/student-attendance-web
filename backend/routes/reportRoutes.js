@@ -225,11 +225,11 @@ router.get('/filters', async (req, res) => {
  */
 router.get('/preview', async (req, res) => {
   try {
-    const { year, semester, department, subject, reportType, minAttendance } = req.query;
+    const { year, semester, department, subject, reportType, minAttendance, startDate, endDate } = req.query;
 
     const threshold = minAttendance ? Number(minAttendance) : 75;
     const { students, stats, sessions } = await computeReportData(
-      { year, semester, department, subject },
+      { year, semester, department, subject, startDate, endDate },
       reportType || 'all',
       threshold
     );
@@ -272,11 +272,11 @@ router.get('/preview', async (req, res) => {
  */
 router.get('/export-excel', async (req, res) => {
   try {
-    const { year, semester, department, subject, reportType, minAttendance } = req.query;
+    const { year, semester, department, subject, reportType, minAttendance, startDate, endDate } = req.query;
     const threshold = minAttendance ? Number(minAttendance) : 75;
 
     const { students, allStudents, sessions, stats } = await computeReportData(
-      { year, semester, department, subject },
+      { year, semester, department, subject, startDate, endDate },
       reportType || 'all',
       threshold
     );

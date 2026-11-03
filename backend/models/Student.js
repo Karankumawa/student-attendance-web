@@ -44,9 +44,13 @@ const studentSchema = new mongoose.Schema({
 
 // Auto-populate registrationId if not provided
 studentSchema.pre('save', function () {
-  if (!this.registrationId) {
+  if (!this.registrationId && this.rollNumber) {
     this.registrationId = `STU-${this.rollNumber.replace(/[^A-Za-z0-9]/g, '')}`;
   }
 });
+
+studentSchema.index({ semester: 1, department: 1 });
+studentSchema.index({ registrationId: 1 });
+studentSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('Student', studentSchema);

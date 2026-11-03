@@ -191,10 +191,19 @@ router.put('/:id', async (req, res) => {
       }
     }
 
+    if (password && password.trim() && password.trim().length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long',
+      });
+    }
+
     await student.save();
 
     // Update associated User account if exists
-    let studentUser = await User.findOne({ studentId: student._id });
+    let studentUser = await User.findOne({
+      $or: [{ studentId: student._id }, { _id: student.userId }, { email: student.email }],
+    });
     if (studentUser) {
       if (name) studentUser.name = name.trim();
       if (student.email) studentUser.email = student.email;
@@ -202,6 +211,10 @@ router.put('/:id', async (req, res) => {
         studentUser.password = password.trim();
       }
       await studentUser.save();
+      if (!student.userId || student.userId.toString() !== studentUser._id.toString()) {
+        student.userId = studentUser._id;
+        await student.save();
+      }
     } else if (student.email) {
       // Create user account if missing
       studentUser = new User({

@@ -15,6 +15,33 @@ import {
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
 
+const getLocalDateString = (d = new Date()) => {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const clean = timeStr.trim();
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+  if (!match) return 0;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const modifier = match[3] ? match[3].toUpperCase() : null;
+
+  if (modifier === 'PM' && hours < 12) {
+    hours += 12;
+  } else if (modifier === 'AM' && hours === 12) {
+    hours = 0;
+  }
+
+  return hours * 60 + minutes;
+};
+
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const SEMESTERS = [
@@ -155,14 +182,16 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       setSelectedAttendanceSession({
         subject: slot.subject,
         semester: slot.semester,
-        date: new Date().toISOString().split('T')[0],
+        date: getLocalDateString(),
       });
     }
     setActiveView('attendance');
   };
 
-  // Group slots by day
-  const daySlots = slots.filter((s) => s.dayOfWeek === selectedDay);
+  // Group slots by day and sort chronologically
+  const daySlots = [...slots.filter((s) => s.dayOfWeek === selectedDay)].sort(
+    (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)
+  );
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">

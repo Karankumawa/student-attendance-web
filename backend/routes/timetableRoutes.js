@@ -1,6 +1,7 @@
 const express = require('express');
 const Timetable = require('../models/Timetable');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { sortSlotsByTime } = require('../utils/timeHelper');
 
 const router = express.Router();
 
@@ -25,7 +26,8 @@ router.get('/', async (req, res) => {
       filter.semester = semester;
     }
 
-    const slots = await Timetable.find(filter).sort({ startTime: 1 });
+    const rawSlots = await Timetable.find(filter);
+    const slots = sortSlotsByTime(rawSlots);
     return res.status(200).json({
       success: true,
       count: slots.length,

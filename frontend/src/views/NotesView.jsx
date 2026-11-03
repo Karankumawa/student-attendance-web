@@ -73,6 +73,14 @@ export const NotesView = ({ showToast }) => {
     fetchNotes();
   }, [selectedSubject, selectedSemester]);
 
+  // Debounced search on input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchNotes();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchNotes = async () => {
     try {
       setLoading(true);
@@ -265,14 +273,17 @@ export const NotesView = ({ showToast }) => {
             placeholder="Search notes or topics..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-16 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="w-full pl-9 pr-14 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           />
-          <button
-            type="submit"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 text-[11px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors cursor-pointer"
-          >
-            Search
-          </button>
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </form>
       </div>
 
@@ -548,7 +559,7 @@ export const NotesView = ({ showToast }) => {
                 {viewingNote.title}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Published on {new Date(viewingNote.createdAt).toLocaleDateString()}
+                Published on {viewingNote.createdAt ? new Date(viewingNote.createdAt).toLocaleDateString() : 'Recent'}
               </p>
             </div>
 

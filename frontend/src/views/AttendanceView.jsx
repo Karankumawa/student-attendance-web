@@ -18,8 +18,18 @@ import {
   Trash2,
   AlertCircle,
   FileSpreadsheet,
+  X,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
+import ConfirmModal from '../components/ConfirmModal';
+
+const getLocalDateString = (d = new Date()) => {
+  const dateObj = typeof d === 'string' ? new Date(d) : d;
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const SEMESTERS = [
   'Semester 1',
@@ -48,7 +58,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
   // Take Attendance Controls
   const [date, setDate] = useState(
-    initialSession?.date || new Date().toISOString().split('T')[0]
+    initialSession?.date || getLocalDateString()
   );
   const [semester, setSemester] = useState(initialSession?.semester || 'Semester 4');
   const [subject, setSubject] = useState(
@@ -59,6 +69,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   // Attendance Roster State
   const [students, setStudents] = useState([]);
   const [records, setRecords] = useState({}); // { [studentId]: 'Present' | 'Absent' }
+  const [rosterSearch, setRosterSearch] = useState('');
   const [isSavedSession, setIsSavedSession] = useState(false);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -69,8 +80,9 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const [summarySearch, setSummarySearch] = useState('');
   const [loadingSummary, setLoadingSummary] = useState(false);
 
-  // Past Sessions History
+  // Past Sessions History & Delete Confirmation
   const [sessionsHistory, setSessionsHistory] = useState([]);
+  const [sessionToDelete, setSessionToDelete] = useState(null);
 
   // Load roster whenever date, semester, or subject changes
   useEffect(() => {
@@ -233,11 +245,13 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     }
   };
 
-  const handleDeleteSession = async (sessionId) => {
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete) return;
     try {
-      const res = await axiosClient.delete(`/attendance/${sessionId}`);
+      const res = await axiosClient.delete(`/attendance/${sessionToDelete._id}`);
       if (res.data.success) {
-        showToast?.({ message: 'Attendance record deleted', type: 'info' });
+        showToast?.({ message: 'Attendance record deleted successfully', type: 'info' });
+        setSessionToDelete(null);
         fetchSessionsHistory();
         fetchSummary();
       }
@@ -251,6 +265,17 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const absentCount = Object.values(records).filter((s) => s === 'Absent').length;
   const attendanceRate =
     students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
+
+  // Filtered Roster for Taking Attendance
+  const filteredRosterStudents = students.filter((s) => {
+    if (!rosterSearch.trim()) return true;
+    const term = rosterSearch.toLowerCase();
+    return (
+      s.name.toLowerCase().includes(term) ||
+      s.rollNumber.toLowerCase().includes(term) ||
+      (s.registrationId && s.registrationId.toLowerCase().includes(term))
+    );
+  });
 
   // Filtered Summary for search
   const filteredSummary = summaryData.filter((st) => {
@@ -462,7 +487,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
           {/* Roster Table */}
           <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">
                   Class Student List ({students.length} Students)
@@ -471,9 +496,30 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                   Click the toggle buttons to switch attendance status between Present and Absent
                 </p>
               </div>
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-                {semester}
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search roster..."
+                    value={rosterSearch}
+                    onChange={(e) => setRosterSearch(e.target.value)}
+                    className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-44 sm:w-48"
+                  />
+                  {rosterSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setRosterSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                  {semester}
+                </span>
+              </div>
             </div>
 
             {loadingRoster ? (
@@ -503,7 +549,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
-                    {students.map((student, index) => {
+                    {filteredRosterStudents.map((student, index) => {
                       const isPresent = records[student._id] !== 'Absent';
 
                       return (
@@ -787,7 +833,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDeleteSession(sess._id)}
+                          onClick={() => setSessionToDelete(sess)}
                           className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           title="Delete Session"
                         >
@@ -802,6 +848,17 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           </div>
         </div>
       )}
+
+      {/* Delete Attendance Session Modal */}
+      <ConfirmModal
+        isOpen={Boolean(sessionToDelete)}
+        title="Delete Attendance Session?"
+        message={`Are you sure you want to delete the attendance record for "${sessionToDelete?.subject}" on ${sessionToDelete?.date}? All marked student records for this lecture will be permanently removed.`}
+        onConfirm={confirmDeleteSession}
+        onCancel={() => setSessionToDelete(null)}
+        confirmText="Delete Session"
+        isDanger={true}
+      />
     </div>
   );
 };

@@ -32,4 +32,7 @@ const noteSchema = new mongoose.Schema(
   }
 );
 
+noteSchema.index({ semester: 1, subject: 1 });
+noteSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model('Note', noteSchema);

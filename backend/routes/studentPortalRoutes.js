@@ -5,6 +5,7 @@ const Attendance = require('../models/Attendance');
 const Timetable = require('../models/Timetable');
 const Note = require('../models/Note');
 const { protect, requireStudent } = require('../middleware/authMiddleware');
+const { sortSlotsByTime } = require('../utils/timeHelper');
 
 const router = express.Router();
 
@@ -19,7 +20,15 @@ const getStudentProfile = async (userId, studentId) => {
     if (student) return student;
   }
   // Fallback search by userId
-  return Student.findOne({ userId });
+  const byUser = await Student.findOne({ userId });
+  if (byUser) return byUser;
+
+  // Fallback search by email
+  const user = await User.findById(userId);
+  if (user && user.email) {
+    return Student.findOne({ email: user.email });
+  }
+  return null;
 };
 
 /**
@@ -49,7 +58,9 @@ router.get('/dashboard', async (req, res) => {
 
     sessions.forEach((session) => {
       const myRecord = session.records.find(
-        (rec) => rec.studentId && rec.studentId.toString() === student._id.toString()
+        (rec) =>
+          (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
+          (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
       );
 
       if (myRecord) {
@@ -61,17 +72,21 @@ router.get('/dashboard', async (req, res) => {
     });
 
     const percentage =
-      totalClasses > 0 ? Number(((attendedClasses / totalClasses) * 100).toFixed(1)) : 100.0;
+      totalClasses > 0 ? Number(((attendedClasses / totalClasses) * 100).toFixed(1)) : 0;
 
-    let academicStanding = 'Good';
-    if (percentage < 60) academicStanding = 'Defaulter';
-    else if (percentage < 75) academicStanding = 'Warning';
+    let academicStanding = 'No Classes Yet';
+    if (totalClasses > 0) {
+      if (percentage < 60) academicStanding = 'Defaulter';
+      else if (percentage < 75) academicStanding = 'Warning';
+      else academicStanding = 'Good';
+    }
 
-    // 2. Fetch today's classes strictly for student's semester
-    const todaysClasses = await Timetable.find({
+    // 2. Fetch today's classes strictly for student's semester sorted chronologically
+    const rawTodaysClasses = await Timetable.find({
       semester: student.semester,
       dayOfWeek: currentDay,
-    }).sort({ startTime: 1 });
+    });
+    const todaysClasses = sortSlotsByTime(rawTodaysClasses);
 
     // 3. Fetch recent notes for student's semester
     const recentNotes = await Note.find({
@@ -141,7 +156,9 @@ router.get('/attendance', async (req, res) => {
 
     sessions.forEach((session) => {
       const myRecord = session.records.find(
-        (rec) => rec.studentId && rec.studentId.toString() === student._id.toString()
+        (rec) =>
+          (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
+          (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
       );
 
       if (myRecord) {
@@ -170,7 +187,7 @@ router.get('/attendance', async (req, res) => {
     });
 
     const overallPercentage =
-      totalClasses > 0 ? Number(((attendedClasses / totalClasses) * 100).toFixed(1)) : 100.0;
+      totalClasses > 0 ? Number(((attendedClasses / totalClasses) * 100).toFixed(1)) : 0;
 
     const subjectWise = Object.keys(subjectMap).map((subj) => {
       const stat = subjectMap[subj];
@@ -182,7 +199,7 @@ router.get('/attendance', async (req, res) => {
         attendedClasses: stat.attended,
         absentClasses: stat.total - stat.attended,
         percentage: pct,
-        status: pct >= 75 ? 'Good' : pct >= 60 ? 'Warning' : 'Defaulter',
+        status: stat.total === 0 ? 'No Classes Yet' : pct >= 75 ? 'Good' : pct >= 60 ? 'Warning' : 'Defaulter',
       };
     });
 
@@ -195,9 +212,18 @@ router.get('/attendance', async (req, res) => {
           absentClasses: totalClasses - attendedClasses,
           percentage: overallPercentage,
           status:
-            overallPercentage >= 75
+            totalClasses === 0
+              ? 'No Classes Yet'
+              : overallPercentage >= 75
               ? 'Eligible (Good)'
               : overallPercentage >= 60
+              ? 'Warning Zone'
+              : 'Defaulter (Short Attendance)',
+        },
+        subjectWise,
+        history: personalHistory,
+      },
+    });
               ? 'Warning Zone'
               : 'Defaulter (Short Attendance)',
         },
@@ -237,7 +263,8 @@ router.get('/timetable', async (req, res) => {
       filter.dayOfWeek = dayOfWeek;
     }
 
-    const schedule = await Timetable.find(filter).sort({ startTime: 1 });
+    const rawSchedule = await Timetable.find(filter);
+    const schedule = sortSlotsByTime(rawSchedule);
 
     return res.status(200).json({
       success: true,

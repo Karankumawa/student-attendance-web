@@ -151,6 +151,13 @@ export const ReportsView = ({ showToast }) => {
         responseType: 'blob',
       });
 
+      // Check if backend returned JSON error inside blob
+      if (response.data && response.data.type === 'application/json') {
+        const text = await response.data.text();
+        const json = JSON.parse(text);
+        throw new Error(json.message || 'Excel export failed on server');
+      }
+
       // Extract filename from Content-Disposition header if available
       let filename = `Attendance_Report_${selectedYear}_${selectedSemester}.xlsx`;
       const disposition = response.headers['content-disposition'];
@@ -184,7 +191,7 @@ export const ReportsView = ({ showToast }) => {
       console.error('Excel export failed:', err);
       if (showToast) {
         showToast({
-          message: 'Error downloading Excel report. Please try again.',
+          message: err.message || 'Error downloading Excel report. Please try again.',
           type: 'error',
         });
       }
