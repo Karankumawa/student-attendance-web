@@ -221,7 +221,7 @@ export const ReportsView = ({ showToast }) => {
               <span>Institutional Analytics Engine</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Attendance Reports & Excel Export
+              Attendance Reports
             </h1>
             <p className="text-sm md:text-base text-slate-400 leading-relaxed">
               Export student attendance records for past and current academic years in clean Excel (.xlsx) format

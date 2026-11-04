@@ -22,6 +22,13 @@ import {
   ChevronRight,
   Menu,
   X,
+  Lock,
+  Mail,
+  Phone,
+  Save,
+  RotateCcw,
+  HeartPulse,
+  Users,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
@@ -60,6 +67,21 @@ export const StudentPortalView = ({ showToast }) => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
 
+  // Profile data & edit form states
+  const [profileData, setProfileData] = useState(null);
+  const [profileForm, setProfileForm] = useState({
+    dob: '',
+    phone: '',
+    gender: '',
+    address: '',
+    guardianName: '',
+    guardianPhone: '',
+    bloodGroup: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
   useEffect(() => {
     fetchStudentData();
   }, []);
@@ -72,6 +94,26 @@ export const StudentPortalView = ({ showToast }) => {
       const dashRes = await axiosClient.get('/student-portal/dashboard');
       if (dashRes.data.success) {
         setDashboardData(dashRes.data.data);
+      }
+
+      // Fetch personal profile details
+      try {
+        const profileRes = await axiosClient.get('/student-portal/profile');
+        if (profileRes.data.success && profileRes.data.data) {
+          const p = profileRes.data.data;
+          setProfileData(p);
+          setProfileForm({
+            dob: p.dob || '',
+            phone: p.phone || '',
+            gender: p.gender || '',
+            address: p.address || '',
+            guardianName: p.guardianName || '',
+            guardianPhone: p.guardianPhone || '',
+            bloodGroup: p.bloodGroup || '',
+          });
+        }
+      } catch (pErr) {
+        console.warn('Could not load student profile record:', pErr);
       }
 
       // Fetch personal attendance
@@ -96,6 +138,55 @@ export const StudentPortalView = ({ showToast }) => {
       showToast?.({ message: 'Error loading student portal data', type: 'error' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    setProfileError('');
+    setProfileSuccess('');
+
+    try {
+      setProfileSaving(true);
+      const res = await axiosClient.put('/student-portal/profile', profileForm);
+
+      if (res.data.success && res.data.data) {
+        const updated = res.data.data;
+        setProfileData(updated);
+        setProfileForm({
+          dob: updated.dob || '',
+          phone: updated.phone || '',
+          gender: updated.gender || '',
+          address: updated.address || '',
+          guardianName: updated.guardianName || '',
+          guardianPhone: updated.guardianPhone || '',
+          bloodGroup: updated.bloodGroup || '',
+        });
+        setProfileSuccess('Profile details saved and updated successfully in database!');
+        showToast?.({ message: 'Profile updated in database!', type: 'success' });
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || 'Failed to update profile';
+      setProfileError(errMsg);
+      showToast?.({ message: errMsg, type: 'error' });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handleResetProfile = () => {
+    if (profileData) {
+      setProfileForm({
+        dob: profileData.dob || '',
+        phone: profileData.phone || '',
+        gender: profileData.gender || '',
+        address: profileData.address || '',
+        guardianName: profileData.guardianName || '',
+        guardianPhone: profileData.guardianPhone || '',
+        bloodGroup: profileData.bloodGroup || '',
+      });
+      setProfileError('');
+      setProfileSuccess('');
     }
   };
 
@@ -208,7 +299,7 @@ export const StudentPortalView = ({ showToast }) => {
         <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
           <button
             onClick={() => setActiveTab('attendance')}
-            className={`flex-1 min-w-[150px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'attendance'
                 ? 'bg-slate-950 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
@@ -219,15 +310,27 @@ export const StudentPortalView = ({ showToast }) => {
           </button>
 
           <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              activeTab === 'profile'
+                ? 'bg-slate-950 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <User className="w-4 h-4" />
+            <span>My Profile</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('timetable')}
-            className={`flex-1 min-w-[150px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
+            className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
               activeTab === 'timetable'
                 ? 'bg-slate-950 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
             }`}
           >
             <CalendarClock className="w-4 h-4" />
-            <span>My Classes & Schedule</span>
+            <span>Classes & Schedule</span>
           </button>
 
           <button
@@ -445,7 +548,396 @@ export const StudentPortalView = ({ showToast }) => {
           </div>
         )}
 
-        {/* ================= VIEW 2: MY TIMETABLE ================= */}
+        {/* ================= VIEW 2: STUDENT PROFILE ================= */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
+            {/* Hero / ID Banner */}
+            <div className="relative overflow-hidden rounded-3xl bg-slate-950 border border-slate-800 p-6 sm:p-8 text-white shadow-xl">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-5">
+                  <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 text-white font-extrabold text-2xl sm:text-3xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30 border border-white/20">
+                    {student?.name?.charAt(0)?.toUpperCase() || 'S'}
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-xl sm:text-2xl font-black tracking-tight">{student?.name}</h2>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Enrolled Student</span>
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-400 font-mono flex items-center gap-2">
+                      <Mail className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>{profileData?.email || student?.email || user?.email}</span>
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-300">
+                      <span className="px-2.5 py-0.5 rounded-md bg-white/10 font-mono font-bold">
+                        Roll: {student?.rollNumber}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
+                        {student?.registrationId || `STU-${student?.rollNumber}`}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-md bg-white/10 font-semibold">
+                        {student?.department}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-md bg-white/10 font-semibold">
+                        {student?.semester}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden lg:flex flex-col items-end text-right">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Database Record Status</span>
+                  <span className="text-xs font-semibold text-emerald-400 mt-0.5 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Synchronized with MongoDB
+                  </span>
+                  <span className="text-[11px] text-slate-500 mt-1">
+                    Joined: {profileData?.createdAt ? new Date(profileData.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Academic Session'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Decorative background effects */}
+              <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute left-1/3 -top-10 w-48 h-48 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+            </div>
+
+            {/* Policy Notice Box */}
+            <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs sm:text-sm flex items-start gap-3.5 shadow-xs">
+              <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <h4 className="font-bold text-amber-950">Protected Institutional Identity Information</h4>
+                <p className="text-xs text-amber-800/95 leading-relaxed">
+                  Per college administration regulations, your <strong>Official Full Name</strong> and <strong>Assigned Email Address</strong> are verified institutional credentials and cannot be edited by students. You have permission to update and save all other personal, contact, and guardian details directly into your database record.
+                </p>
+              </div>
+            </div>
+
+            {profileError && (
+              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-3">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                <span className="font-medium">{profileError}</span>
+              </div>
+            )}
+
+            {profileSuccess && (
+              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                <span className="font-medium">{profileSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleProfileSubmit} className="space-y-6">
+              {/* Section 1: Official Identity (Locked / Read-Only) */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
+                      <Lock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Institutional Identity</h3>
+                      <p className="text-xs text-slate-500">Official student credentials managed by college administration (Read-Only)</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                    Protected
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Name (Cannot be changed) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Full Name</span>
+                      <span className="text-[10px] text-rose-500 font-semibold">Not Editable</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        disabled
+                        value={profileData?.name || student?.name || ''}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Official registered student name</p>
+                  </div>
+
+                  {/* Email (Cannot be changed) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Official Email</span>
+                      <span className="text-[10px] text-rose-500 font-semibold">Not Editable</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="email"
+                        disabled
+                        value={profileData?.email || student?.email || user?.email || ''}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Institutional login email (@snitn.edu)</p>
+                  </div>
+
+                  {/* Roll Number (Read-only) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Roll Number</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Permanent</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        disabled
+                        value={profileData?.rollNumber || student?.rollNumber || ''}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">University roll identifier</p>
+                  </div>
+
+                  {/* Registration ID (Read-only) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                      Registration ID
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={profileData?.registrationId || student?.registrationId || `STU-${student?.rollNumber}`}
+                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono font-semibold text-indigo-700 cursor-not-allowed select-none"
+                    />
+                  </div>
+
+                  {/* Department (Read-only) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                      Academic Department
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={profileData?.department || student?.department || ''}
+                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                    />
+                  </div>
+
+                  {/* Current Semester (Read-only) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                      Current Semester
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={profileData?.semester || student?.semester || ''}
+                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Personal & Contact Information (Editable by Student) */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Personal & Contact Details</h3>
+                      <p className="text-xs text-slate-500">You can edit and update these personal details anytime in database</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Editable
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Date of Birth (DOB) */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Date of Birth (Day / Month / Year)</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={profileForm.dob}
+                      onChange={(e) => setProfileForm({ ...profileForm, dob: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Stored format: YYYY-MM-DD</p>
+                  </div>
+
+                  {/* Phone Number */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Contact Phone Number</span>
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={profileForm.phone}
+                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Student's active phone number</p>
+                  </div>
+
+                  {/* Gender */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Gender
+                    </label>
+                    <select
+                      value={profileForm.gender}
+                      onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">Official gender identity</p>
+                  </div>
+
+                  {/* Blood Group */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Blood Group</span>
+                    </label>
+                    <select
+                      value={profileForm.bloodGroup}
+                      onChange={(e) => setProfileForm({ ...profileForm, bloodGroup: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                    >
+                      <option value="">Select Blood Group</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                    </select>
+                    <p className="text-[10px] text-slate-400 mt-1">For campus medical records</p>
+                  </div>
+
+                  {/* Address */}
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Residential Address</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Enter permanent or current residential address..."
+                      value={profileForm.address}
+                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all resize-none"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Full residential correspondence address</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 3: Parent & Guardian Information (Editable by Student) */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 border border-violet-100">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">Parent & Guardian Information</h3>
+                      <p className="text-xs text-slate-500">Contact information for parent or local guardian</p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Editable
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                      Guardian / Parent Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Father's or Guardian's full name"
+                      value={profileForm.guardianName}
+                      onChange={(e) => setProfileForm({ ...profileForm, guardianName: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Parent or primary guardian</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Phone className="w-3.5 h-3.5 text-violet-600" />
+                      <span>Guardian Contact Phone</span>
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={profileForm.guardianPhone}
+                      onChange={(e) => setProfileForm({ ...profileForm, guardianPhone: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">Emergency & attendance notice contact</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleResetProfile}
+                  disabled={profileSaving}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Changes</span>
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={profileSaving}
+                  className="px-6 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
+                >
+                  {profileSaving ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Saving to Database...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Profile Details</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* ================= VIEW 3: MY TIMETABLE ================= */}
         {activeTab === 'timetable' && (
           <div className="space-y-6 animate-fade-in">
             {/* Days Tabs */}

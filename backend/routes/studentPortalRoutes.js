@@ -382,4 +382,163 @@ router.put('/change-password', async (req, res) => {
   }
 });
 
+/**
+ * @route   GET /api/student-portal/profile
+ * @desc    Fetch complete personal profile of the logged-in student
+ * @access  Private (Student only)
+ */
+router.get('/profile', async (req, res) => {
+  try {
+    const student = await getStudentProfile(req.user._id, req.user.studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student profile not found',
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        _id: student._id,
+        name: student.name,
+        firstName: student.firstName || '',
+        lastName: student.lastName || '',
+        email: student.email || user?.email || '',
+        rollNumber: student.rollNumber,
+        registrationId: student.registrationId || `STU-${student.rollNumber}`,
+        department: student.department || 'Computer Science & Engineering',
+        semester: student.semester || 'Semester 1',
+        dob: student.dob || '',
+        phone: student.phone || '',
+        gender: student.gender || '',
+        address: student.address || '',
+        guardianName: student.guardianName || '',
+        guardianPhone: student.guardianPhone || '',
+        bloodGroup: student.bloodGroup || '',
+        createdAt: student.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('[Student Profile GET Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch student profile',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   PUT /api/student-portal/profile
+ * @desc    Update allowed details of the logged-in student (Name and Email are strictly immutable by student)
+ * @access  Private (Student only)
+ */
+router.put('/profile', async (req, res) => {
+  try {
+    const student = await getStudentProfile(req.user._id, req.user.studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student profile not found',
+      });
+    }
+
+    const {
+      dob,
+      phone,
+      gender,
+      address,
+      guardianName,
+      guardianPhone,
+      bloodGroup,
+      currentPassword,
+      newPassword,
+    } = req.body;
+
+    // Strict security: student cannot modify name or email!
+    // Any name or email in req.body is intentionally bypassed.
+
+    if (dob !== undefined) student.dob = typeof dob === 'string' ? dob.trim() : dob;
+    if (phone !== undefined) student.phone = typeof phone === 'string' ? phone.trim() : phone;
+    if (gender !== undefined) student.gender = typeof gender === 'string' ? gender.trim() : gender;
+    if (address !== undefined) student.address = typeof address === 'string' ? address.trim() : address;
+    if (guardianName !== undefined) student.guardianName = typeof guardianName === 'string' ? guardianName.trim() : guardianName;
+    if (guardianPhone !== undefined) student.guardianPhone = typeof guardianPhone === 'string' ? guardianPhone.trim() : guardianPhone;
+    if (bloodGroup !== undefined) student.bloodGroup = typeof bloodGroup === 'string' ? bloodGroup.trim() : bloodGroup;
+
+    await student.save();
+
+    // If student requested password update through profile form
+    if (newPassword && newPassword.trim() !== '') {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is required to change password',
+        });
+      }
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password must be at least 6 characters long',
+        });
+      }
+
+      const user = await User.findById(req.user._id);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User account not found',
+        });
+      }
+
+      const isMatch = await user.comparePassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is incorrect',
+        });
+      }
+
+      user.password = newPassword;
+      await user.save();
+    }
+
+    const user = await User.findById(req.user._id);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Student profile details updated successfully in database!',
+      data: {
+        _id: student._id,
+        name: student.name,
+        firstName: student.firstName || '',
+        lastName: student.lastName || '',
+        email: student.email || user?.email || '',
+        rollNumber: student.rollNumber,
+        registrationId: student.registrationId || `STU-${student.rollNumber}`,
+        department: student.department || 'Computer Science & Engineering',
+        semester: student.semester || 'Semester 1',
+        dob: student.dob || '',
+        phone: student.phone || '',
+        gender: student.gender || '',
+        address: student.address || '',
+        guardianName: student.guardianName || '',
+        guardianPhone: student.guardianPhone || '',
+        bloodGroup: student.bloodGroup || '',
+        createdAt: student.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('[Student Profile Update Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update student profile',
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

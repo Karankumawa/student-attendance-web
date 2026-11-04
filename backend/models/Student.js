@@ -48,6 +48,36 @@ const studentSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
+  phone: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  gender: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  address: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  guardianName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  guardianPhone: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  bloodGroup: {
+    type: String,
+    trim: true,
+    default: '',
+  },
   createdAt: {
     type: Date,
     default: Date.now,
