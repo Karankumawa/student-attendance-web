@@ -251,105 +251,138 @@ export const StudentPortalView = ({ showToast }) => {
     );
   }
 
+  const NAV_TABS = [
+    { id: 'attendance', label: 'My Attendance', icon: ClipboardCheck },
+    { id: 'profile', label: 'My Profile', icon: User },
+    { id: 'timetable', label: 'Classes & Schedule', icon: CalendarClock },
+    { id: 'notes', label: `Study Notes (${notes.length})`, icon: BookOpenCheck },
+    { id: 'security', label: 'Change Password', icon: KeyRound },
+  ];
+
+  const handleTabClick = (tabId) => {
+    setActiveTab(tabId);
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-slate-100/60 text-slate-800 flex flex-col font-sans antialiased">
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 h-20 bg-white/85 backdrop-blur-xl border-b border-slate-200/70 px-4 md:px-8 flex items-center justify-between shadow-xs">
-        <div className="flex items-center gap-3.5">
-          <SnitLogo className="w-10 h-10 shadow-md shadow-indigo-100" size={40} />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-slate-900 text-lg leading-tight">SNIT</h1>
-              <span className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[11px] font-bold uppercase tracking-wider">
-                Student Portal
-              </span>
+      {/* Sticky Top Header & Responsive Navbar */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs transition-all">
+        {/* Brand & User Topbar */}
+        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between border-b border-slate-100/80">
+          <div className="flex items-center gap-3">
+            <SnitLogo className="w-9 h-9 sm:w-10 sm:h-10 shadow-md shadow-indigo-100 shrink-0" size={38} />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-extrabold text-slate-900 text-base sm:text-lg leading-tight tracking-tight">SNIT</h1>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+                  Student Portal
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate max-w-[210px] sm:max-w-none">
+                {student?.name} • <span className="font-mono font-semibold text-slate-700">{student?.rollNumber}</span> ({student?.semester})
+              </p>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {student?.name} • <span className="font-mono font-semibold text-slate-700">{student?.rollNumber}</span> ({student?.semester})
-            </p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden md:flex flex-col text-right">
+              <span className="text-xs font-bold text-slate-900">{student?.registrationId || 'STU-ACTIVE'}</span>
+              <span className="text-[11px] text-slate-500 font-medium">{student?.department}</span>
+            </div>
+
+            <button
+              onClick={logout}
+              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200/80 hover:border-rose-200 cursor-pointer active:scale-95"
+              title="Logout from portal"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
+
+            {/* Mobile Hamburger / Close Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="sm:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200/80 bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer active:scale-95"
+              aria-label="Toggle navigation menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5 text-slate-800" /> : <Menu className="w-5 h-5 text-slate-800" />}
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex flex-col text-right">
-            <span className="text-xs font-bold text-slate-900">{student?.registrationId || 'STU-ACTIVE'}</span>
-            <span className="text-[11px] text-slate-500 font-medium">{student?.department}</span>
+        {/* Tab Options Bar - Always Fixed & Scrollable/Responsive */}
+        <div className="px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/75 border-b border-slate-100 overflow-x-auto no-scrollbar">
+          <div className="max-w-7xl mx-auto flex items-center gap-1.5 sm:gap-2 min-w-max">
+            {NAV_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={`flex items-center gap-2 py-2 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-xs transition-all cursor-pointer select-none whitespace-nowrap active:scale-95 ${
+                    isActive
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/70'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
-
-          <button
-            onClick={logout}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200/70 hover:border-rose-200 cursor-pointer active:scale-95"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-          </button>
         </div>
+
+        {/* Mobile Dropdown Menu Drawer */}
+        {isMobileMenuOpen && (
+          <div className="sm:hidden border-t border-slate-200 bg-white/98 backdrop-blur-xl px-4 py-3 shadow-lg space-y-2 animate-fade-in">
+            <div className="pb-2 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">{student?.department}</span>
+              <span className="font-mono">{student?.registrationId || 'STU-ACTIVE'}</span>
+            </div>
+            <div className="space-y-1">
+              {NAV_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => handleTabClick(tab.id)}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-slate-900 text-white shadow-xs'
+                        : 'text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span>{tab.label}</span>
+                    </div>
+                    <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white/70' : 'text-slate-400'}`} />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="pt-2 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  logout();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Main Container */}
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
-        {/* Navigation Tabs */}
-        <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
-          <button
-            onClick={() => setActiveTab('attendance')}
-            className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'attendance'
-                ? 'bg-slate-950 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <ClipboardCheck className="w-4 h-4" />
-            <span>My Attendance</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'profile'
-                ? 'bg-slate-950 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>My Profile</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('timetable')}
-            className={`flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'timetable'
-                ? 'bg-slate-950 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <CalendarClock className="w-4 h-4" />
-            <span>Classes & Schedule</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('notes')}
-            className={`flex-1 min-w-[150px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'notes'
-                ? 'bg-slate-950 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <BookOpenCheck className="w-4 h-4" />
-            <span>Study Notes ({notes.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex-1 min-w-[150px] py-2.5 px-4 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              activeTab === 'security'
-                ? 'bg-slate-950 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-            }`}
-          >
-            <KeyRound className="w-4 h-4" />
-            <span>Change Password</span>
-          </button>
-        </div>
 
         {/* ================= VIEW 1: MY ATTENDANCE ================= */}
         {activeTab === 'attendance' && (
