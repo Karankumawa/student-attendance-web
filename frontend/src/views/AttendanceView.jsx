@@ -290,34 +290,36 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      {/* Top Tab Navigator */}
-      <div className="flex border-b border-slate-200">
-        <button
-          onClick={() => setActiveTab('take')}
-          className={`flex items-center gap-2 py-3 px-5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'take'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <ClipboardCheck className="w-4 h-4" />
-          <span>Mark Class Attendance</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('summary')}
-          className={`flex items-center gap-2 py-3 px-5 text-sm font-bold border-b-2 transition-all cursor-pointer ${
-            activeTab === 'summary'
-              ? 'border-indigo-600 text-indigo-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span>Attendance History & Percentage Analytics</span>
-        </button>
+      {/* Modern Top Tab Navigator */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setActiveTab('take')}
+            className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'take'
+                ? 'bg-slate-950 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            <span>Mark Class Attendance</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('summary')}
+            className={`flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              activeTab === 'summary'
+                ? 'bg-slate-950 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span>Attendance History & Percentage Analytics</span>
+          </button>
+        </div>
         {setActiveView && (
           <button
             onClick={() => setActiveView('reports')}
-            className="flex items-center gap-2 py-3 px-5 text-sm font-bold border-b-2 border-transparent text-emerald-600 hover:text-emerald-700 transition-all cursor-pointer sm:ml-auto"
+            className="flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/70 transition-all cursor-pointer shadow-xs ml-auto"
             title="Download Past Years Attendance in Excel format"
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -329,11 +331,17 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
       {activeTab === 'take' ? (
         <div className="space-y-6">
           {/* Controls Bar */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Session Configuration Parameters
+              </h3>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Date Picker */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Attendance Date
                 </label>
                 <div className="relative">
@@ -341,20 +349,20 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:bg-white transition-all"
                   />
                 </div>
               </div>
 
               {/* Semester Selector */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Target Semester
                 </label>
                 <select
                   value={semester}
                   onChange={(e) => setSemester(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  className="w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:bg-white transition-all cursor-pointer"
                 >
                   {SEMESTERS.map((sem) => (
                     <option key={sem} value={sem}>
@@ -366,7 +374,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
               {/* Subject Dropdown */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Subject / Course
                 </label>
                 <select
@@ -375,7 +383,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     setSubject(e.target.value);
                     setCustomSubject('');
                   }}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  className="w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:bg-white transition-all cursor-pointer"
                 >
                   {DEFAULT_SUBJECTS.map((subj) => (
                     <option key={subj} value={subj}>
@@ -390,7 +398,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
               <div>
                 {subject === 'Other' ? (
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Enter Custom Subject
                     </label>
                     <input
@@ -398,15 +406,15 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                       placeholder="e.g. Distributed Systems"
                       value={customSubject}
                       onChange={(e) => setCustomSubject(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      className="w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:bg-white transition-all"
                     />
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                      Database Status
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                      Database Sync Status
                     </label>
-                    <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border bg-slate-50 text-xs font-semibold">
+                    <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border bg-slate-50/80 text-xs font-semibold">
                       {isSavedSession ? (
                         <>
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -426,16 +434,16 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           </div>
 
           {/* Quick Action Toolbar & Live Stats */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Left: Quick Batch Actions */}
             <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">
-                Quick Mark:
+                Batch Actions:
               </span>
               <button
                 type="button"
                 onClick={() => markAll('Present')}
-                className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
                 <CheckCheck className="w-4 h-4" />
                 <span>Mark All Present</span>
@@ -443,7 +451,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
               <button
                 type="button"
                 onClick={() => markAll('Absent')}
-                className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
                 <XCircle className="w-4 h-4" />
                 <span>Mark All Absent</span>
@@ -453,16 +461,16 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
             {/* Right: Live Counter Badges & Save Button */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">
+                <span className="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
                   Total: {students.length}
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
                   Present: {presentCount}
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100">
+                <span className="px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100">
                   Absent: {absentCount}
                 </span>
-                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                <span className="px-3 py-1.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
                   {attendanceRate}%
                 </span>
               </div>
@@ -471,7 +479,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                 type="button"
                 onClick={handleSaveAttendance}
                 disabled={saving || students.length === 0}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-98"
               >
                 {saving ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -486,17 +494,17 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           </div>
 
           {/* Roster Table */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-            <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
+            <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">
-                  Class Student List ({students.length} Students)
+                  Class Student Roster ({students.length} Students)
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Click the toggle buttons to switch attendance status between Present and Absent
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -504,7 +512,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     placeholder="Search roster..."
                     value={rosterSearch}
                     onChange={(e) => setRosterSearch(e.target.value)}
-                    className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-44 sm:w-48"
+                    className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-44 sm:w-52"
                   />
                   {rosterSearch && (
                     <button
@@ -516,20 +524,20 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     </button>
                   )}
                 </div>
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 shrink-0">
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 shrink-0 border border-slate-200/60">
                   {semester}
                 </span>
               </div>
             </div>
 
             {loadingRoster ? (
-              <div className="py-16 text-center">
+              <div className="py-20 text-center">
                 <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                 <p className="text-xs font-semibold text-slate-500">Loading students...</p>
               </div>
             ) : students.length === 0 ? (
-              <div className="py-16 text-center">
-                <Users className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <div className="py-20 text-center">
+                <Users className="w-12 h-12 text-slate-300 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700">No students found in {semester}</p>
                 <p className="text-xs text-slate-500 mt-1">
                   Add students to this semester in the Student Register view to take attendance.
@@ -540,17 +548,18 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                      <th className="py-3 px-6">#</th>
-                      <th className="py-3 px-6">Roll Number</th>
-                      <th className="py-3 px-6">Student Name</th>
-                      <th className="py-3 px-6">Department</th>
-                      <th className="py-3 px-6 text-center">Current Status</th>
-                      <th className="py-3 px-6 text-right">Quick Toggle Action</th>
+                      <th className="py-3.5 px-6">#</th>
+                      <th className="py-3.5 px-6">Roll Number</th>
+                      <th className="py-3.5 px-6">Student Name</th>
+                      <th className="py-3.5 px-6">Department</th>
+                      <th className="py-3.5 px-6 text-center">Current Status</th>
+                      <th className="py-3.5 px-6 text-right">Quick Toggle Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {filteredRosterStudents.map((student, index) => {
                       const isPresent = records[student._id] !== 'Absent';
+                      const initial = student.name ? student.name.charAt(0).toUpperCase() : '?';
 
                       return (
                         <tr
@@ -566,7 +575,12 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                             {student.rollNumber}
                           </td>
                           <td className="py-3.5 px-6">
-                            <div className="font-bold text-slate-800">{student.name}</div>
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                {initial}
+                              </div>
+                              <div className="font-bold text-slate-800">{student.name}</div>
+                            </div>
                           </td>
                           <td className="py-3.5 px-6 text-xs text-slate-500">
                             {student.department}
@@ -575,18 +589,18 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                             <span
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
                                 isPresent
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : 'bg-rose-50 text-rose-800 border border-rose-200'
                               }`}
                             >
                               {isPresent ? (
                                 <>
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                   <span>Present</span>
                                 </>
                               ) : (
                                 <>
-                                  <XCircle className="w-3.5 h-3.5" />
+                                  <span className="w-2 h-2 rounded-full bg-rose-500" />
                                   <span>Absent</span>
                                 </>
                               )}
@@ -631,7 +645,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         /* Secondary Tab: Attendance History & Percentage Analytics */
         <div className="space-y-6">
           {/* Summary Filters */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
               {/* Semester Filter */}
               <div className="flex items-center gap-2">
@@ -642,7 +656,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                 <select
                   value={summarySemester}
                   onChange={(e) => setSummarySemester(e.target.value)}
-                  className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 >
                   <option value="All">All Semesters</option>
                   {SEMESTERS.map((sem) => (
@@ -681,13 +695,13 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           </div>
 
           {/* Student Compliance Summary Table */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">
                   Cumulative Student Attendance Compliance
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Total classes attended across all recorded lectures and sessions
                 </p>
               </div>
@@ -697,13 +711,13 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
             </div>
 
             {loadingSummary ? (
-              <div className="py-16 text-center">
+              <div className="py-20 text-center">
                 <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                 <p className="text-xs font-semibold text-slate-500">Calculating attendance summary...</p>
               </div>
             ) : filteredSummary.length === 0 ? (
-              <div className="py-16 text-center">
-                <BarChart3 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+              <div className="py-20 text-center">
+                <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-slate-700">No attendance data found</p>
                 <p className="text-xs text-slate-500 mt-1">Take class attendance to populate statistics.</p>
               </div>
@@ -712,12 +726,12 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                      <th className="py-3 px-6">Roll Number</th>
-                      <th className="py-3 px-6">Student Name</th>
-                      <th className="py-3 px-6">Semester</th>
-                      <th className="py-3 px-6 text-center">Attended / Total</th>
-                      <th className="py-3 px-6">Percentage</th>
-                      <th className="py-3 px-6 text-right">Academic Status</th>
+                      <th className="py-3.5 px-6">Roll Number</th>
+                      <th className="py-3.5 px-6">Student Name</th>
+                      <th className="py-3.5 px-6">Semester</th>
+                      <th className="py-3.5 px-6 text-center">Attended / Total</th>
+                      <th className="py-3.5 px-6">Percentage</th>
+                      <th className="py-3.5 px-6 text-right">Academic Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
@@ -780,18 +794,18 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           </div>
 
           {/* Past Attendance Sessions Log */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
             <h3 className="font-bold text-slate-900 text-base mb-1">
               Recent Attendance Sessions Log
             </h3>
-            <p className="text-xs text-slate-500 mb-4">
+            <p className="text-xs text-slate-500 mb-5">
               Recorded sessions stored in MongoDB. Click "Load Session" to inspect or edit records.
             </p>
 
             {sessionsHistory.length === 0 ? (
-              <p className="text-xs text-slate-400 py-4">No past sessions recorded yet.</p>
+              <p className="text-xs text-slate-400 py-6 text-center">No past sessions recorded yet.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sessionsHistory.map((sess) => {
                   const present = sess.records.filter((r) => r.status === 'Present').length;
                   const total = sess.records.length;
@@ -800,26 +814,26 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                   return (
                     <div
                       key={sess._id}
-                      className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-all flex flex-col justify-between"
+                      className="p-5 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex flex-col justify-between"
                     >
                       <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/70">
                             {sess.date}
                           </span>
-                          <span className="text-[11px] font-semibold text-slate-500">
+                          <span className="text-[11px] font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-md">
                             {sess.semester}
                           </span>
                         </div>
-                        <h4 className="text-sm font-bold text-slate-800 line-clamp-1">
+                        <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mt-1">
                           {sess.subject}
                         </h4>
-                        <div className="text-xs text-slate-500 mt-1">
+                        <div className="text-xs text-slate-500 mt-2">
                           Present: <span className="font-bold text-emerald-600">{present}</span> / {total} students ({rate}%)
                         </div>
                       </div>
 
-                      <div className="mt-3 pt-2.5 border-t border-slate-200/60 flex items-center justify-between">
+                      <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
                         <button
                           onClick={() => {
                             setDate(sess.date);
@@ -834,7 +848,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                         </button>
                         <button
                           onClick={() => setSessionToDelete(sess)}
-                          className="p-1 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
                           title="Delete Session"
                         >
                           <Trash2 className="w-4 h-4" />

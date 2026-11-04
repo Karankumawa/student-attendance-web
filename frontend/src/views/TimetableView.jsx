@@ -196,20 +196,23 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   return (
     <div className="space-y-6 animate-fade-in pb-12">
       {/* Header and Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <CalendarClock className="w-5 h-5 text-indigo-600" />
-            <span>Timetable & Lecture Schedule</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-xs font-bold text-indigo-700 mb-2">
+            <CalendarClock className="w-3.5 h-3.5" />
+            <span>Academic Routine</span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+            Timetable & Lecture Schedule
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Configure weekly periods, lecture timings, halls, and academic semesters
           </p>
         </div>
 
         <button
           onClick={() => openAddModal(selectedDay)}
-          className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-200 transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto active:scale-98"
         >
           <Plus className="w-4 h-4" />
           <span>Add Class Slot</span>
@@ -217,7 +220,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       </div>
 
       {/* Days of Week Tab Bar */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/70">
+      <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
         {DAYS_OF_WEEK.map((day) => {
           const isSelected = selectedDay === day;
           const isToday = day === todayName;
@@ -227,21 +230,21 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
-              className={`flex-1 min-w-[120px] py-3 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+              className={`flex-1 min-w-[120px] py-3 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
                 isSelected
-                  ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  ? 'bg-slate-950 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
               }`}
             >
               <div className="flex items-center gap-1.5">
                 <span>{day}</span>
                 {isToday && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" title="Today" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Today" />
                 )}
               </div>
               <span
                 className={`text-[10px] px-2 py-0.5 rounded-full ${
-                  isSelected ? 'bg-indigo-50 text-indigo-700 font-bold' : 'bg-slate-200/60 text-slate-500'
+                  isSelected ? 'bg-white/20 text-white font-bold' : 'bg-slate-200/60 text-slate-500'
                 }`}
               >
                 {count} {count === 1 ? 'Class' : 'Classes'}
@@ -252,13 +255,13 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       </div>
 
       {/* Schedule for Selected Day */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs">
+      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
         <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <span>{selectedDay} Schedule</span>
               {selectedDay === todayName && (
-                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
                   Today's Active Schedule
                 </span>
               )}
@@ -278,12 +281,12 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
         </div>
 
         {loading ? (
-          <div className="py-16 text-center">
+          <div className="py-20 text-center">
             <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
             <p className="text-xs font-semibold text-slate-500">Loading schedule...</p>
           </div>
         ) : daySlots.length === 0 ? (
-          <div className="py-16 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200">
+          <div className="py-20 text-center rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
             <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
             <h4 className="text-sm font-bold text-slate-800">No classes scheduled for {selectedDay}</h4>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
@@ -297,19 +300,19 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {daySlots.map((slot) => (
               <div
                 key={slot._id}
-                className="group p-5 rounded-2xl border border-slate-200/90 hover:border-indigo-200 bg-slate-50/40 hover:bg-white hover:shadow-md transition-all duration-200 flex flex-col justify-between"
+                className="group p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-200 bg-slate-50/40 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
                       <Clock className="w-3.5 h-3.5" />
                       <span>{slot.startTime} - {slot.endTime}</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-slate-200/70 text-slate-700 text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-slate-200/70 text-slate-700 text-[10px] font-bold">
                       {slot.semester}
                     </span>
                   </div>
@@ -318,16 +321,16 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                     {slot.subject}
                   </h4>
 
-                  <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-500 font-medium">
+                  <div className="flex items-center gap-1.5 mt-2.5 text-xs text-slate-500 font-medium">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span>{slot.roomNumber || 'Room 101'}</span>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
                   <button
                     onClick={() => handleTakeAttendance(slot)}
-                    className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                   >
                     <ClipboardList className="w-3.5 h-3.5" />
                     <span>Take Attendance</span>
@@ -336,14 +339,14 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => openEditModal(slot)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
                       title="Edit Slot"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setDeleteTarget(slot)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
                       title="Delete Slot"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -358,17 +361,17 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
 
       {/* Add / Edit Timetable Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-fade-in">
-          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-7 border border-slate-100">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-100">
             <button
               onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+              className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-5">
-              <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600">
+            <div className="flex items-center gap-3.5 mb-6">
+              <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
                 <CalendarClock className="w-6 h-6" />
               </div>
               <div>
@@ -382,7 +385,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
             </div>
 
             {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-rose-700 text-xs">
+              <div className="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-rose-700 text-xs">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{formError}</span>
               </div>
@@ -390,13 +393,13 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Day of the Week *
                 </label>
                 <select
                   value={formData.dayOfWeek}
                   onChange={(e) => setFormData({ ...formData, dayOfWeek: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
                 >
                   {DAYS_OF_WEEK.map((d) => (
                     <option key={d} value={d}>
@@ -407,7 +410,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                   Subject / Course Name *
                 </label>
                 <input
@@ -416,13 +419,13 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                   placeholder="e.g. Operating Systems"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Start Time *
                   </label>
                   <input
@@ -431,11 +434,11 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                     placeholder="e.g. 09:00 AM"
                     value={formData.startTime}
                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     End Time *
                   </label>
                   <input
@@ -444,20 +447,20 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                     placeholder="e.g. 10:00 AM"
                     value={formData.endTime}
                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Semester
                   </label>
                   <select
                     value={formData.semester}
                     onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
                   >
                     {SEMESTERS.map((s) => (
                       <option key={s} value={s}>
@@ -467,7 +470,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Room / Lab
                   </label>
                   <input
@@ -475,7 +478,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                     placeholder="e.g. Lab 301 / Hall 2"
                     value={formData.roomNumber}
                     onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>
               </div>
@@ -484,14 +487,14 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+                  className="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2 text-sm font-bold text-white bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 rounded-xl shadow-md shadow-indigo-500/20 transition-all cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : editingSlot ? 'Update Slot' : 'Add Slot'}
                 </button>

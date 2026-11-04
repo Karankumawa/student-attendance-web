@@ -211,20 +211,20 @@ export const ReportsView = ({ showToast }) => {
   });
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Top Banner / Hero */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 p-6 md:p-8 text-white shadow-xl">
+    <div className="space-y-6 pb-12 animate-fade-in">
+      {/* Top Banner / Hero with Midnight Obsidian Theme */}
+      <div className="relative overflow-hidden rounded-3xl bg-slate-950 border border-slate-800 p-7 md:p-8 text-white shadow-xl">
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-emerald-100 border border-white/20">
-              <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-              <span>Admin Exclusive Feature</span>
+          <div className="space-y-2.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 backdrop-blur-md text-xs font-bold text-emerald-400 border border-emerald-500/20">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Institutional Analytics Engine</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Attendance Reports & Excel Download
+              Attendance Reports & Excel Export
             </h1>
-            <p className="text-sm md:text-base text-emerald-100 leading-relaxed">
-              Download student attendance reports for past and current years in clean Excel (.xlsx) format
+            <p className="text-sm md:text-base text-slate-400 leading-relaxed">
+              Export student attendance records for past and current academic years in clean Excel (.xlsx) format
               with percentage summaries and attendance lists.
             </p>
           </div>
@@ -233,44 +233,45 @@ export const ReportsView = ({ showToast }) => {
             <button
               onClick={fetchReportPreview}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white text-sm font-semibold transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-sm font-semibold transition-all hover:scale-102 active:scale-98 disabled:opacity-50 cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh Data</span>
+              <span>Refresh Metrics</span>
             </button>
 
             <button
               onClick={handleDownloadExcel}
               disabled={downloading}
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-white text-emerald-800 hover:bg-emerald-50 text-sm font-bold shadow-lg shadow-black/10 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all hover:scale-102 active:scale-98 disabled:opacity-50 cursor-pointer"
             >
-              <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
-              <span>{downloading ? 'Generating Excel...' : '1-Click Download Excel (.xlsx)'}</span>
-              <Download className="w-4 h-4 text-emerald-600" />
+              <FileSpreadsheet className="w-5 h-5 text-white" />
+              <span>{downloading ? 'Generating Excel...' : '1-Click Export (.xlsx)'}</span>
+              <Download className="w-4 h-4 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Decorative background glow */}
-        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+        {/* Decorative background glows */}
+        <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute left-1/3 -top-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
       </div>
 
       {/* Filter Selection Panel */}
-      <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
+      <div className="bg-white rounded-3xl p-6 md:p-7 border border-slate-200/90 shadow-xs space-y-6">
         <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-700">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-100">
               <Filter className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-800">Customize Report Parameters</h2>
-              <p className="text-xs text-slate-500">
+              <h2 className="text-base font-bold text-slate-900">Report Parameters & Filter Criteria</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
                 Choose academic years, semesters, or departments to customize your Excel report
               </p>
             </div>
           </div>
 
-          <span className="hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">
+          <span className="hidden sm:inline-flex text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200/60">
             Total Sessions in DB: {stats.totalSessions}
           </span>
         </div>
@@ -285,7 +286,7 @@ export const ReportsView = ({ showToast }) => {
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all cursor-pointer"
             >
               <option value="All">All Years (Cumulative)</option>
               {filterOptions.years.map((yr) => (
@@ -305,7 +306,7 @@ export const ReportsView = ({ showToast }) => {
             <select
               value={selectedSemester}
               onChange={(e) => setSelectedSemester(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all cursor-pointer"
             >
               <option value="All">All Semesters</option>
               {filterOptions.semesters.map((sem) => (
@@ -325,7 +326,7 @@ export const ReportsView = ({ showToast }) => {
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all cursor-pointer"
             >
               <option value="All">All Departments</option>
               {filterOptions.departments.map((dept) => (
@@ -345,7 +346,7 @@ export const ReportsView = ({ showToast }) => {
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all cursor-pointer"
             >
               <option value="All">All Subjects (Combined)</option>
               {filterOptions.subjects.map((sub) => (
@@ -358,14 +359,14 @@ export const ReportsView = ({ showToast }) => {
         </div>
 
         {/* Report Type & Threshold Selection Bar */}
-        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+        <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-slate-600 mr-1">Report View:</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Report View:</span>
             <button
               onClick={() => setReportType('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 reportType === 'all'
-                  ? 'bg-emerald-600 text-white shadow-xs'
+                  ? 'bg-slate-950 text-white shadow-xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -373,10 +374,10 @@ export const ReportsView = ({ showToast }) => {
             </button>
             <button
               onClick={() => setReportType('defaulters')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 reportType === 'defaulters'
                   ? 'bg-rose-600 text-white shadow-xs'
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200/60'
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
@@ -384,10 +385,10 @@ export const ReportsView = ({ showToast }) => {
             </button>
             <button
               onClick={() => setReportType('eligible')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 reportType === 'eligible'
                   ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60'
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -396,11 +397,11 @@ export const ReportsView = ({ showToast }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600">Threshold:</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Threshold:</span>
             <select
               value={minAttendance}
               onChange={(e) => setMinAttendance(Number(e.target.value))}
-              className="px-2.5 py-1 text-xs font-bold bg-slate-100 border border-slate-200 rounded-lg text-slate-700 focus:outline-none"
+              className="px-3 py-1.5 text-xs font-bold bg-slate-100 border border-slate-200 rounded-xl text-slate-700 focus:outline-none cursor-pointer"
             >
               <option value={75}>Min 75% (Mandatory Standard)</option>
               <option value={60}>Min 60% (Condonation Limit)</option>
@@ -410,79 +411,79 @@ export const ReportsView = ({ showToast }) => {
         </div>
       </div>
 
-      {/* Live Statistics Cards */}
+      {/* Live Statistics Bento Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {/* Total Students */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Students</p>
-            <h3 className="text-2xl font-black text-slate-800">{stats.matchedStudents}</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Students</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.matchedStudents}</h3>
           </div>
         </div>
 
         {/* Classes Held */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Classes</p>
-            <h3 className="text-2xl font-black text-slate-800">{stats.totalSessions}</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Classes</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.totalSessions}</h3>
           </div>
         </div>
 
         {/* Overall Average */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Average Attendance</p>
-            <h3 className="text-2xl font-black text-emerald-600">{stats.overallAvg}%</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Average Attendance</p>
+            <h3 className="text-2xl font-black text-emerald-600 mt-0.5">{stats.overallAvg}%</h3>
           </div>
         </div>
 
         {/* Defaulters Count */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Students Below 75%</p>
-            <h3 className="text-2xl font-black text-rose-600">{stats.defaultersCount}</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Students Below 75%</p>
+            <h3 className="text-2xl font-black text-rose-600 mt-0.5">{stats.defaultersCount}</h3>
           </div>
         </div>
       </div>
 
       {/* Preview Table Header & Search */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="p-4 md:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+        <div className="p-5 md:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-slate-800">Attendance Preview</h3>
-            <p className="text-xs text-slate-500">
+            <h3 className="text-base font-bold text-slate-900">Attendance Preview</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
               Showing preview for {selectedYear} ({selectedSemester}) • Click Excel button above to download full file
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search student or roll no..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                className="w-full pl-9 pr-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
               />
             </div>
 
             <button
               onClick={handleDownloadExcel}
               disabled={downloading}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs shrink-0"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
               title="Download Excel Spreadsheet"
             >
               <FileSpreadsheet className="w-4 h-4" />
@@ -494,13 +495,13 @@ export const ReportsView = ({ showToast }) => {
         {/* Table Content */}
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="p-12 text-center text-slate-500 flex flex-col items-center gap-3">
+            <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
               <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
               <p className="text-sm font-semibold">Calculating attendance metrics from MongoDB...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
-            <div className="p-12 text-center text-slate-500 space-y-2">
-              <FileSpreadsheet className="w-10 h-10 text-slate-300 mx-auto" />
+            <div className="p-16 text-center text-slate-500 space-y-2">
+              <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto" />
               <h4 className="text-base font-bold text-slate-700">No Student Records Found</h4>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
                 No students or attendance records match the selected filter parameters. Try choosing "All Years" or a
@@ -510,18 +511,18 @@ export const ReportsView = ({ showToast }) => {
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">#</th>
-                  <th className="py-3 px-4">Roll No</th>
-                  <th className="py-3 px-4">Registration ID</th>
-                  <th className="py-3 px-4">Student Name</th>
-                  <th className="py-3 px-4">Department</th>
-                  <th className="py-3 px-4 text-center">Classes</th>
-                  <th className="py-3 px-4 text-center">Present</th>
-                  <th className="py-3 px-4 text-center">Absent</th>
-                  <th className="py-3 px-4 text-center">Attendance %</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Note</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3.5 px-4">#</th>
+                  <th className="py-3.5 px-4">Roll No</th>
+                  <th className="py-3.5 px-4">Registration ID</th>
+                  <th className="py-3.5 px-4">Student Name</th>
+                  <th className="py-3.5 px-4">Department</th>
+                  <th className="py-3.5 px-4 text-center">Classes</th>
+                  <th className="py-3.5 px-4 text-center">Present</th>
+                  <th className="py-3.5 px-4 text-center">Absent</th>
+                  <th className="py-3.5 px-4 text-center">Attendance %</th>
+                  <th className="py-3.5 px-4">Status</th>
+                  <th className="py-3.5 px-4 text-right">Note</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -531,17 +532,17 @@ export const ReportsView = ({ showToast }) => {
 
                   return (
                     <tr key={s.studentId} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3 px-4 text-slate-400 font-medium">{index + 1}</td>
-                      <td className="py-3 px-4 font-mono font-bold text-slate-800">{s.rollNumber}</td>
-                      <td className="py-3 px-4 font-mono text-indigo-600 font-semibold">{s.registrationId}</td>
-                      <td className="py-3 px-4 font-bold text-slate-900">{s.name}</td>
-                      <td className="py-3 px-4 text-slate-600 truncate max-w-[160px]">{s.department}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-slate-700">{s.totalClasses}</td>
-                      <td className="py-3 px-4 text-center font-bold text-emerald-700">{s.attendedClasses}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-rose-600">{s.absentClasses}</td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="py-3.5 px-4 text-slate-400 font-medium">{index + 1}</td>
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-800">{s.rollNumber}</td>
+                      <td className="py-3.5 px-4 font-mono text-indigo-600 font-semibold">{s.registrationId}</td>
+                      <td className="py-3.5 px-4 font-bold text-slate-900">{s.name}</td>
+                      <td className="py-3.5 px-4 text-slate-600 truncate max-w-[160px]">{s.department}</td>
+                      <td className="py-3.5 px-4 text-center font-semibold text-slate-700">{s.totalClasses}</td>
+                      <td className="py-3.5 px-4 text-center font-bold text-emerald-700">{s.attendedClasses}</td>
+                      <td className="py-3.5 px-4 text-center font-semibold text-rose-600">{s.absentClasses}</td>
+                      <td className="py-3.5 px-4 text-center">
                         <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full font-bold text-xs ${
+                          className={`inline-flex items-center px-3 py-1 rounded-full font-bold text-xs ${
                             isEligible
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                               : isWarning
@@ -552,25 +553,25 @@ export const ReportsView = ({ showToast }) => {
                           {s.percentage}%
                         </span>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         {isEligible ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                          <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Eligible</span>
                           </span>
                         ) : isWarning ? (
-                          <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
+                          <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold">
                             <AlertTriangle className="w-3.5 h-3.5" />
                             <span>Warning</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
+                          <span className="inline-flex items-center gap-1.5 text-rose-700 font-bold">
                             <ShieldAlert className="w-3.5 h-3.5" />
                             <span>Defaulter</span>
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-500">
+                      <td className="py-3.5 px-4 text-right font-medium text-slate-500">
                         {s.classesNeededFor75 > 0 ? (
                           <span className="text-rose-600 text-[11px] font-semibold">
                             Needs {s.classesNeededFor75} classes for 75%
@@ -594,15 +595,15 @@ export const ReportsView = ({ showToast }) => {
             <span className="font-bold text-slate-700">{stats.totalSessions}</span> sessions
           </div>
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
               Eligible (≥75%)
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-semibold text-amber-700">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
               Warning (60-74%)
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 font-semibold text-rose-700">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
               Defaulter (&lt;60%)
             </span>

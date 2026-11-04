@@ -95,7 +95,7 @@ const MainApp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 flex">
+    <div className="min-h-screen bg-slate-100/60 text-slate-800 flex relative antialiased selection:bg-indigo-500 selection:text-white">
       {/* Sidebar Navigation */}
       <Sidebar
         activeView={activeView}
