@@ -14,7 +14,7 @@ import Navbar from './components/Navbar';
 import Toast from './components/Toast';
 
 const MainApp = () => {
-  const { isAuthenticated, user, isStudent, loading } = useAuth();
+  const { isAuthenticated, user, isStudent, logout, loading } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
@@ -43,8 +43,8 @@ const MainApp = () => {
     return <LoginView />;
   }
 
-  // If authenticated user is a student, render dedicated Student Portal
-  if (isStudent || user?.role === 'student') {
+  // Role Protection: Students strictly render Student Portal
+  if (user?.role === 'student') {
     return (
       <>
         <StudentPortalView showToast={showToast} />
@@ -53,7 +53,7 @@ const MainApp = () => {
     );
   }
 
-  // Otherwise render Admin / Faculty Dashboard
+  // Active view renderer for Admin / Faculty
   const renderActiveView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -97,27 +97,48 @@ const MainApp = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-100/60 text-slate-800 flex relative antialiased selection:bg-indigo-500 selection:text-white">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        activeView={activeView}
-        setActiveView={setActiveView}
-        isMobileOpen={isMobileOpen}
-        setIsMobileOpen={setIsMobileOpen}
-      />
+  // Role Protection: Admin / Faculty strictly renders Admin Dashboard
+  if (user?.role === 'admin') {
+    return (
+      <div className="min-h-screen bg-slate-100/60 text-slate-800 flex relative antialiased selection:bg-indigo-500 selection:text-white">
+        {/* Sidebar Navigation */}
+        <Sidebar
+          activeView={activeView}
+          setActiveView={setActiveView}
+          isMobileOpen={isMobileOpen}
+          setIsMobileOpen={setIsMobileOpen}
+        />
 
-      {/* Main Content Area */}
-      <div className="flex-1 md:pl-72 flex flex-col min-w-0">
-        <Navbar activeView={activeView} setIsMobileOpen={setIsMobileOpen} />
+        {/* Main Content Area */}
+        <div className="flex-1 md:pl-72 flex flex-col min-w-0">
+          <Navbar activeView={activeView} setIsMobileOpen={setIsMobileOpen} />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {renderActiveView()}
-        </main>
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+            {renderActiveView()}
+          </main>
+        </div>
+
+        {/* Notification Toast */}
+        <Toast toast={toast} onClose={handleCloseToast} />
       </div>
+    );
+  }
 
-      {/* Notification Toast */}
-      <Toast toast={toast} onClose={handleCloseToast} />
+  // Fallback for unauthorized roles
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-white p-4">
+      <div className="bg-slate-900 p-8 rounded-2xl max-w-md w-full text-center border border-slate-800 shadow-2xl">
+        <h2 className="text-xl font-bold text-rose-400 mb-2">Access Denied</h2>
+        <p className="text-sm text-slate-300 mb-6">
+          Your account role is not recognized or authorized. Please log in again.
+        </p>
+        <button
+          onClick={logout}
+          className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold text-sm transition"
+        >
+          Back to Login
+        </button>
+      </div>
     </div>
   );
 };

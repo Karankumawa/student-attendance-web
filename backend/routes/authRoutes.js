@@ -33,7 +33,7 @@ router.post('/login', async (req, res) => {
     const adminEmail = (process.env.ADMIN_EMAIL || 'admin@gmail.com').toLowerCase();
     const envPassword = process.env.ADMIN_PASSWORD || 'admin@gmail.com';
 
-    // 1. Look up user by email
+    // 1. Look up user by email in database
     let user = await User.findOne({ email: normalizedEmail });
 
     // Auto-create or ensure default admin user if matches ADMIN_EMAIL
@@ -47,31 +47,61 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
+    // 2. Fallback: Check if student exists in Student collection
+    if (!user) {
+      const studentProfile = await Student.findOne({
+        $or: [
+          { email: normalizedEmail },
+          { rollNumber: new RegExp(`^${normalizedEmail}$`, 'i') },
+        ],
+      });
+      if (studentProfile) {
+        user = await User.findOne({
+          $or: [{ studentId: studentProfile._id }, { email: studentProfile.email }],
+        });
+        if (!user) {
+          user = new User({
+            email: studentProfile.email || normalizedEmail,
+            password: 'student123',
+            name: studentProfile.name,
+            role: 'student',
+            studentId: studentProfile._id,
+          });
+          await user.save();
+        }
+        if (!studentProfile.userId) {
+          studentProfile.userId = user._id;
+          await studentProfile.save();
+        }
+      }
+    }
+
+    // 3. Database verification: Does the email exist in the database?
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Account not found with this email. Please check your credentials.',
+        message: 'Account not found. This email is not registered in our database.',
       });
     }
 
-    // Role check: If client explicitly specified faculty/admin or student, verify matching
-    if (role) {
+    // 4. Role validation if client explicitly asked for a specific role (backward compatibility)
+    if (role && role !== 'all' && role !== 'unified') {
       const normalizedRole = role.toLowerCase();
       if ((normalizedRole === 'faculty' || normalizedRole === 'admin') && user.role !== 'admin') {
         return res.status(401).json({
           success: false,
-          message: 'This email belongs to a Student account. Please switch to the "Student Login" tab.',
+          message: 'Access restricted: This account belongs to a Student, not an Administrator.',
         });
       }
       if (normalizedRole === 'student' && user.role !== 'student') {
         return res.status(401).json({
           success: false,
-          message: 'This email belongs to a Faculty Administrator account. Please switch to the "Faculty Login" tab.',
+          message: 'Access restricted: This account belongs to an Administrator, not a Student.',
         });
       }
     }
 
-    // Verify Password
+    // 5. Database verification: Does the entered password match the stored password?
     let isMatch = await user.comparePassword(password);
     if (!isMatch && user.role === 'admin' && normalizedEmail === adminEmail && password === envPassword) {
       user.password = envPassword;
@@ -82,7 +112,7 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: user.role === 'admin' ? 'Invalid administrator credentials.' : 'Invalid student credentials.',
+        message: 'Invalid password. The password you entered is incorrect.',
       });
     }
 
