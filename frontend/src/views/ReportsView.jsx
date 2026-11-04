@@ -430,7 +430,9 @@ export const ReportsView = ({ showToast }) => {
             <Layers className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Classes</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {selectedSemester === 'All' ? 'Total Sessions' : 'Semester Classes'}
+            </p>
             <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.totalSessions}</h3>
           </div>
         </div>
@@ -464,7 +466,7 @@ export const ReportsView = ({ showToast }) => {
           <div>
             <h3 className="text-base font-bold text-slate-900">Attendance Preview</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Showing preview for {selectedYear} ({selectedSemester}) • Click Excel button above to download full file
+              Showing preview for {selectedYear} ({selectedSemester === 'All' ? 'All Semesters - Scoped Per Semester' : selectedSemester}) • Click Excel button above to download full file
             </p>
           </div>
 
@@ -517,6 +519,7 @@ export const ReportsView = ({ showToast }) => {
                   <th className="py-3.5 px-4">Registration ID</th>
                   <th className="py-3.5 px-4">Student Name</th>
                   <th className="py-3.5 px-4">Department</th>
+                  <th className="py-3.5 px-4">Semester</th>
                   <th className="py-3.5 px-4 text-center">Classes</th>
                   <th className="py-3.5 px-4 text-center">Present</th>
                   <th className="py-3.5 px-4 text-center">Absent</th>
@@ -527,8 +530,9 @@ export const ReportsView = ({ showToast }) => {
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
                 {filteredStudents.map((s, index) => {
-                  const isEligible = s.percentage >= 75;
-                  const isWarning = s.percentage >= 60 && s.percentage < 75;
+                  const hasHeldClasses = s.totalClasses > 0;
+                  const isEligible = hasHeldClasses && s.percentage >= minAttendance;
+                  const isWarning = hasHeldClasses && s.percentage >= 60 && s.percentage < minAttendance;
 
                   return (
                     <tr key={s.studentId} className="hover:bg-slate-50/60 transition-colors">
@@ -537,24 +541,40 @@ export const ReportsView = ({ showToast }) => {
                       <td className="py-3.5 px-4 font-mono text-indigo-600 font-semibold">{s.registrationId}</td>
                       <td className="py-3.5 px-4 font-bold text-slate-900">{s.name}</td>
                       <td className="py-3.5 px-4 text-slate-600 truncate max-w-[160px]">{s.department}</td>
+                      <td className="py-3.5 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold text-[11px] bg-slate-100 text-slate-700 border border-slate-200">
+                          {s.semester}
+                        </span>
+                      </td>
                       <td className="py-3.5 px-4 text-center font-semibold text-slate-700">{s.totalClasses}</td>
                       <td className="py-3.5 px-4 text-center font-bold text-emerald-700">{s.attendedClasses}</td>
                       <td className="py-3.5 px-4 text-center font-semibold text-rose-600">{s.absentClasses}</td>
                       <td className="py-3.5 px-4 text-center">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full font-bold text-xs ${
-                            isEligible
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : isWarning
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {s.percentage}%
-                        </span>
+                        {!hasHeldClasses ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-xs bg-slate-100 text-slate-500 border border-slate-200">
+                            N/A
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full font-bold text-xs ${
+                              isEligible
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : isWarning
+                                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                            }`}
+                          >
+                            {s.percentage}%
+                          </span>
+                        )}
                       </td>
                       <td className="py-3.5 px-4">
-                        {isEligible ? (
+                        {!hasHeldClasses ? (
+                          <span className="inline-flex items-center gap-1.5 text-slate-500 font-semibold">
+                            <Clock className="w-3.5 h-3.5 text-slate-400" />
+                            <span>No Classes</span>
+                          </span>
+                        ) : isEligible ? (
                           <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span>Eligible</span>
@@ -572,9 +592,11 @@ export const ReportsView = ({ showToast }) => {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right font-medium text-slate-500">
-                        {s.classesNeededFor75 > 0 ? (
+                        {!hasHeldClasses ? (
+                          <span className="text-slate-400 text-[11px] font-medium">No sessions held</span>
+                        ) : s.classesNeededFor75 > 0 ? (
                           <span className="text-rose-600 text-[11px] font-semibold">
-                            Needs {s.classesNeededFor75} classes for 75%
+                            Needs {s.classesNeededFor75} classes for {minAttendance}%
                           </span>
                         ) : (
                           <span className="text-emerald-600 text-[11px] font-semibold">Clear</span>
@@ -592,20 +614,27 @@ export const ReportsView = ({ showToast }) => {
         <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex flex-wrap items-center justify-between text-xs text-slate-500">
           <div>
             Showing <span className="font-bold text-slate-700">{filteredStudents.length}</span> students across{' '}
-            <span className="font-bold text-slate-700">{stats.totalSessions}</span> sessions
+            <span className="font-bold text-slate-700">{stats.totalSessions}</span> sessions{' '}
+            {selectedSemester === 'All' && (
+              <span className="text-slate-400 font-normal">(classes calculated per student's semester)</span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              Eligible (≥75%)
+              Eligible (≥{minAttendance}%)
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-amber-700">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              Warning (60-74%)
+              Warning (60-{minAttendance - 1}%)
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-rose-700">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
               Defaulter (&lt;60%)
+            </span>
+            <span className="flex items-center gap-1.5 font-semibold text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+              No Classes
             </span>
           </div>
         </div>

@@ -53,13 +53,34 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
   const students = await Student.find(studentQuery).sort({ rollNumber: 1 });
   const sessions = await Attendance.find(attendanceQuery).sort({ date: 1, subject: 1 });
 
-  // Map student attendance
+  // Map student attendance scoped specifically to each student's semester / enrolled sessions
   const studentReports = students.map((student, index) => {
+    // Determine which sessions apply to this specific student:
+    // 1) Session belongs to the student's semester, OR
+    // 2) Student has an explicit record in that session (cross-enrolled/elective)
+    const studentApplicableSessions = sessions.filter((sess) => {
+      const isSameSemester =
+        sess.semester &&
+        student.semester &&
+        sess.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+
+      const hasRecord =
+        sess.records &&
+        sess.records.some(
+          (rec) =>
+            (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
+            (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
+        );
+
+      return isSameSemester || hasRecord;
+    });
+
     let attended = 0;
     let absent = 0;
     const sessionDetails = [];
 
-    sessions.forEach((session) => {
+    // Calculate attendance only on sessions applicable to this student
+    studentApplicableSessions.forEach((session) => {
       const record = session.records.find(
         (rec) =>
           (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
@@ -81,17 +102,26 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
       });
     });
 
-    const totalClasses = sessions.length;
+    const totalClasses = studentApplicableSessions.length;
     const percentage = totalClasses > 0 ? Number(((attended / totalClasses) * 100).toFixed(1)) : 0;
 
     let statusLabel = 'Eligible';
-    if (percentage < 60) {
-      statusLabel = 'Critical Defaulter (<60%)';
-    } else if (percentage < minAttendance) {
-      statusLabel = `Warning (${percentage}%)`;
-    }
+    let isDefaulter = false;
+    let classesNeededFor75 = 0;
 
-    const classesNeededFor75 = Math.max(0, Math.ceil(0.75 * totalClasses) - attended);
+    if (totalClasses === 0) {
+      statusLabel = 'No Classes Held';
+      isDefaulter = false;
+      classesNeededFor75 = 0;
+    } else {
+      if (percentage < 60) {
+        statusLabel = 'Critical Defaulter (<60%)';
+      } else if (percentage < minAttendance) {
+        statusLabel = `Warning (${percentage}%)`;
+      }
+      isDefaulter = percentage < minAttendance;
+      classesNeededFor75 = Math.max(0, Math.ceil((minAttendance / 100) * totalClasses) - attended);
+    }
 
     return {
       sNo: index + 1,
@@ -108,7 +138,7 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
       percentage,
       status: statusLabel,
       classesNeededFor75,
-      isDefaulter: percentage < minAttendance,
+      isDefaulter,
       sessionDetails,
     };
   });
@@ -118,16 +148,24 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
   if (reportType === 'defaulters') {
     filteredStudents = studentReports.filter((s) => s.isDefaulter);
   } else if (reportType === 'eligible') {
-    filteredStudents = studentReports.filter((s) => !s.isDefaulter);
+    filteredStudents = studentReports.filter((s) => s.totalClasses > 0 && !s.isDefaulter);
   }
 
   // Summary Metrics
   const totalStudents = students.length;
   const defaultersCount = studentReports.filter((s) => s.isDefaulter).length;
-  const eligibleCount = totalStudents - defaultersCount;
+  const eligibleCount = studentReports.filter((s) => s.totalClasses > 0 && !s.isDefaulter).length;
+  const noClassesCount = studentReports.filter((s) => s.totalClasses === 0).length;
+
+  const studentsWithClasses = studentReports.filter((s) => s.totalClasses > 0);
   const overallAvg =
-    totalStudents > 0
-      ? Number((studentReports.reduce((acc, curr) => acc + curr.percentage, 0) / totalStudents).toFixed(1))
+    studentsWithClasses.length > 0
+      ? Number(
+          (
+            studentsWithClasses.reduce((acc, curr) => acc + curr.percentage, 0) /
+            studentsWithClasses.length
+          ).toFixed(1)
+        )
       : 0;
 
   return {
@@ -141,6 +179,7 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
       overallAvg,
       defaultersCount,
       eligibleCount,
+      noClassesCount,
       minAttendanceThreshold: minAttendance,
     },
   };
@@ -317,10 +356,12 @@ router.get('/export-excel', async (req, res) => {
 
     students.forEach((s, idx) => {
       let remarks = 'Eligible for Examinations';
-      if (s.percentage < 60) {
+      if (s.totalClasses === 0) {
+        remarks = 'No classes conducted for this semester';
+      } else if (s.percentage < 60) {
         remarks = `Critical Shortfall: Needs ${s.classesNeededFor75} extra lectures`;
       } else if (s.percentage < threshold) {
-        remarks = `Warning: Needs ${s.classesNeededFor75} lectures for 75%`;
+        remarks = `Warning: Needs ${s.classesNeededFor75} lectures for ${threshold}%`;
       }
 
       summaryRows.push([
@@ -333,7 +374,7 @@ router.get('/export-excel', async (req, res) => {
         s.totalClasses,
         s.attendedClasses,
         s.absentClasses,
-        `${s.percentage}%`,
+        s.totalClasses === 0 ? 'N/A' : `${s.percentage}%`,
         s.status,
         remarks,
       ]);
@@ -364,7 +405,8 @@ router.get('/export-excel', async (req, res) => {
         'Roll Number',
         'Registration ID',
         'Student Name',
-        ...sessions.map((sess) => `${sess.date} (${sess.subject})`),
+        'Semester',
+        ...sessions.map((sess) => `${sess.date} (${sess.subject} - ${sess.semester})`),
         'Total Attended',
         'Total Held',
         'Percentage',
@@ -378,20 +420,32 @@ router.get('/export-excel', async (req, res) => {
       ];
 
       allStudents.forEach((student) => {
-        const row = [student.rollNumber, student.registrationId, student.name];
+        const row = [student.rollNumber, student.registrationId, student.name, student.semester];
 
         sessions.forEach((sess) => {
+          const isSameSemester =
+            sess.semester &&
+            student.semester &&
+            sess.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+
           const rec = sess.records.find(
             (r) =>
               (r.studentId && r.studentId.toString() === student.studentId.toString()) ||
               (r.rollNumber && r.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
           );
-          row.push(rec ? (rec.status === 'Present' ? 'P' : 'A') : '-');
+
+          if (rec) {
+            row.push(rec.status === 'Present' ? 'P' : 'A');
+          } else if (isSameSemester) {
+            row.push('A');
+          } else {
+            row.push('-');
+          }
         });
 
         row.push(student.attendedClasses);
         row.push(student.totalClasses);
-        row.push(`${student.percentage}%`);
+        row.push(student.totalClasses === 0 ? 'N/A' : `${student.percentage}%`);
         matrixRows.push(row);
       });
 
@@ -400,7 +454,8 @@ router.get('/export-excel', async (req, res) => {
         { wch: 14 },
         { wch: 18 },
         { wch: 24 },
-        ...sessions.map(() => ({ wch: 18 })),
+        { wch: 14 },
+        ...sessions.map(() => ({ wch: 22 })),
         { wch: 14 },
         { wch: 12 },
         { wch: 14 },
