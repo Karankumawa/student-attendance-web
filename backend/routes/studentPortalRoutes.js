@@ -458,15 +458,11 @@ router.put('/profile', async (req, res) => {
       newPassword,
     } = req.body;
 
-    // Strict security: student cannot modify name or email!
-    // Any name or email in req.body is intentionally bypassed.
-
+    // Strict security: Student cannot modify Name, Email, Contact Phone, or Parent & Guardian details!
+    // These official records are managed by college administration.
     if (dob !== undefined) student.dob = typeof dob === 'string' ? dob.trim() : dob;
-    if (phone !== undefined) student.phone = typeof phone === 'string' ? phone.trim() : phone;
     if (gender !== undefined) student.gender = typeof gender === 'string' ? gender.trim() : gender;
     if (address !== undefined) student.address = typeof address === 'string' ? address.trim() : address;
-    if (guardianName !== undefined) student.guardianName = typeof guardianName === 'string' ? guardianName.trim() : guardianName;
-    if (guardianPhone !== undefined) student.guardianPhone = typeof guardianPhone === 'string' ? guardianPhone.trim() : guardianPhone;
     if (bloodGroup !== undefined) student.bloodGroup = typeof bloodGroup === 'string' ? bloodGroup.trim() : bloodGroup;
 
     await student.save();

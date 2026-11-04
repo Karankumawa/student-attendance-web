@@ -42,13 +42,7 @@ export const ReportsView = ({ showToast }) => {
       'Semester 7',
       'Semester 8',
     ],
-    subjects: [
-      'Data Structures & Algorithms',
-      'Database Management Systems',
-      'Operating Systems',
-      'Computer Networks',
-      'Web Technologies',
-    ],
+    subjects: [],
   });
 
   // Preview data states

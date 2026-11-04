@@ -10,6 +10,7 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import SnitLogo from './SnitLogo';
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { id: 'attendance', label: 'Take & View Attendance', icon: ClipboardCheck },
   { id: 'reports', label: 'Attendance Reports', icon: FileSpreadsheet },
   { id: 'students', label: 'Student Register', icon: Users },
+  { id: 'subjects', label: 'Subjects & Courses', icon: BookOpen },
   { id: 'timetable', label: 'Timetable Manager', icon: CalendarClock },
   { id: 'notes', label: 'Notes & Materials', icon: BookOpenCheck },
 ];

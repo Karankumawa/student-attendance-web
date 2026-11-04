@@ -3,6 +3,7 @@ const Student = require('../models/Student');
 const Timetable = require('../models/Timetable');
 const Note = require('../models/Note');
 const Attendance = require('../models/Attendance');
+const Subject = require('../models/Subject');
 
 const seedInitialData = async () => {
   try {
@@ -184,6 +185,25 @@ const seedInitialData = async () => {
         await Attendance.insertMany([session1, session2, session3]);
         console.log('[Seed] Seeded sample attendance records.');
       }
+    }
+
+    // 5. Seed Initial Subjects / Courses if none exist in database
+    const subjectCount = await Subject.countDocuments();
+    if (subjectCount === 0) {
+      console.log('[Seed] Initializing course & subject catalogue in database...');
+      const initialCourses = [
+        { name: 'Programming in C', code: 'CS101', department: 'Computer Science & Engineering', semester: 'Semester 1', academicYear: '2026', credits: 4, description: 'Fundamentals of C programming, pointers, and memory management' },
+        { name: 'Object Oriented Programming', code: 'CS102', department: 'Computer Science & Engineering', semester: 'Semester 2', academicYear: '2026', credits: 4, description: 'Core OOP concepts in C++/Java, classes, inheritance, polymorphism' },
+        { name: 'Data Structures & Algorithms', code: 'CS201', department: 'Computer Science & Engineering', semester: 'Semester 3', academicYear: '2026', credits: 4, description: 'Arrays, linked lists, trees, graphs, sorting, and asymptotic complexity' },
+        { name: 'Operating Systems', code: 'CS203', department: 'Computer Science & Engineering', semester: 'Semester 4', academicYear: '2026', credits: 4, description: 'Processes, CPU scheduling, deadlocks, virtual memory, and file systems' },
+        { name: 'Database Management Systems', code: 'CS202', department: 'Computer Science & Engineering', semester: 'Semester 4', academicYear: '2026', credits: 4, description: 'Relational algebra, SQL, normalization, transactions, and indexing' },
+        { name: 'Computer Networks', code: 'CS204', department: 'Computer Science & Engineering', semester: 'Semester 5', academicYear: '2026', credits: 4, description: 'OSI and TCP/IP models, routing protocols, transport layer, socket programming' },
+        { name: 'Web Technologies', code: 'CS205', department: 'Computer Science & Engineering', semester: 'Semester 6', academicYear: '2026', credits: 3, description: 'Modern full-stack web applications, REST APIs, HTML/CSS, React and Node.js' },
+        { name: 'Artificial Intelligence', code: 'CS206', department: 'Computer Science & Engineering', semester: 'Semester 7', academicYear: '2026', credits: 4, description: 'Search algorithms, knowledge representation, neural networks, machine learning' },
+        { name: 'Cloud Computing & DevOps', code: 'CS207', department: 'Computer Science & Engineering', semester: 'Semester 8', academicYear: '2026', credits: 3, description: 'Cloud architectures, containerization, Kubernetes, CI/CD pipelines' },
+      ];
+      await Subject.insertMany(initialCourses);
+      console.log(`[Seed] Seeded ${initialCourses.length} academic courses in MongoDB.`);
     }
 
     console.log('[Seed] Initialization completed successfully.');

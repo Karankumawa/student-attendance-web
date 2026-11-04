@@ -62,6 +62,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     DAYS_OF_WEEK.includes(todayName) ? todayName : 'Monday'
   );
   const [slots, setSlots] = useState([]);
+  const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -83,7 +84,19 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
 
   useEffect(() => {
     fetchTimetable();
+    fetchSubjectsFromDB();
   }, []);
+
+  const fetchSubjectsFromDB = async () => {
+    try {
+      const res = await axiosClient.get('/subjects');
+      if (res.data.success && res.data.data) {
+        setDbSubjects(res.data.data.map((s) => s.name));
+      }
+    } catch (err) {
+      console.warn('Could not load subjects for timetable dropdown:', err);
+    }
+  };
 
   const fetchTimetable = async () => {
     try {
@@ -410,17 +423,24 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Subject / Course Name *
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Subject / Course Name *</span>
+                  <span className="text-[10px] text-indigo-600 font-semibold">Active Database Courses</span>
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Operating Systems"
+                  list="db-subject-list"
+                  placeholder="Select or enter subject (e.g. Operating Systems)"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
+                <datalist id="db-subject-list">
+                  {dbSubjects.map((s, i) => (
+                    <option key={i} value={s} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

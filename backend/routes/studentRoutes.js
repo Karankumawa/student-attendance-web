@@ -64,7 +64,23 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { firstName, lastName, name, dob, rollNumber, department, semester, email, password } = req.body;
+    const {
+      firstName,
+      lastName,
+      name,
+      dob,
+      rollNumber,
+      department,
+      semester,
+      email,
+      password,
+      phone,
+      guardianName,
+      guardianPhone,
+      gender,
+      bloodGroup,
+      address,
+    } = req.body;
 
     const cleanFirst = (firstName || (name ? name.split(' ')[0] : '')).trim();
     const cleanLast = (lastName || (name ? name.split(' ').slice(1).join(' ') : '')).trim();
@@ -140,6 +156,12 @@ router.post('/', async (req, res) => {
       semester: semester ? semester.trim() : 'Semester 1',
       email: studentEmail,
       registrationId,
+      phone: phone ? String(phone).trim() : '',
+      guardianName: guardianName ? String(guardianName).trim() : '',
+      guardianPhone: guardianPhone ? String(guardianPhone).trim() : '',
+      gender: gender ? String(gender).trim() : '',
+      bloodGroup: bloodGroup ? String(bloodGroup).trim() : '',
+      address: address ? String(address).trim() : '',
     });
     await student.save();
 
@@ -184,7 +206,23 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const { firstName, lastName, name, dob, rollNumber, department, semester, email, password } = req.body;
+    const {
+      firstName,
+      lastName,
+      name,
+      dob,
+      rollNumber,
+      department,
+      semester,
+      email,
+      password,
+      phone,
+      guardianName,
+      guardianPhone,
+      gender,
+      bloodGroup,
+      address,
+    } = req.body;
     const student = await Student.findById(req.params.id);
 
     if (!student) {
@@ -211,6 +249,12 @@ router.put('/:id', async (req, res) => {
     if (firstName !== undefined) student.firstName = firstName.trim();
     if (lastName !== undefined) student.lastName = lastName.trim();
     if (dob !== undefined) student.dob = String(dob).trim();
+    if (phone !== undefined) student.phone = String(phone).trim();
+    if (guardianName !== undefined) student.guardianName = String(guardianName).trim();
+    if (guardianPhone !== undefined) student.guardianPhone = String(guardianPhone).trim();
+    if (gender !== undefined) student.gender = String(gender).trim();
+    if (bloodGroup !== undefined) student.bloodGroup = String(bloodGroup).trim();
+    if (address !== undefined) student.address = String(address).trim();
 
     if (student.firstName || student.lastName) {
       student.name = `${student.firstName || ''} ${student.lastName || ''}`.trim();

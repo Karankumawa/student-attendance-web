@@ -6,6 +6,7 @@ import DashboardView from './views/DashboardView';
 import AttendanceView from './views/AttendanceView';
 import ReportsView from './views/ReportsView';
 import StudentsView from './views/StudentsView';
+import SubjectsView from './views/SubjectsView';
 import TimetableView from './views/TimetableView';
 import NotesView from './views/NotesView';
 import Sidebar from './components/Sidebar';
@@ -74,6 +75,8 @@ const MainApp = () => {
         return <ReportsView showToast={showToast} />;
       case 'students':
         return <StudentsView showToast={showToast} />;
+      case 'subjects':
+        return <SubjectsView showToast={showToast} />;
       case 'timetable':
         return (
           <TimetableView

@@ -3,6 +3,7 @@ const XLSX = require('xlsx');
 const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
 const Timetable = require('../models/Timetable');
+const Subject = require('../models/Subject');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -221,10 +222,13 @@ router.get('/filters', async (req, res) => {
     const departments = await Student.distinct('department');
     const semesters = await Student.distinct('semester');
 
-    // Distinct subjects from Attendance & Timetable
+    // Distinct subjects from database Subject collection, Attendance & Timetable
+    const catalogSubjects = await Subject.distinct('name');
     const attendanceSubjects = await Attendance.distinct('subject');
     const timetableSubjects = await Timetable.distinct('subject');
-    const mergedSubjects = Array.from(new Set([...attendanceSubjects, ...timetableSubjects]))
+    const mergedSubjects = Array.from(
+      new Set([...catalogSubjects, ...attendanceSubjects, ...timetableSubjects])
+    )
       .filter(Boolean)
       .sort();
 
@@ -237,13 +241,7 @@ router.get('/filters', async (req, res) => {
           'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4',
           'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8',
         ],
-        subjects: mergedSubjects.length > 0 ? mergedSubjects : [
-          'Data Structures & Algorithms',
-          'Database Management Systems',
-          'Operating Systems',
-          'Computer Networks',
-          'Web Technologies',
-        ],
+        subjects: mergedSubjects,
         totalRecordsInDb: attendanceDates.length,
       },
     });

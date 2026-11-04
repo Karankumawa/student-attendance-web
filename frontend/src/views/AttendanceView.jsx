@@ -42,28 +42,18 @@ const SEMESTERS = [
   'Semester 8',
 ];
 
-const DEFAULT_SUBJECTS = [
-  'Data Structures & Algorithms',
-  'Database Management Systems',
-  'Operating Systems',
-  'Computer Networks',
-  'Software Engineering',
-  'Web Development & Cloud',
-  'Artificial Intelligence & ML',
-  'Seminar & Project Mentorship',
-];
-
 export const AttendanceView = ({ initialSession, showToast, setActiveView }) => {
   const [activeTab, setActiveTab] = useState('take'); // 'take' or 'summary'
+
+  // Dynamic Subjects from MongoDB database
+  const [availableSubjects, setAvailableSubjects] = useState([]);
 
   // Take Attendance Controls
   const [date, setDate] = useState(
     initialSession?.date || getLocalDateString()
   );
   const [semester, setSemester] = useState(initialSession?.semester || 'Semester 4');
-  const [subject, setSubject] = useState(
-    initialSession?.subject || 'Data Structures & Algorithms'
-  );
+  const [subject, setSubject] = useState(initialSession?.subject || '');
   const [customSubject, setCustomSubject] = useState('');
 
   // Attendance Roster State
@@ -83,6 +73,26 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   // Past Sessions History & Delete Confirmation
   const [sessionsHistory, setSessionsHistory] = useState([]);
   const [sessionToDelete, setSessionToDelete] = useState(null);
+
+  // Load courses dynamically from database for chosen semester
+  useEffect(() => {
+    fetchSemesterCourses();
+  }, [semester]);
+
+  const fetchSemesterCourses = async () => {
+    try {
+      const res = await axiosClient.get(`/subjects?semester=${semester}`);
+      if (res.data.success && res.data.data) {
+        const subjs = res.data.data.map((s) => s.name);
+        setAvailableSubjects(subjs);
+        if (!initialSession && subjs.length > 0 && (!subject || !subjs.includes(subject))) {
+          setSubject(subjs[0]);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load subjects from database:', err);
+    }
+  };
 
   // Load roster whenever date, semester, or subject changes
   useEffect(() => {
@@ -385,7 +395,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                   }}
                   className="w-full px-3.5 py-2.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:bg-white transition-all cursor-pointer"
                 >
-                  {DEFAULT_SUBJECTS.map((subj) => (
+                  {availableSubjects.map((subj) => (
                     <option key={subj} value={subj}>
                       {subj}
                     </option>

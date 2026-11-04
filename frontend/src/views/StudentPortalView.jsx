@@ -71,11 +71,8 @@ export const StudentPortalView = ({ showToast }) => {
   const [profileData, setProfileData] = useState(null);
   const [profileForm, setProfileForm] = useState({
     dob: '',
-    phone: '',
     gender: '',
     address: '',
-    guardianName: '',
-    guardianPhone: '',
     bloodGroup: '',
   });
   const [profileSaving, setProfileSaving] = useState(false);
@@ -104,11 +101,8 @@ export const StudentPortalView = ({ showToast }) => {
           setProfileData(p);
           setProfileForm({
             dob: p.dob || '',
-            phone: p.phone || '',
             gender: p.gender || '',
             address: p.address || '',
-            guardianName: p.guardianName || '',
-            guardianPhone: p.guardianPhone || '',
             bloodGroup: p.bloodGroup || '',
           });
         }
@@ -148,18 +142,20 @@ export const StudentPortalView = ({ showToast }) => {
 
     try {
       setProfileSaving(true);
-      const res = await axiosClient.put('/student-portal/profile', profileForm);
+      const res = await axiosClient.put('/student-portal/profile', {
+        dob: profileForm.dob,
+        gender: profileForm.gender,
+        bloodGroup: profileForm.bloodGroup,
+        address: profileForm.address,
+      });
 
       if (res.data.success && res.data.data) {
         const updated = res.data.data;
         setProfileData(updated);
         setProfileForm({
           dob: updated.dob || '',
-          phone: updated.phone || '',
           gender: updated.gender || '',
           address: updated.address || '',
-          guardianName: updated.guardianName || '',
-          guardianPhone: updated.guardianPhone || '',
           bloodGroup: updated.bloodGroup || '',
         });
         setProfileSuccess('Profile details saved and updated successfully in database!');
@@ -178,11 +174,8 @@ export const StudentPortalView = ({ showToast }) => {
     if (profileData) {
       setProfileForm({
         dob: profileData.dob || '',
-        phone: profileData.phone || '',
         gender: profileData.gender || '',
         address: profileData.address || '',
-        guardianName: profileData.guardianName || '',
-        guardianPhone: profileData.guardianPhone || '',
         bloodGroup: profileData.bloodGroup || '',
       });
       setProfileError('');
@@ -586,17 +579,6 @@ export const StudentPortalView = ({ showToast }) => {
                     </div>
                   </div>
                 </div>
-
-                <div className="hidden lg:flex flex-col items-end text-right">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Database Record Status</span>
-                  <span className="text-xs font-semibold text-emerald-400 mt-0.5 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    Synchronized with MongoDB
-                  </span>
-                  <span className="text-[11px] text-slate-500 mt-1">
-                    Joined: {profileData?.createdAt ? new Date(profileData.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Academic Session'}
-                  </span>
-                </div>
               </div>
 
               {/* Decorative background effects */}
@@ -610,9 +592,9 @@ export const StudentPortalView = ({ showToast }) => {
                 <Lock className="w-4 h-4" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-amber-950">Protected Institutional Identity Information</h4>
+                <h4 className="font-bold text-amber-950">Institutional Records & Permissions Notice</h4>
                 <p className="text-xs text-amber-800/95 leading-relaxed">
-                  Per college administration regulations, your <strong>Official Full Name</strong> and <strong>Assigned Email Address</strong> are verified institutional credentials and cannot be edited by students. You have permission to update and save all other personal, contact, and guardian details directly into your database record.
+                  In accordance with institutional guidelines, your <strong>Official Full Name</strong>, <strong>Assigned Email</strong>, <strong>Contact Phone Number</strong>, and <strong>Parent & Guardian Information</strong> are official administrative records and can only be modified by the college administration. You have permission to update your Date of Birth, Gender, Blood Group, and Residential Address.
                 </p>
               </div>
             </div>
@@ -778,20 +760,25 @@ export const StudentPortalView = ({ showToast }) => {
                     <p className="text-[10px] text-slate-400 mt-1">Stored format: YYYY-MM-DD</p>
                   </div>
 
-                  {/* Phone Number */}
+                  {/* Phone Number (Read-only for student) */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Contact Phone Number</span>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Contact Phone Number</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={profileForm.phone}
-                      onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1">Student's active phone number</p>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        disabled
+                        value={profileData?.phone || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Managed by administration</p>
                   </div>
 
                   {/* Gender */}
@@ -854,7 +841,7 @@ export const StudentPortalView = ({ showToast }) => {
                 </div>
               </div>
 
-              {/* Section 3: Parent & Guardian Information (Editable by Student) */}
+              {/* Section 3: Parent & Guardian Information (Read-Only for Student) */}
               <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                   <div className="flex items-center gap-3">
@@ -866,39 +853,48 @@ export const StudentPortalView = ({ showToast }) => {
                       <p className="text-xs text-slate-500">Contact information for parent or local guardian</p>
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Editable
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    <span>Read Only</span>
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Guardian / Parent Name
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Guardian / Parent Name</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="Father's or Guardian's full name"
-                      value={profileForm.guardianName}
-                      onChange={(e) => setProfileForm({ ...profileForm, guardianName: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1">Parent or primary guardian</p>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        disabled
+                        value={profileData?.guardianName || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Official guardian record (Admin editable)</p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-violet-600" />
-                      <span>Guardian Contact Phone</span>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Phone className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Guardian Contact Phone</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={profileForm.guardianPhone}
-                      onChange={(e) => setProfileForm({ ...profileForm, guardianPhone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1">Emergency & attendance notice contact</p>
+                    <div className="relative">
+                      <input
+                        type="tel"
+                        disabled
+                        value={profileData?.guardianPhone || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Contact administration to update guardian details</p>
                   </div>
                 </div>
               </div>

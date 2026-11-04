@@ -66,14 +66,9 @@ export const Navbar = ({ activeView, setIsMobileOpen }) => {
 
       {/* Right: Date badge, Quick Status & Logout */}
       <div className="flex items-center gap-2.5 sm:gap-3.5">
-        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200/80 shadow-xs">
+        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200/80 shadow-xs">
           <Calendar className="w-3.5 h-3.5 text-indigo-600" />
           <span>{currentDate}</span>
-        </div>
-
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/80 shadow-xs">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Semester 4 Active</span>
         </div>
 
         <button

@@ -88,6 +88,12 @@ export const StudentsView = ({ showToast }) => {
     semester: 'Semester 4',
     email: '',
     password: '',
+    phone: '',
+    guardianName: '',
+    guardianPhone: '',
+    gender: '',
+    bloodGroup: '',
+    address: '',
   });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -143,6 +149,12 @@ export const StudentsView = ({ showToast }) => {
       semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
       email: '',
       password: '',
+      phone: '',
+      guardianName: '',
+      guardianPhone: '',
+      gender: '',
+      bloodGroup: '',
+      address: '',
     });
     setFormError('');
     setIsModalOpen(true);
@@ -162,6 +174,12 @@ export const StudentsView = ({ showToast }) => {
       semester: student.semester || 'Semester 4',
       email: student.email || '',
       password: '', // Blank unless admin wants to reset it
+      phone: student.phone || '',
+      guardianName: student.guardianName || '',
+      guardianPhone: student.guardianPhone || '',
+      gender: student.gender || '',
+      bloodGroup: student.bloodGroup || '',
+      address: student.address || '',
     });
     setFormError('');
     setIsModalOpen(true);
@@ -613,6 +631,110 @@ export const StudentsView = ({ showToast }) => {
                       </option>
                     ))}
                   </select>
+                </div>
+              </div>
+
+              {/* Contact & Guardian Details (Admin Editable) */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3.5">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-4 h-4 text-indigo-600" />
+                    <span>Contact & Guardian Information (Admin Control)</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-semibold">Optional</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Student Phone
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Gender
+                    </label>
+                    <select
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Blood Group
+                    </label>
+                    <select
+                      value={formData.bloodGroup}
+                      onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                    >
+                      <option value="">Select</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Guardian / Parent Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Father's or Guardian's Name"
+                      value={formData.guardianName}
+                      onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                      Guardian Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={formData.guardianPhone}
+                      onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
+                    Residential Address
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter permanent or current residential address"
+                    value={formData.address}
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
                 </div>
               </div>
 

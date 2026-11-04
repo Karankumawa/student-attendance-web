@@ -31,19 +31,9 @@ const SEMESTERS = [
   'Semester 8',
 ];
 
-const SUBJECTS = [
-  'Data Structures & Algorithms',
-  'Database Management Systems',
-  'Operating Systems',
-  'Computer Networks',
-  'Software Engineering',
-  'Web Development & Cloud',
-  'Artificial Intelligence & ML',
-  'Seminar & Project Mentorship',
-];
-
 export const NotesView = ({ showToast }) => {
   const [notes, setNotes] = useState([]);
+  const [subjectsList, setSubjectsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
@@ -54,7 +44,7 @@ export const NotesView = ({ showToast }) => {
   const [editingNote, setEditingNote] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
-    subject: 'Data Structures & Algorithms',
+    subject: '',
     semester: 'Semester 4',
     content: '',
     resourceUrl: '',
@@ -68,6 +58,21 @@ export const NotesView = ({ showToast }) => {
 
   // Delete Target State
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  useEffect(() => {
+    fetchDynamicSubjects();
+  }, []);
+
+  const fetchDynamicSubjects = async () => {
+    try {
+      const res = await axiosClient.get('/subjects');
+      if (res.data.success && res.data.data) {
+        setSubjectsList(res.data.data.map((s) => s.name));
+      }
+    } catch (err) {
+      console.warn('Could not load subjects from database:', err);
+    }
+  };
 
   useEffect(() => {
     fetchNotes();
@@ -109,7 +114,7 @@ export const NotesView = ({ showToast }) => {
     setEditingNote(null);
     setFormData({
       title: '',
-      subject: 'Data Structures & Algorithms',
+      subject: subjectsList[0] || '',
       semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
       content: '',
       resourceUrl: '',
@@ -121,7 +126,7 @@ export const NotesView = ({ showToast }) => {
 
   const openEditModal = (note) => {
     setEditingNote(note);
-    const isStandard = SUBJECTS.includes(note.subject);
+    const isStandard = subjectsList.includes(note.subject);
     setFormData({
       title: note.title,
       subject: isStandard ? note.subject : 'Other',
@@ -243,7 +248,7 @@ export const NotesView = ({ showToast }) => {
               className="px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
             >
               <option value="All">All Subjects</option>
-              {SUBJECTS.map((sub) => (
+              {subjectsList.map((sub) => (
                 <option key={sub} value={sub}>
                   {sub}
                 </option>
@@ -447,7 +452,7 @@ export const NotesView = ({ showToast }) => {
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                     className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
                   >
-                    {SUBJECTS.map((s) => (
+                    {subjectsList.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
