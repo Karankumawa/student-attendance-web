@@ -16,6 +16,7 @@ import {
   Lock,
   Key,
   ShieldCheck,
+  Calendar,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -47,16 +48,46 @@ export const StudentsView = ({ showToast }) => {
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
 
+  // Helper to compute default password: First Name + Birth Year
+  const computeDefaultPassword = (fName, dobVal) => {
+    const cleanFirst = (fName || '').trim().replace(/\s+/g, '');
+    let birthYear = '';
+    if (dobVal) {
+      const match = String(dobVal).match(/\b(19\d{2}|20\d{2})\b/);
+      if (match) birthYear = match[1];
+    }
+    if (cleanFirst && birthYear) {
+      return `${cleanFirst}${birthYear}`;
+    }
+    if (cleanFirst) {
+      return `${cleanFirst}2026`;
+    }
+    return '';
+  };
+
+  // Helper to format DOB as Day / Month / Year (DD/MM/YYYY)
+  const formatDOB = (dobStr) => {
+    if (!dobStr) return null;
+    const parts = String(dobStr).split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`; // DD/MM/YYYY
+    }
+    return dobStr;
+  };
+
   // Modal State for Add / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
     name: '',
+    dob: '', // YYYY-MM-DD
     rollNumber: '',
     department: 'Computer Science & Engineering',
     semester: 'Semester 4',
     email: '',
-    password: 'student123',
+    password: '',
   });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -103,12 +134,15 @@ export const StudentsView = ({ showToast }) => {
   const openAddModal = () => {
     setEditingStudent(null);
     setFormData({
+      firstName: '',
+      lastName: '',
       name: '',
+      dob: '',
       rollNumber: '',
       department: 'Computer Science & Engineering',
       semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
       email: '',
-      password: 'student123',
+      password: '',
     });
     setFormError('');
     setIsModalOpen(true);
@@ -116,8 +150,13 @@ export const StudentsView = ({ showToast }) => {
 
   const openEditModal = (student) => {
     setEditingStudent(student);
+    const firstName = student.firstName || (student.name ? student.name.split(' ')[0] : '');
+    const lastName = student.lastName || (student.name ? student.name.split(' ').slice(1).join(' ') : '');
     setFormData({
-      name: student.name,
+      firstName,
+      lastName,
+      name: student.name || `${firstName} ${lastName}`.trim(),
+      dob: student.dob || '',
       rollNumber: student.rollNumber,
       department: student.department || 'Computer Science & Engineering',
       semester: student.semester || 'Semester 4',
@@ -128,13 +167,36 @@ export const StudentsView = ({ showToast }) => {
     setIsModalOpen(true);
   };
 
+  const handleFirstNameChange = (val) => {
+    const updated = { ...formData, firstName: val };
+    updated.name = `${val} ${formData.lastName}`.trim();
+    if (!editingStudent) {
+      updated.password = computeDefaultPassword(val, formData.dob);
+    }
+    setFormData(updated);
+  };
+
+  const handleLastNameChange = (val) => {
+    const updated = { ...formData, lastName: val };
+    updated.name = `${formData.firstName} ${val}`.trim();
+    setFormData(updated);
+  };
+
+  const handleDobChange = (val) => {
+    const updated = { ...formData, dob: val };
+    if (!editingStudent) {
+      updated.password = computeDefaultPassword(formData.firstName, val);
+    }
+    setFormData(updated);
+  };
+
   const handleRollNumberChange = (value) => {
     const uppercase = value.toUpperCase();
     const updated = { ...formData, rollNumber: uppercase };
-    // Auto suggest email if not already manually filled
-    if (!editingStudent && (!formData.email || formData.email.endsWith('@student.edu'))) {
+    // Auto suggest email with @snitn.edu domain
+    if (!editingStudent && (!formData.email || formData.email.endsWith('@student.edu') || formData.email.endsWith('@snitn.edu'))) {
       const clean = uppercase.toLowerCase().replace(/[^a-z0-9]/g, '');
-      updated.email = clean ? `${clean}@student.edu` : '';
+      updated.email = clean ? `${clean}@snitn.edu` : '';
     }
     setFormData(updated);
   };
@@ -143,16 +205,24 @@ export const StudentsView = ({ showToast }) => {
     e.preventDefault();
     setFormError('');
 
-    if (!formData.name.trim() || !formData.rollNumber.trim()) {
-      setFormError('Name and Roll Number are required fields.');
+    if (!formData.firstName.trim() || !formData.rollNumber.trim()) {
+      setFormError('First Name and Roll Number are required fields.');
       return;
     }
 
     try {
       setSubmitting(true);
+      const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim();
+      const defaultPass = computeDefaultPassword(formData.firstName, formData.dob) || 'student123';
+      const payload = {
+        ...formData,
+        name: fullName,
+        password: formData.password.trim() || defaultPass,
+      };
+
       if (editingStudent) {
         // Update Student
-        const res = await axiosClient.put(`/students/${editingStudent._id}`, formData);
+        const res = await axiosClient.put(`/students/${editingStudent._id}`, payload);
         if (res.data.success) {
           showToast?.({ message: 'Student and login credentials updated', type: 'success' });
           setIsModalOpen(false);
@@ -160,7 +230,7 @@ export const StudentsView = ({ showToast }) => {
         }
       } else {
         // Create Student
-        const res = await axiosClient.post('/students', formData);
+        const res = await axiosClient.post('/students', payload);
         if (res.data.success) {
           showToast?.({
             message: `New student registered with portal email: ${res.data.data.email}`,
@@ -323,6 +393,7 @@ export const StudentsView = ({ showToast }) => {
                 <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
                   <th className="py-3.5 px-6">Unique Reg ID / Roll #</th>
                   <th className="py-3.5 px-6">Student Name & Login Email</th>
+                  <th className="py-3.5 px-6">Date of Birth</th>
                   <th className="py-3.5 px-6">Department</th>
                   <th className="py-3.5 px-6">Semester</th>
                   <th className="py-3.5 px-6 text-center">Portal Access</th>
@@ -355,6 +426,16 @@ export const StudentsView = ({ showToast }) => {
                             </div>
                           </div>
                         </div>
+                      </td>
+                      <td className="py-3.5 px-6">
+                        {student.dob ? (
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                            <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>{formatDOB(student.dob)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">—</span>
+                        )}
                       </td>
                       <td className="py-3.5 px-6 text-xs text-slate-600 font-medium">
                         {student.department}
@@ -432,18 +513,57 @@ export const StudentsView = ({ showToast }) => {
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
+              {/* First Name & Second Name (Last Name) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Aarav"
+                    value={formData.firstName}
+                    onChange={(e) => handleFirstNameChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Second Name / Surname
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Sharma"
+                    value={formData.lastName}
+                    onChange={(e) => handleLastNameChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  />
+                </div>
+              </div>
+
+              {/* Date of Birth (DOB) Day / Month / Year */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Full Name *
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Date of Birth (DOB) *</span>
+                  <span className="text-[11px] font-semibold text-indigo-600 normal-case">
+                    Day / Month / Year
+                  </span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Aarav Sharma"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
+                <div className="relative">
+                  <input
+                    type="date"
+                    required
+                    value={formData.dob}
+                    onChange={(e) => handleDobChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  />
+                </div>
+                {formData.dob && (
+                  <span className="text-[11px] font-semibold text-slate-500 mt-1 block">
+                    Formatted: <strong>{formatDOB(formData.dob)}</strong> (Birth Year: <strong>{formData.dob.split('-')[0]}</strong>)
+                  </span>
+                )}
               </div>
 
               <div>
@@ -510,27 +630,31 @@ export const StudentsView = ({ showToast }) => {
                   <input
                     type="email"
                     required
-                    placeholder="student@student.edu"
+                    placeholder="student@snitn.edu"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
+                  <span className="text-[10px] text-slate-500 mt-1 block">
+                    Domain auto-generated as <strong>@snitn.edu</strong>
+                  </span>
                 </div>
 
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1">
-                    {editingStudent ? 'New Password (Leave blank to keep current)' : 'Initial Password *'}
+                    {editingStudent ? 'New Password (Leave blank to keep current)' : 'Default Password (First Name + Birth Year)'}
                   </label>
                   <input
-                    type="password"
-                    placeholder={editingStudent ? '••••••••' : 'Default: student123'}
+                    type="text"
+                    placeholder={editingStudent ? '••••••••' : (computeDefaultPassword(formData.firstName, formData.dob) || 'FirstnameYear')}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    className="w-full px-3.5 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                   />
                   {!editingStudent && (
-                    <span className="text-[10px] text-slate-500 mt-1 block">
-                      Default password is <strong>student123</strong> (Student can change this after logging in).
+                    <span className="text-[10px] text-slate-600 mt-1 block">
+                      Default password rule: <strong>First Name + Birth Year</strong> (e.g.{' '}
+                      <strong className="text-indigo-600">{computeDefaultPassword(formData.firstName, formData.dob) || 'Aarav2004'}</strong>).
                     </span>
                   )}
                 </div>

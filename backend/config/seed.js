@@ -63,7 +63,7 @@ const seedInitialData = async () => {
         changed = true;
       }
       if (!st.email) {
-        st.email = `${st.rollNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.edu`;
+        st.email = `${st.rollNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@snitn.edu`;
         changed = true;
       }
       if (changed) {

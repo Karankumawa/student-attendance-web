@@ -32,9 +32,12 @@ router.get('/', async (req, res) => {
       const searchRegex = new RegExp(search.trim(), 'i');
       filter.$or = [
         { name: searchRegex },
+        { firstName: searchRegex },
+        { lastName: searchRegex },
         { rollNumber: searchRegex },
         { email: searchRegex },
         { registrationId: searchRegex },
+        { dob: searchRegex },
       ];
     }
 
@@ -61,20 +64,49 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
-    const { name, rollNumber, department, semester, email, password } = req.body;
+    const { firstName, lastName, name, dob, rollNumber, department, semester, email, password } = req.body;
 
-    if (!name || !rollNumber) {
+    const cleanFirst = (firstName || (name ? name.split(' ')[0] : '')).trim();
+    const cleanLast = (lastName || (name ? name.split(' ').slice(1).join(' ') : '')).trim();
+    const fullName = `${cleanFirst} ${cleanLast}`.trim() || (name ? name.trim() : '');
+
+    if (!cleanFirst && !fullName) {
       return res.status(400).json({
         success: false,
-        message: 'Student name and roll number are required',
+        message: 'Student first name and roll number are required',
+      });
+    }
+
+    if (!rollNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Roll number is required',
       });
     }
 
     const trimmedRoll = rollNumber.trim().toUpperCase();
     const studentEmail = email
       ? email.trim().toLowerCase()
-      : `${trimmedRoll.toLowerCase().replace(/[^a-z0-9]/g, '')}@student.edu`;
-    const studentPassword = password && password.trim() ? password.trim() : 'student123';
+      : `${trimmedRoll.toLowerCase().replace(/[^a-z0-9]/g, '')}@snitn.edu`;
+
+    // Extract birth year from dob (e.g. "2004-05-12" -> "2004")
+    let birthYear = '';
+    if (dob) {
+      const match = String(dob).match(/\b(19\d{2}|20\d{2})\b/);
+      if (match) birthYear = match[1];
+    }
+
+    // Default password: student's first name + birth year
+    let studentPassword;
+    if (password && password.trim()) {
+      studentPassword = password.trim();
+    } else if (cleanFirst && birthYear) {
+      studentPassword = `${cleanFirst}${birthYear}`;
+    } else if (cleanFirst) {
+      studentPassword = `${cleanFirst}2026`;
+    } else {
+      studentPassword = 'student123';
+    }
 
     // 1. Check if rollNumber already exists
     const existingStudent = await Student.findOne({ rollNumber: trimmedRoll });
@@ -99,7 +131,10 @@ router.post('/', async (req, res) => {
 
     // 3. Create Student profile
     const student = new Student({
-      name: name.trim(),
+      name: fullName,
+      firstName: cleanFirst,
+      lastName: cleanLast,
+      dob: dob ? String(dob).trim() : '',
       rollNumber: trimmedRoll,
       department: department ? department.trim() : 'Computer Science & Engineering',
       semester: semester ? semester.trim() : 'Semester 1',
@@ -112,7 +147,7 @@ router.post('/', async (req, res) => {
     const studentUser = new User({
       email: studentEmail,
       password: studentPassword,
-      name: name.trim(),
+      name: fullName,
       role: 'student',
       studentId: student._id,
     });
@@ -149,7 +184,7 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const { name, rollNumber, department, semester, email, password } = req.body;
+    const { firstName, lastName, name, dob, rollNumber, department, semester, email, password } = req.body;
     const student = await Student.findById(req.params.id);
 
     if (!student) {
@@ -173,7 +208,19 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    if (name) student.name = name.trim();
+    if (firstName !== undefined) student.firstName = firstName.trim();
+    if (lastName !== undefined) student.lastName = lastName.trim();
+    if (dob !== undefined) student.dob = String(dob).trim();
+
+    if (student.firstName || student.lastName) {
+      student.name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+    } else if (name) {
+      student.name = name.trim();
+      const parts = student.name.split(' ');
+      student.firstName = parts[0] || '';
+      student.lastName = parts.slice(1).join(' ') || '';
+    }
+
     if (department) student.department = department.trim();
     if (semester) student.semester = semester.trim();
 
@@ -205,7 +252,7 @@ router.put('/:id', async (req, res) => {
       $or: [{ studentId: student._id }, { _id: student.userId }, { email: student.email }],
     });
     if (studentUser) {
-      if (name) studentUser.name = name.trim();
+      studentUser.name = student.name;
       if (student.email) studentUser.email = student.email;
       if (password && password.trim().length >= 6) {
         studentUser.password = password.trim();

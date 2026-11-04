@@ -637,6 +637,12 @@ export const StudentPortalView = ({ showToast }) => {
                   <span>{student?.email}</span>
                   <span>•</span>
                   <span>{student?.semester}</span>
+                  {student?.dob && (
+                    <>
+                      <span>•</span>
+                      <span>DOB: {student.dob.split('-').length === 3 ? `${student.dob.split('-')[2]}/${student.dob.split('-')[1]}/${student.dob.split('-')[0]}` : student.dob}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
