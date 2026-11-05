@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ClipboardCheck,
   CalendarClock,
   BookOpenCheck,
   KeyRound,
-  GraduationCap,
   LogOut,
   CheckCircle2,
-  XCircle,
   Clock,
   MapPin,
   Calendar,
@@ -18,7 +16,6 @@ import {
   AlertCircle,
   FileText,
   User,
-  Sparkles,
   ChevronRight,
   Menu,
   X,
@@ -48,10 +45,12 @@ export const StudentPortalView = ({ showToast }) => {
 
   // Timetable day selector
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const [selectedDay, setSelectedDay] = useState(
-    daysOfWeek.includes(todayName) ? todayName : 'Monday'
-  );
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(today)
+      ? today
+      : 'Monday';
+  });
 
   // Notes state
   const [notesSearch, setNotesSearch] = useState('');
@@ -79,11 +78,7 @@ export const StudentPortalView = ({ showToast }) => {
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
 
-  useEffect(() => {
-    fetchStudentData();
-  }, []);
-
-  const fetchStudentData = async () => {
+  const fetchStudentData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -133,7 +128,11 @@ export const StudentPortalView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchStudentData();
+  }, [fetchStudentData]);
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();

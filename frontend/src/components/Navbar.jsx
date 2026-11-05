@@ -1,9 +1,9 @@
-import React from 'react';
-import { Menu, Calendar, LogOut, Clock, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+import { Menu, Calendar, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = ({ activeView, setIsMobileOpen }) => {
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
 
   const getTitle = () => {
     switch (activeView) {
@@ -15,6 +15,8 @@ export const Navbar = ({ activeView, setIsMobileOpen }) => {
         return { title: 'Attendance Reports', subtitle: 'Export past years and semester student attendance directly into Excel format' };
       case 'students':
         return { title: 'Student Register', subtitle: 'Register and manage student profiles and portal accounts' };
+      case 'subjects':
+        return { title: 'Subjects & Courses', subtitle: 'Manage academic courses, syllabus codes, and credit schemes' };
       case 'timetable':
         return { title: 'Timetable & Schedule', subtitle: 'Plan and organize weekly class periods and lecture halls' };
       case 'notes':
@@ -26,12 +28,14 @@ export const Navbar = ({ activeView, setIsMobileOpen }) => {
 
   const { title, subtitle } = getTitle();
 
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const [currentDate] = useState(() =>
+    new Date().toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  );
 
   return (
     <header className="sticky top-0 z-30 h-20 bg-white/85 backdrop-blur-xl border-b border-slate-200/70 px-4 md:px-8 flex items-center justify-between transition-all">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   UserPlus,
@@ -6,15 +6,8 @@ import {
   Filter,
   Trash2,
   Edit2,
-  CheckCircle,
   X,
   AlertCircle,
-  GraduationCap,
-  Sparkles,
-  BookOpen,
-  Mail,
-  Lock,
-  Key,
   ShieldCheck,
   Calendar,
 } from 'lucide-react';
@@ -101,19 +94,7 @@ export const StudentsView = ({ showToast }) => {
   // Delete Modal State
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  useEffect(() => {
-    fetchStudents();
-  }, [selectedSemester, selectedDepartment]);
-
-  // Debounced search as user types
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchStudents();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
       let query = `?semester=${selectedSemester}&department=${selectedDepartment}`;
@@ -130,7 +111,19 @@ export const StudentsView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSemester, selectedDepartment, search, showToast]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [selectedSemester, selectedDepartment, fetchStudents]);
+
+  // Debounced search as user types
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStudents();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, fetchStudents]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

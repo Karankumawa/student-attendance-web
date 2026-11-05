@@ -1,22 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BookOpen,
   Plus,
   Search,
-  Filter,
   Edit2,
   Trash2,
-  CheckCircle2,
   AlertCircle,
   GraduationCap,
-  Layers,
   Sparkles,
   BookPlus,
   RefreshCw,
   Building2,
-  Calendar,
   Award,
-  FileText,
   X,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
@@ -66,19 +61,7 @@ export const SubjectsView = ({ showToast }) => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    fetchSubjects();
-  }, [selectedSemester, selectedDepartment]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchSubjects();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const fetchSubjects = async () => {
+  const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
       let query = `?semester=${selectedSemester}&department=${selectedDepartment}`;
@@ -95,7 +78,19 @@ export const SubjectsView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSemester, selectedDepartment, search, showToast]);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [selectedSemester, selectedDepartment, fetchSubjects]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchSubjects();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, fetchSubjects]);
 
   const openAddModal = () => {
     setEditingSubject(null);

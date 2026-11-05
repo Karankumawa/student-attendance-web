@@ -14,7 +14,7 @@ import Navbar from './components/Navbar';
 import Toast from './components/Toast';
 
 const MainApp = () => {
-  const { isAuthenticated, user, isStudent, logout, loading } = useAuth();
+  const { isAuthenticated, user, logout, loading } = useAuth();
   const [activeView, setActiveView] = useState('dashboard');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);

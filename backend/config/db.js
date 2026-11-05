@@ -1,13 +1,6 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Use reliable public DNS to prevent Windows local router "querySrv ECONNREFUSED" errors
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
-} catch (e) {
-  // fallback if environment restricts custom DNS
-}
-
 let memoryServer = null;
 
 // Normalize MongoDB URI to safely URL-encode password characters like '@', '#', '$'
@@ -47,10 +40,28 @@ const connectDB = async () => {
       throw new Error('Database password placeholder (<db_password>) detected in MONGO_URI.');
     }
 
-    await mongoose.connect(primaryUri, {
-      serverSelectionTimeoutMS: 8000,
-      connectTimeoutMS: 10000,
-    });
+    try {
+      await mongoose.connect(primaryUri, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 6000,
+      });
+    } catch (dnsOrConnErr) {
+      // If Windows local DNS fails with querySrv error, try fallback to public DNS once
+      if (dnsOrConnErr.message && (dnsOrConnErr.message.includes('querySrv') || dnsOrConnErr.message.includes('ECONNREFUSED'))) {
+        try {
+          dns.setServers(['8.8.8.8', '1.1.1.1']);
+          await mongoose.connect(primaryUri, {
+            serverSelectionTimeoutMS: 5000,
+            connectTimeoutMS: 6000,
+          });
+        } catch (retryErr) {
+          throw retryErr;
+        }
+      } else {
+        throw dnsOrConnErr;
+      }
+    }
+
     console.log(`[Database] Successfully connected to Live MongoDB Atlas at: ${maskUri(primaryUri)}`);
   } catch (primaryErr) {
     console.warn(`[Database] Warning: Could not connect to primary MongoDB (${primaryErr.message}).`);

@@ -1,24 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calendar,
-  CheckCircle2,
-  XCircle,
   Save,
   CheckCheck,
-  RotateCcw,
-  Users,
   Search,
   Filter,
   BarChart3,
   ClipboardCheck,
-  Clock,
-  Sparkles,
-  BookOpen,
   ArrowRight,
   Trash2,
-  AlertCircle,
-  FileSpreadsheet,
+  Clock,
+  XCircle,
   X,
+  Users,
+  FileSpreadsheet,
+  CheckCircle2,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -74,50 +69,63 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const [sessionsHistory, setSessionsHistory] = useState([]);
   const [sessionToDelete, setSessionToDelete] = useState(null);
 
-  // Load courses dynamically from database for chosen semester
+  // React to initialSession prop changes dynamically
   useEffect(() => {
-    fetchSemesterCourses();
-  }, [semester]);
+    if (initialSession) {
+      if (initialSession.date) setDate(initialSession.date);
+      if (initialSession.semester) setSemester(initialSession.semester);
+      if (initialSession.subject) setSubject(initialSession.subject);
+      setCustomSubject('');
+      setActiveTab('take');
+    }
+  }, [initialSession]);
 
-  const fetchSemesterCourses = async () => {
+  const effectiveSubject = customSubject.trim() || subject;
+
+  // Load courses dynamically from database for chosen semester
+  const fetchSemesterCourses = useCallback(async () => {
     try {
       const res = await axiosClient.get(`/subjects?semester=${semester}`);
       if (res.data.success && res.data.data) {
         const subjs = res.data.data.map((s) => s.name);
         setAvailableSubjects(subjs);
-        if (!initialSession && subjs.length > 0 && (!subject || !subjs.includes(subject))) {
-          setSubject(subjs[0]);
+        if (subjs.length > 0) {
+          if (!subject || !subjs.includes(subject)) {
+            if (initialSession && initialSession.semester === semester && subjs.includes(initialSession.subject)) {
+              setSubject(initialSession.subject);
+            } else {
+              setSubject(subjs[0]);
+            }
+          }
         }
       }
     } catch (err) {
       console.warn('Could not load subjects from database:', err);
     }
-  };
+  }, [semester, subject, initialSession]);
 
-  // Load roster whenever date, semester, or subject changes
   useEffect(() => {
-    if (activeTab === 'take') {
-      loadSessionAttendance();
-    }
-  }, [date, semester, subject, activeTab]);
+    fetchSemesterCourses();
+  }, [fetchSemesterCourses]);
 
-  // Load summary whenever switching to summary tab or changing summary filter
-  useEffect(() => {
-    if (activeTab === 'summary') {
-      fetchSummary();
-      fetchSessionsHistory();
-    }
-  }, [activeTab, summarySemester]);
-
-  const effectiveSubject = customSubject.trim() || subject;
-
-  const loadSessionAttendance = async () => {
+  const loadSessionAttendance = useCallback(async () => {
     try {
       setLoadingRoster(true);
       // 1. Fetch all students for the chosen semester
       const studentRes = await axiosClient.get(`/students?semester=${semester}`);
       const semesterStudents = studentRes.data.data || [];
       setStudents(semesterStudents);
+
+      if (!effectiveSubject.trim()) {
+        const initialMap = {};
+        semesterStudents.forEach((st) => {
+          initialMap[st._id] = 'Present';
+        });
+        setRecords(initialMap);
+        setIsSavedSession(false);
+        setLoadingRoster(false);
+        return;
+      }
 
       // 2. Fetch if attendance already exists for this date, subject, and semester
       const attRes = await axiosClient.get(
@@ -129,7 +137,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
       const existingRecord = attRes.data.data;
       const initialMap = {};
 
-      if (existingRecord && existingRecord.records && existingRecord.records.length > 0) {
+      if (existingRecord && !Array.isArray(existingRecord) && existingRecord.records && existingRecord.records.length > 0) {
         setIsSavedSession(true);
         // Map saved statuses
         existingRecord.records.forEach((rec) => {
@@ -157,14 +165,47 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     } finally {
       setLoadingRoster(false);
     }
-  };
+  }, [semester, effectiveSubject, date, showToast]);
 
-  const toggleStudentStatus = (studentId) => {
-    setRecords((prev) => ({
-      ...prev,
-      [studentId]: prev[studentId] === 'Present' ? 'Absent' : 'Present',
-    }));
-  };
+  // Load roster whenever date, semester, or subject changes
+  useEffect(() => {
+    if (activeTab === 'take') {
+      loadSessionAttendance();
+    }
+  }, [activeTab, loadSessionAttendance]);
+
+  const fetchSummary = useCallback(async () => {
+    try {
+      setLoadingSummary(true);
+      const res = await axiosClient.get(`/attendance/summary?semester=${summarySemester}`);
+      if (res.data.success) {
+        setSummaryData(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching summary:', err);
+    } finally {
+      setLoadingSummary(false);
+    }
+  }, [summarySemester]);
+
+  const fetchSessionsHistory = useCallback(async () => {
+    try {
+      const res = await axiosClient.get('/attendance/history');
+      if (res.data.success) {
+        setSessionsHistory(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching history:', err);
+    }
+  }, []);
+
+  // Load summary whenever switching to summary tab or changing summary filter
+  useEffect(() => {
+    if (activeTab === 'summary') {
+      fetchSummary();
+      fetchSessionsHistory();
+    }
+  }, [activeTab, fetchSummary, fetchSessionsHistory]);
 
   const setStatus = (studentId, status) => {
     setRecords((prev) => ({
@@ -230,31 +271,6 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     }
   };
 
-  const fetchSummary = async () => {
-    try {
-      setLoadingSummary(true);
-      const res = await axiosClient.get(`/attendance/summary?semester=${summarySemester}`);
-      if (res.data.success) {
-        setSummaryData(res.data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching summary:', err);
-    } finally {
-      setLoadingSummary(false);
-    }
-  };
-
-  const fetchSessionsHistory = async () => {
-    try {
-      const res = await axiosClient.get('/attendance/history');
-      if (res.data.success) {
-        setSessionsHistory(res.data.data || []);
-      }
-    } catch (err) {
-      console.error('Error fetching history:', err);
-    }
-  };
-
   const confirmDeleteSession = async () => {
     if (!sessionToDelete) return;
     try {
@@ -266,7 +282,11 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         fetchSummary();
       }
     } catch (err) {
-      showToast?.({ message: 'Failed to delete record', type: 'error' });
+      console.error('Failed to delete attendance record:', err);
+      showToast?.({
+        message: err.response?.data?.message || 'Failed to delete record',
+        type: 'error',
+      });
     }
   };
 

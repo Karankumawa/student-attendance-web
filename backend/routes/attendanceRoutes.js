@@ -156,7 +156,9 @@ router.get('/summary', async (req, res) => {
 
       sessions.forEach((session) => {
         const studentRecord = session.records.find(
-          (rec) => rec.studentId && rec.studentId.toString() === student._id.toString()
+          (rec) =>
+            (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
+            (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
         );
 
         if (studentRecord) {
@@ -173,10 +175,12 @@ router.get('/summary', async (req, res) => {
           : 0;
 
       let category = 'Good';
-      if (percentage < 60) {
-        category = 'Defaulter'; // Low attendance
+      if (totalClasses === 0) {
+        category = 'No Classes Held';
+      } else if (percentage < 60) {
+        category = 'Defaulter'; // Low attendance (<60%)
       } else if (percentage < 75) {
-        category = 'Average'; // Warning zone
+        category = 'Average'; // Warning zone (60-74.9%)
       }
 
       return {

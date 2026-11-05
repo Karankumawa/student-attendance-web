@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   Calendar,
@@ -7,12 +7,9 @@ import {
   ArrowRight,
   Clock,
   MapPin,
-  TrendingUp,
   AlertTriangle,
-  GraduationCap,
   Sparkles,
   ClipboardList,
-  PlusCircle,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 
@@ -30,11 +27,7 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
   const [recentNotes, setRecentNotes] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       // Fetch dashboard overview stats
@@ -62,7 +55,11 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleQuickAttendance = (classSlot) => {
     if (setSelectedAttendanceSession) {

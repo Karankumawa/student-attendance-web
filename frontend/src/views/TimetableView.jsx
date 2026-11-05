@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CalendarClock,
   Plus,
@@ -10,7 +10,6 @@ import {
   X,
   AlertCircle,
   ClipboardList,
-  Sparkles,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -56,11 +55,10 @@ const SEMESTERS = [
 ];
 
 export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceSession }) => {
-  // Current day helper
-  const todayName = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-  const [selectedDay, setSelectedDay] = useState(
-    DAYS_OF_WEEK.includes(todayName) ? todayName : 'Monday'
-  );
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    return DAYS_OF_WEEK.includes(today) ? today : 'Monday';
+  });
   const [slots, setSlots] = useState([]);
   const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,12 +80,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   // Delete Target State
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  useEffect(() => {
-    fetchTimetable();
-    fetchSubjectsFromDB();
-  }, []);
-
-  const fetchSubjectsFromDB = async () => {
+  const fetchSubjectsFromDB = useCallback(async () => {
     try {
       const res = await axiosClient.get('/subjects');
       if (res.data.success && res.data.data) {
@@ -96,9 +89,9 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     } catch (err) {
       console.warn('Could not load subjects for timetable dropdown:', err);
     }
-  };
+  }, []);
 
-  const fetchTimetable = async () => {
+  const fetchTimetable = useCallback(async () => {
     try {
       setLoading(true);
       const res = await axiosClient.get('/timetable');
@@ -111,7 +104,12 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchTimetable();
+    fetchSubjectsFromDB();
+  }, [fetchTimetable, fetchSubjectsFromDB]);
 
   const openAddModal = (day) => {
     setEditingSlot(null);

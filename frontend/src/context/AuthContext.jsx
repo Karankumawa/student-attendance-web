@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axiosClient from '../api/axiosClient';
 
 const AuthContext = createContext(null);
@@ -10,6 +10,13 @@ export const AuthProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(true);
+
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    localStorage.removeItem('edu_auth_token');
+    localStorage.removeItem('edu_user');
+  }, []);
 
   // Validate session on mount
   useEffect(() => {
@@ -23,8 +30,12 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('edu_user', JSON.stringify(res.data.user));
           }
         } catch (err) {
-          console.warn('Session verification failed, logging out:', err.message);
-          logout();
+          if (err.response?.status === 401) {
+            console.warn('Session expired or invalid, logging out:', err.message);
+            logout();
+          } else {
+            console.warn('Backend server verification unreachable, maintaining cached session:', err.message);
+          }
         }
       }
       setLoading(false);
@@ -41,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       window.removeEventListener('auth:unauthorized', handleUnauthorized);
     };
-  }, []);
+  }, [logout]);
 
   const login = async (email, password, role) => {
     try {
@@ -62,13 +73,6 @@ export const AuthProvider = ({ children }) => {
         err.response?.data?.message || err.message || 'An error occurred during authentication';
       return { success: false, message };
     }
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('edu_auth_token');
-    localStorage.removeItem('edu_user');
   };
 
   const value = {

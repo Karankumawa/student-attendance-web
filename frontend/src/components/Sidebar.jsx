@@ -6,7 +6,6 @@ import {
   CalendarClock,
   BookOpenCheck,
   FileSpreadsheet,
-  GraduationCap,
   LogOut,
   ChevronRight,
   ShieldCheck,

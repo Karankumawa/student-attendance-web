@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileSpreadsheet,
   Download,
@@ -59,17 +59,7 @@ export const ReportsView = ({ showToast }) => {
   });
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch initial filter options from database
-  useEffect(() => {
-    fetchFilterOptions();
-  }, []);
-
-  // Fetch report data when filter options load or when manual refresh triggered
-  useEffect(() => {
-    fetchReportPreview();
-  }, [selectedYear, selectedSemester, selectedDepartment, selectedSubject, reportType, minAttendance]);
-
-  const fetchFilterOptions = async () => {
+  const fetchFilterOptions = useCallback(async () => {
     try {
       const res = await axiosClient.get('/reports/filters');
       if (res.data?.success && res.data?.data) {
@@ -87,9 +77,9 @@ export const ReportsView = ({ showToast }) => {
     } catch (err) {
       console.warn('Could not load dynamic report filters, fallback to defaults:', err);
     }
-  };
+  }, []);
 
-  const fetchReportPreview = async () => {
+  const fetchReportPreview = useCallback(async () => {
     setLoading(true);
     try {
       const res = await axiosClient.get('/reports/preview', {
@@ -127,7 +117,17 @@ export const ReportsView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedYear, selectedSemester, selectedDepartment, selectedSubject, reportType, minAttendance, showToast]);
+
+  // Fetch initial filter options from database
+  useEffect(() => {
+    fetchFilterOptions();
+  }, [fetchFilterOptions]);
+
+  // Fetch report data when filter options load or when manual refresh triggered
+  useEffect(() => {
+    fetchReportPreview();
+  }, [fetchReportPreview]);
 
   // 1-Click Excel Download directly from database
   const handleDownloadExcel = async () => {

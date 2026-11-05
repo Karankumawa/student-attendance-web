@@ -89,19 +89,21 @@ export const LoginView = () => {
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-4.5">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Email
+              Email, Roll Number, or Registration ID
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <Mail className="w-4 h-4" />
               </div>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={handleInputChange(setEmail)}
-                placeholder="Enter Email"
+                placeholder="e.g. admin@gmail.com, CS2024-001, or STU-CS2024001"
                 required
-                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck="false"
+                autoComplete="username"
                 className="w-full pl-10 pr-4 py-3 bg-slate-50/80 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium placeholder:text-slate-400"
               />
             </div>

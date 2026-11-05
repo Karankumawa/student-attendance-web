@@ -47,12 +47,13 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
-    // 2. Fallback: Check if student exists in Student collection
+    // 2. Fallback: Check if student exists in Student collection (by Email, Roll Number, or Registration ID)
     if (!user) {
       const studentProfile = await Student.findOne({
         $or: [
           { email: normalizedEmail },
           { rollNumber: new RegExp(`^${normalizedEmail}$`, 'i') },
+          { registrationId: new RegExp(`^${normalizedEmail}$`, 'i') },
         ],
       });
       if (studentProfile) {
@@ -80,7 +81,7 @@ router.post('/login', async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Account not found. This email is not registered in our database.',
+        message: 'Account not found. No registered user matches the provided email, roll number, or registration ID.',
       });
     }
 

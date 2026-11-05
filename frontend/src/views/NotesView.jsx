@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BookOpen,
   Plus,
@@ -12,8 +12,6 @@ import {
   FileText,
   AlertCircle,
   Eye,
-  CheckCircle,
-  Sparkles,
   Link as LinkIcon,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
@@ -59,11 +57,7 @@ export const NotesView = ({ showToast }) => {
   // Delete Target State
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  useEffect(() => {
-    fetchDynamicSubjects();
-  }, []);
-
-  const fetchDynamicSubjects = async () => {
+  const fetchDynamicSubjects = useCallback(async () => {
     try {
       const res = await axiosClient.get('/subjects');
       if (res.data.success && res.data.data) {
@@ -72,21 +66,9 @@ export const NotesView = ({ showToast }) => {
     } catch (err) {
       console.warn('Could not load subjects from database:', err);
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    fetchNotes();
-  }, [selectedSubject, selectedSemester]);
-
-  // Debounced search on input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchNotes();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const fetchNotes = async () => {
+  const fetchNotes = useCallback(async () => {
     try {
       setLoading(true);
       let query = `?subject=${selectedSubject}&semester=${selectedSemester}`;
@@ -103,7 +85,23 @@ export const NotesView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSubject, selectedSemester, search, showToast]);
+
+  useEffect(() => {
+    fetchDynamicSubjects();
+  }, [fetchDynamicSubjects]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [selectedSubject, selectedSemester, fetchNotes]);
+
+  // Debounced search on input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchNotes();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, fetchNotes]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

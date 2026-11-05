@@ -115,6 +115,12 @@ router.post('/', async (req, res) => {
     // Default password: student's first name + birth year
     let studentPassword;
     if (password && password.trim()) {
+      if (password.trim().length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password must be at least 6 characters long',
+        });
+      }
       studentPassword = password.trim();
     } else if (cleanFirst && birthYear) {
       studentPassword = `${cleanFirst}${birthYear}`;
@@ -291,6 +297,18 @@ router.put('/:id', async (req, res) => {
 
     await student.save();
 
+    // Synchronize student's updated name & roll number across existing attendance records
+    await Attendance.updateMany(
+      { 'records.studentId': student._id },
+      {
+        $set: {
+          'records.$[elem].name': student.name,
+          'records.$[elem].rollNumber': student.rollNumber,
+        },
+      },
+      { arrayFilters: [{ 'elem.studentId': student._id }] }
+    );
+
     // Update associated User account if exists
     let studentUser = await User.findOne({
       $or: [{ studentId: student._id }, { _id: student.userId }, { email: student.email }],
@@ -354,12 +372,27 @@ router.delete('/:id', async (req, res) => {
     await Student.findByIdAndDelete(req.params.id);
 
     // Delete linked User login account
-    await User.deleteMany({ studentId: req.params.id });
+    await User.deleteMany({
+      $or: [
+        { studentId: student._id },
+        ...(student.userId ? [{ _id: student.userId }] : []),
+        ...(student.email ? [{ email: student.email }] : []),
+      ],
+    });
 
     // Clean up student's past records from attendance
     await Attendance.updateMany(
       {},
-      { $pull: { records: { studentId: req.params.id } } }
+      {
+        $pull: {
+          records: {
+            $or: [
+              { studentId: student._id },
+              { rollNumber: student.rollNumber },
+            ],
+          },
+        },
+      }
     );
 
     return res.status(200).json({
