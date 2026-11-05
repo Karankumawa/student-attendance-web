@@ -81,12 +81,12 @@ router.post('/', async (req, res) => {
     const trimmedSubject = subject.trim();
     const targetSemester = semester || 'Semester 1';
 
-    // Format and clean records
+    // Format and clean records - default to Absent unless explicitly marked Present
     const cleanedRecords = records.map((rec) => ({
       studentId: rec.studentId,
       rollNumber: rec.rollNumber,
       name: rec.name,
-      status: rec.status === 'Absent' ? 'Absent' : 'Present',
+      status: rec.status === 'Present' ? 'Present' : 'Absent',
     }));
 
     // Upsert attendance record for this date + subject + semester

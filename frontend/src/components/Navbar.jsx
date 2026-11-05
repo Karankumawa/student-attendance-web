@@ -3,7 +3,7 @@ import { Menu, Calendar, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const Navbar = ({ activeView, setIsMobileOpen }) => {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
 
   const getTitle = () => {
     switch (activeView) {
@@ -38,46 +38,61 @@ export const Navbar = ({ activeView, setIsMobileOpen }) => {
   );
 
   return (
-    <header className="sticky top-0 z-30 h-20 bg-white/85 backdrop-blur-xl border-b border-slate-200/70 px-4 md:px-8 flex items-center justify-between transition-all">
+    <header className="sticky top-0 z-30 h-20 bg-white/90 backdrop-blur-xl border-b border-slate-200/80 px-4 md:px-8 flex items-center justify-between transition-all">
       {/* Left: Mobile Toggle & Page Title */}
-      <div className="flex items-center gap-3 md:gap-4">
+      <div className="flex items-center gap-3 md:gap-4 min-w-0">
         <button
           onClick={() => setIsMobileOpen(true)}
-          className="p-2 -ml-2 text-slate-700 hover:text-indigo-600 rounded-xl hover:bg-slate-100/80 md:hidden transition-colors cursor-pointer"
+          className="p-2 -ml-2 text-slate-700 hover:text-indigo-600 rounded-xl hover:bg-slate-100/80 md:hidden transition-colors cursor-pointer shrink-0"
           aria-label="Open navigation menu"
         >
           <Menu className="w-6 h-6" />
         </button>
 
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
-              Faculty Suite
+              Faculty Portal
             </span>
             <span className="text-slate-300">•</span>
-            <span className="text-[11px] font-semibold text-slate-400 capitalize">
+            <span className="text-[11px] font-semibold text-slate-500 capitalize truncate">
               {activeView}
             </span>
           </div>
-          <h2 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight leading-tight truncate">
             {title}
           </h2>
-          <p className="text-xs text-slate-500 hidden sm:block font-medium mt-0.5">
+          <p className="text-xs text-slate-500 hidden sm:block font-medium mt-0.5 truncate max-w-xl">
             {subtitle}
           </p>
         </div>
       </div>
 
-      {/* Right: Date badge, Quick Status & Logout */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5">
-        <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200/80 shadow-xs">
+      {/* Right: Date badge, User Pill & Quick Logout */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200/80 shadow-xs">
           <Calendar className="w-3.5 h-3.5 text-indigo-600" />
           <span>{currentDate}</span>
         </div>
 
+        {/* User Profile Chip */}
+        <div className="hidden sm:flex items-center gap-2 pl-2 pr-3 py-1 rounded-full bg-slate-50/90 border border-slate-200/80 shadow-xs">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs">
+            {user?.name?.slice(0, 1).toUpperCase() || 'A'}
+          </div>
+          <div className="text-left leading-none">
+            <p className="text-xs font-bold text-slate-800 truncate max-w-[110px]">
+              {user?.name || 'Faculty Admin'}
+            </p>
+            <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
+              Admin
+            </span>
+          </div>
+        </div>
+
         <button
           onClick={logout}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200 hover:border-rose-200 cursor-pointer shadow-xs"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200 hover:border-rose-200 cursor-pointer shadow-xs active:scale-95"
           title="Log out of session"
         >
           <LogOut className="w-3.5 h-3.5" />

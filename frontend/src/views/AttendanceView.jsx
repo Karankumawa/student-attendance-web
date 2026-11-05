@@ -119,7 +119,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
       if (!effectiveSubject.trim()) {
         const initialMap = {};
         semesterStudents.forEach((st) => {
-          initialMap[st._id] = 'Present';
+          initialMap[st._id] = 'Absent';
         });
         setRecords(initialMap);
         setIsSavedSession(false);
@@ -144,17 +144,17 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           initialMap[rec.studentId] = rec.status;
         });
 
-        // Any newly added students not in the saved record default to Present
+        // Any newly added students not in the saved record default to Absent
         semesterStudents.forEach((st) => {
           if (!initialMap[st._id]) {
-            initialMap[st._id] = 'Present';
+            initialMap[st._id] = 'Absent';
           }
         });
       } else {
         setIsSavedSession(false);
-        // Fresh session: default all students to 'Present'
+        // Fresh session: default all students to 'Absent' unless marked Present
         semesterStudents.forEach((st) => {
-          initialMap[st._id] = 'Present';
+          initialMap[st._id] = 'Absent';
         });
       }
 
@@ -243,7 +243,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         studentId: s._id,
         rollNumber: s.rollNumber,
         name: s.name,
-        status: records[s._id] || 'Present',
+        status: records[s._id] === 'Present' ? 'Present' : 'Absent',
       }));
 
       const res = await axiosClient.post('/attendance', {
@@ -290,9 +290,9 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     }
   };
 
-  // Calculations for current active roster
-  const presentCount = Object.values(records).filter((s) => s === 'Present').length;
-  const absentCount = Object.values(records).filter((s) => s === 'Absent').length;
+  // Calculations for current active roster - default is Absent
+  const presentCount = students.filter((s) => records[s._id] === 'Present').length;
+  const absentCount = students.length - presentCount;
   const attendanceRate =
     students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
 
@@ -531,7 +531,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                   Class Student Roster ({students.length} Students)
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Click the toggle buttons to switch attendance status between Present and Absent
+                  Default status is Absent. Mark attending students as Present or use Batch Actions above.
                 </p>
               </div>
               <div className="flex items-center gap-2.5">
@@ -588,7 +588,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-sm">
                     {filteredRosterStudents.map((student, index) => {
-                      const isPresent = records[student._id] !== 'Absent';
+                      const isPresent = records[student._id] === 'Present';
                       const initial = student.name ? student.name.charAt(0).toUpperCase() : '?';
 
                       return (
