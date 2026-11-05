@@ -75,7 +75,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     startTime: '09:00 AM',
     endTime: '10:00 AM',
     subject: '',
-    semester: 'Semester 4',
+    semester: 'Semester 1',
     roomNumber: 'Room 101',
   });
   const [formError, setFormError] = useState('');
@@ -123,7 +123,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       startTime: '09:00 AM',
       endTime: '10:00 AM',
       subject: '',
-      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
+      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 1',
       roomNumber: 'Room 101',
     });
     setFormError('');
@@ -137,7 +137,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       startTime: slot.startTime,
       endTime: slot.endTime,
       subject: slot.subject,
-      semester: slot.semester || 'Semester 4',
+      semester: slot.semester || 'Semester 1',
       roomNumber: slot.roomNumber || 'Room 101',
     });
     setFormError('');

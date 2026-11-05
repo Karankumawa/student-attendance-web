@@ -85,7 +85,7 @@ export const StudentsView = ({ showToast }) => {
     dob: '', // YYYY-MM-DD
     rollNumber: '',
     department: 'Computer Science & Engineering',
-    semester: 'Semester 4',
+    semester: 'Semester 1',
     email: '',
     password: '',
     phone: '',
@@ -146,7 +146,7 @@ export const StudentsView = ({ showToast }) => {
       dob: '',
       rollNumber: '',
       department: 'Computer Science & Engineering',
-      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
+      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 1',
       email: '',
       password: '',
       phone: '',
@@ -171,7 +171,7 @@ export const StudentsView = ({ showToast }) => {
       dob: student.dob || '',
       rollNumber: student.rollNumber,
       department: student.department || 'Computer Science & Engineering',
-      semester: student.semester || 'Semester 4',
+      semester: student.semester || 'Semester 1',
       email: student.email || '',
       password: '', // Blank unless admin wants to reset it
       phone: student.phone || '',

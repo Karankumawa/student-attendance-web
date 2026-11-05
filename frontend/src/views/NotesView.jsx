@@ -43,7 +43,7 @@ export const NotesView = ({ showToast }) => {
   const [formData, setFormData] = useState({
     title: '',
     subject: '',
-    semester: 'Semester 4',
+    semester: 'Semester 1',
     content: '',
     resourceUrl: '',
   });
@@ -113,7 +113,7 @@ export const NotesView = ({ showToast }) => {
     setFormData({
       title: '',
       subject: subjectsList[0] || '',
-      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
+      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 1',
       content: '',
       resourceUrl: '',
     });
@@ -128,7 +128,7 @@ export const NotesView = ({ showToast }) => {
     setFormData({
       title: note.title,
       subject: isStandard ? note.subject : 'Other',
-      semester: note.semester || 'Semester 4',
+      semester: note.semester || 'Semester 1',
       content: note.content,
       resourceUrl: note.resourceUrl || '',
     });

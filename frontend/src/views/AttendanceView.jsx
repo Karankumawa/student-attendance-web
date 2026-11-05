@@ -48,7 +48,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const [date, setDate] = useState(
     initialSession?.date || getLocalDateString()
   );
-  const [semester, setSemester] = useState(initialSession?.semester || 'Semester 4');
+  const [semester, setSemester] = useState(initialSession?.semester || 'Semester 1');
   const [subject, setSubject] = useState(initialSession?.subject || '');
   const [customSubject, setCustomSubject] = useState('');
 
