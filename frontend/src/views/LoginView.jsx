@@ -89,7 +89,7 @@ export const LoginView = () => {
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-4.5">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Email, Roll Number, or Registration ID
+              Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
