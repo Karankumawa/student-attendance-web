@@ -99,7 +99,7 @@ export const LoginView = () => {
                 type="text"
                 value={email}
                 onChange={handleInputChange(setEmail)}
-                placeholder="e.g. admin@gmail.com, CS2024-001, or STU-CS2024001"
+                placeholder="Enter Email"
                 required
                 autoCapitalize="none"
                 spellCheck="false"
