@@ -190,7 +190,7 @@ export const SubjectsView = ({ showToast }) => {
               Subject & Course Management
             </h1>
             <p className="text-sm md:text-base text-slate-400 leading-relaxed">
-              Add new courses every academic year, modify syllabus parameters, or remove obsolete subjects. All courses are maintained dynamically in MongoDB.
+              Add new courses every academic year, modify syllabus parameters, or remove obsolete subjects.
             </p>
           </div>
 

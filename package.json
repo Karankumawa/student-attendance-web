@@ -16,6 +16,7 @@
     "college",
     "teacher"
   ],
-  "author": "Faculty Admin",
-  "license": "ISC"
+  "private": true,
+  "author": "Karan Kumawat <karankumawat640@gmail.com>",
+  "license": "UNLICENSED"
 }

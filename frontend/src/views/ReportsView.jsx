@@ -227,20 +227,11 @@ export const ReportsView = ({ showToast }) => {
             <button
               onClick={fetchReportPreview}
               disabled={loading}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-sm font-semibold transition-all hover:scale-102 active:scale-98 disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-indigo-500/15 hover:from-emerald-500/25 hover:to-indigo-500/25 border border-emerald-500/30 hover:border-emerald-400/60 text-emerald-300 hover:text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-950/40 backdrop-blur-md transition-all duration-200 hover:scale-102 active:scale-98 disabled:opacity-50 cursor-pointer"
+              title="Refresh report analytics"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh Metrics</span>
-            </button>
-
-            <button
-              onClick={handleDownloadExcel}
-              disabled={downloading}
-              className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all hover:scale-102 active:scale-98 disabled:opacity-50 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-5 h-5 text-white" />
-              <span>{downloading ? 'Generating Excel...' : '1-Click Export (.xlsx)'}</span>
-              <Download className="w-4 h-4 text-white" />
+              <RefreshCw className={`w-4 h-4 text-emerald-400 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
             </button>
           </div>
         </div>
@@ -460,7 +451,7 @@ export const ReportsView = ({ showToast }) => {
           <div>
             <h3 className="text-base font-bold text-slate-900">Attendance Preview</h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Showing preview for {selectedYear} ({selectedSemester === 'All' ? 'All Semesters - Scoped Per Semester' : selectedSemester}) • Click Excel button above to download full file
+              Showing preview for {selectedYear} ({selectedSemester === 'All' ? 'All Semesters - Scoped Per Semester' : selectedSemester}) • Click Export Excel to download full spreadsheet
             </p>
           </div>
 
@@ -479,11 +470,12 @@ export const ReportsView = ({ showToast }) => {
             <button
               onClick={handleDownloadExcel}
               disabled={downloading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer active:scale-95 disabled:opacity-50"
               title="Download Excel Spreadsheet"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span className="hidden sm:inline">Export Excel</span>
+              <span>{downloading ? 'Exporting...' : 'Export Excel'}</span>
+              <Download className="w-3.5 h-3.5 text-white/90" />
             </button>
           </div>
         </div>
@@ -493,7 +485,7 @@ export const ReportsView = ({ showToast }) => {
           {loading ? (
             <div className="p-16 text-center text-slate-500 flex flex-col items-center gap-3">
               <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
-              <p className="text-sm font-semibold">Calculating attendance metrics from MongoDB...</p>
+              <p className="text-sm font-semibold">Calculating attendance metrics...</p>
             </div>
           ) : filteredStudents.length === 0 ? (
             <div className="p-16 text-center text-slate-500 space-y-2">

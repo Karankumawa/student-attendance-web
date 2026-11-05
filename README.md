@@ -224,6 +224,8 @@ VITE_API_URL=https://your-backend-service.onrender.com
 
 ---
 
-## 📄 License
+## 📄 License & Intellectual Property
 
-This project is licensed under the ISC License.
+**Proprietary and Confidential.** Copyright © 2026 **Karan Kumawat**. All Rights Reserved.
+
+This project is strictly private and proprietary. No permission is granted to copy, reproduce, fork, duplicate, distribute, publicly display, or create derivative works from any part of this repository without the express prior written authorization of the copyright owner, **Karan Kumawat** (`karankumawat640@gmail.com`). See the [LICENSE](LICENSE) file for complete legal terms.

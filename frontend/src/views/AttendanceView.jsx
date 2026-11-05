@@ -829,7 +829,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
               Recent Attendance Sessions Log
             </h3>
             <p className="text-xs text-slate-500 mb-5">
-              Recorded sessions stored in MongoDB. Click "Load Session" to inspect or edit records.
+              Recorded sessions history. Click "Load Session" to inspect or edit records.
             </p>
 
             {sessionsHistory.length === 0 ? (
