@@ -279,6 +279,9 @@ export const StudentPortalView = ({ showToast }) => {
   const handleTabClick = (tabId) => {
     setActiveTab(tabId);
     setIsMobileMenuOpen(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -310,7 +313,7 @@ export const StudentPortalView = ({ showToast }) => {
 
             <button
               onClick={logout}
-              className="hidden sm:flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200/80 hover:border-rose-200 cursor-pointer active:scale-95"
+              className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200/80 hover:border-rose-200 cursor-pointer active:scale-95"
               title="Logout from portal"
             >
               <LogOut className="w-4 h-4" />
@@ -320,7 +323,7 @@ export const StudentPortalView = ({ showToast }) => {
             {/* Mobile Hamburger / Close Button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="sm:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200/80 bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer active:scale-95"
+              className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200/80 bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer active:scale-95"
               aria-label="Toggle navigation menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5 text-slate-800" /> : <Menu className="w-5 h-5 text-slate-800" />}
@@ -328,8 +331,8 @@ export const StudentPortalView = ({ showToast }) => {
           </div>
         </div>
 
-        {/* Tab Options Bar - Always Fixed & Scrollable/Responsive */}
-        <div className="px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/75 border-b border-slate-100 overflow-x-auto no-scrollbar">
+        {/* Tab Options Bar - Hidden on Mobile, Shown on Desktop / Tablets (>= md) */}
+        <div className="hidden md:block px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/75 border-b border-slate-100 overflow-x-auto no-scrollbar">
           <div className="max-w-7xl mx-auto flex items-center gap-1.5 sm:gap-2 min-w-max">
             {NAV_TABS.map((tab) => {
               const Icon = tab.icon;
@@ -354,47 +357,55 @@ export const StudentPortalView = ({ showToast }) => {
 
         {/* Mobile Dropdown Menu Drawer */}
         {isMobileMenuOpen && (
-          <div className="sm:hidden border-t border-slate-200 bg-white/98 backdrop-blur-xl px-4 py-3 shadow-lg space-y-2 animate-fade-in">
-            <div className="pb-2 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-semibold text-slate-700">{student?.department}</span>
-              <span className="font-mono">{student?.registrationId || 'STU-ACTIVE'}</span>
+          <>
+            {/* Backdrop for closing when tapping outside */}
+            <div
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 top-[60px] z-30 bg-slate-950/40 backdrop-blur-xs md:hidden"
+              aria-hidden="true"
+            />
+            <div className="relative z-40 md:hidden border-t border-slate-200 bg-white/98 backdrop-blur-xl px-4 py-3 shadow-xl space-y-2 animate-fade-in">
+              <div className="pb-2 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-semibold text-slate-700">{student?.department}</span>
+                <span className="font-mono">{student?.registrationId || 'STU-ACTIVE'}</span>
+              </div>
+              <div className="space-y-1">
+                {NAV_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => handleTabClick(tab.id)}
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-slate-900 text-white shadow-xs'
+                          : 'text-slate-700 hover:bg-slate-100 active:bg-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="w-4 h-4 shrink-0" />
+                        <span>{tab.label}</span>
+                      </div>
+                      <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white/70' : 'text-slate-400'}`} />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 transition-all cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
             </div>
-            <div className="space-y-1">
-              {NAV_TABS.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => handleTabClick(tab.id)}
-                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isActive
-                        ? 'bg-slate-900 text-white shadow-xs'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span>{tab.label}</span>
-                    </div>
-                    <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white/70' : 'text-slate-400'}`} />
-                  </button>
-                );
-              })}
-            </div>
-            <div className="pt-2 border-t border-slate-100">
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  logout();
-                }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-all cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
+          </>
         )}
       </header>
 
