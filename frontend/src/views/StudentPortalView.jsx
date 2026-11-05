@@ -31,6 +31,19 @@ import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 import SnitLogo from '../components/SnitLogo';
 
+const parseTimeToMinutes = (timeStr) => {
+  if (!timeStr || typeof timeStr !== 'string') return 0;
+  const clean = timeStr.trim();
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+  if (!match) return 0;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const modifier = match[3] ? match[3].toUpperCase() : null;
+  if (modifier === 'PM' && hours < 12) hours += 12;
+  else if (modifier === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+};
+
 export const StudentPortalView = ({ showToast }) => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'timetable' | 'notes' | 'security'
@@ -45,6 +58,9 @@ export const StudentPortalView = ({ showToast }) => {
 
   // Timetable day selector
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const [todayName] = useState(() =>
+    new Date().toLocaleDateString('en-US', { weekday: 'long' })
+  );
   const [selectedDay, setSelectedDay] = useState(() => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
     return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].includes(today)
@@ -237,7 +253,9 @@ export const StudentPortalView = ({ showToast }) => {
     );
   });
 
-  const daySchedule = timetableSlots.filter((s) => s.dayOfWeek === selectedDay);
+  const daySchedule = [...timetableSlots.filter((s) => s.dayOfWeek === selectedDay)].sort(
+    (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)
+  );
 
   if (loading) {
     return (

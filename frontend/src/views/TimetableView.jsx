@@ -55,10 +55,14 @@ const SEMESTERS = [
 ];
 
 export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceSession }) => {
+  const [todayName] = useState(() =>
+    new Date().toLocaleDateString('en-US', { weekday: 'long' })
+  );
   const [selectedDay, setSelectedDay] = useState(() => {
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
     return DAYS_OF_WEEK.includes(today) ? today : 'Monday';
   });
+  const [selectedSemester, setSelectedSemester] = useState('All');
   const [slots, setSlots] = useState([]);
   const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -94,7 +98,8 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   const fetchTimetable = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await axiosClient.get('/timetable');
+      const query = selectedSemester !== 'All' ? `?semester=${encodeURIComponent(selectedSemester)}` : '';
+      const res = await axiosClient.get(`/timetable${query}`);
       if (res.data.success) {
         setSlots(res.data.data || []);
       }
@@ -104,7 +109,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [selectedSemester, showToast]);
 
   useEffect(() => {
     fetchTimetable();
@@ -118,7 +123,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       startTime: '09:00 AM',
       endTime: '10:00 AM',
       subject: '',
-      semester: 'Semester 4',
+      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 4',
       roomNumber: 'Room 101',
     });
     setFormError('');
@@ -221,13 +226,31 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
           </p>
         </div>
 
-        <button
-          onClick={() => openAddModal(selectedDay)}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer self-start sm:self-auto active:scale-98"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Class Slot</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Semester:</span>
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="bg-transparent text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+            >
+              <option value="All">All Semesters</option>
+              {SEMESTERS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => openAddModal(selectedDay)}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer active:scale-98"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Class Slot</span>
+          </button>
+        </div>
       </div>
 
       {/* Days of Week Tab Bar */}
