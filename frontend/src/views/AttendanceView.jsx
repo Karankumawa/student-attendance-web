@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Save,
   CheckCheck,
@@ -14,6 +14,7 @@ import {
   Users,
   FileSpreadsheet,
   CheckCircle2,
+  Eye,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -69,6 +70,78 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const [sessionsHistory, setSessionsHistory] = useState([]);
   const [sessionToDelete, setSessionToDelete] = useState(null);
 
+  // Load Session Inspection & In-Place Editing Modal State
+  const [sessionDetailsModal, setSessionDetailsModal] = useState(null);
+  const [modalRecords, setModalRecords] = useState({}); // { [studentId]: 'Present' | 'Absent' }
+  const [modalSearch, setModalSearch] = useState('');
+  const [modalSaving, setModalSaving] = useState(false);
+
+  const openSessionDetails = (sess) => {
+    setSessionDetailsModal(sess);
+    const initialMap = {};
+    (sess.records || []).forEach((r) => {
+      initialMap[r.studentId] = r.status;
+    });
+    setModalRecords(initialMap);
+    setModalSearch('');
+  };
+
+  const handleSaveModalSession = async () => {
+    if (!sessionDetailsModal) return;
+    try {
+      setModalSaving(true);
+      const updatedRecords = (sessionDetailsModal.records || []).map((r) => ({
+        studentId: r.studentId,
+        rollNumber: r.rollNumber,
+        name: r.name,
+        status: modalRecords[r.studentId] === 'Present' ? 'Present' : 'Absent',
+      }));
+
+      const res = await axiosClient.put(`/attendance/${sessionDetailsModal._id}`, {
+        records: updatedRecords,
+      });
+
+      if (res.data.success) {
+        showToast?.({
+          message: `Attendance session for "${sessionDetailsModal.subject}" on ${sessionDetailsModal.date} updated in database!`,
+          type: 'success',
+        });
+
+        // Update active session modal records
+        setSessionDetailsModal((prev) =>
+          prev ? { ...prev, records: updatedRecords } : null
+        );
+
+        // Update sessions history list
+        setSessionsHistory((prev) =>
+          prev.map((s) =>
+            s._id === sessionDetailsModal._id ? { ...s, records: updatedRecords } : s
+          )
+        );
+
+        // If active session in take tab matches this session, sync records too
+        if (
+          date === sessionDetailsModal.date &&
+          semester === sessionDetailsModal.semester &&
+          effectiveSubject === sessionDetailsModal.subject
+        ) {
+          setRecords(modalRecords);
+        }
+
+        fetchSessionsHistory();
+        fetchSummary();
+      }
+    } catch (err) {
+      console.error('Error saving session details:', err);
+      showToast?.({
+        message: err.response?.data?.message || 'Failed to update attendance session',
+        type: 'error',
+      });
+    } finally {
+      setModalSaving(false);
+    }
+  };
+
   // React to initialSession prop changes dynamically
   useEffect(() => {
     if (initialSession) {
@@ -80,7 +153,10 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     }
   }, [initialSession]);
 
-  const effectiveSubject = customSubject.trim() || subject;
+  const effectiveSubject = useMemo(
+    () => customSubject.trim() || subject,
+    [customSubject, subject]
+  );
 
   // Load courses dynamically from database for chosen semester
   const fetchSemesterCourses = useCallback(async () => {
@@ -444,16 +520,22 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Database Sync Status
                     </label>
-                    <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border bg-slate-50/80 text-xs font-semibold">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl border bg-slate-50/80 text-xs font-semibold">
                       {isSavedSession ? (
                         <>
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="text-emerald-700">Existing Saved Session</span>
+                          <div className="leading-tight">
+                            <span className="text-emerald-700 font-bold block">Recorded Session Loaded</span>
+                            <span className="text-[10px] text-slate-500 font-normal">Submitting updates this session (no duplicates)</span>
+                          </div>
                         </>
                       ) : (
                         <>
                           <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                          <span className="text-amber-700">New Attendance Session</span>
+                          <div className="leading-tight">
+                            <span className="text-amber-700 font-bold block">Unique Session</span>
+                            <span className="text-[10px] text-slate-500 font-normal">One record per subject & date</span>
+                          </div>
                         </>
                       )}
                     </div>
@@ -865,16 +947,13 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
                       <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
                         <button
-                          onClick={() => {
-                            setDate(sess.date);
-                            setSemester(sess.semester);
-                            setSubject(sess.subject);
-                            setActiveTab('take');
-                          }}
-                          className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                          type="button"
+                          onClick={() => openSessionDetails(sess)}
+                          className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50/90 hover:bg-indigo-100 border border-indigo-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all active:scale-95"
+                          title="Open session details & edit attendance records"
                         >
+                          <Eye className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Load Session</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setSessionToDelete(sess)}
@@ -903,6 +982,264 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         confirmText="Delete Session"
         isDanger={true}
       />
+
+      {/* Session Details & Interactive Attendance Editor Modal */}
+      {sessionDetailsModal && (() => {
+        const modalTotal = (sessionDetailsModal.records || []).length;
+        const modalPresentCount = (sessionDetailsModal.records || []).filter(
+          (r) => modalRecords[r.studentId] === 'Present'
+        ).length;
+        const modalAbsentCount = modalTotal - modalPresentCount;
+        const modalRate = modalTotal > 0 ? Math.round((modalPresentCount / modalTotal) * 100) : 0;
+
+        const filteredModalStudents = (sessionDetailsModal.records || []).filter((r) => {
+          if (!modalSearch.trim()) return true;
+          const term = modalSearch.toLowerCase();
+          return (
+            (r.name && r.name.toLowerCase().includes(term)) ||
+            (r.rollNumber && r.rollNumber.toLowerCase().includes(term))
+          );
+        });
+
+        const markAllModal = (status) => {
+          const updated = {};
+          (sessionDetailsModal.records || []).forEach((r) => {
+            updated[r.studentId] = status;
+          });
+          setModalRecords(updated);
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
+            <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col max-h-[92vh] overflow-hidden my-auto">
+              {/* Modal Header */}
+              <div className="px-6 sm:px-8 py-5 border-b border-slate-100 bg-white/95 backdrop-blur-md flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+                    <ClipboardCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-md">
+                        {sessionDetailsModal.date}
+                      </span>
+                      <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200/80 px-2.5 py-0.5 rounded-md">
+                        {sessionDetailsModal.semester}
+                      </span>
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                      {sessionDetailsModal.subject}
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSessionDetailsModal(null)}
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                  aria-label="Close session details"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Live Status Indicators Bar */}
+              <div className="px-6 sm:px-8 py-3.5 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-1 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs">
+                    Enrolled: {modalTotal}
+                  </span>
+                  <span className="px-3 py-1 rounded-xl bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200 shadow-2xs">
+                    Present: {modalPresentCount}
+                  </span>
+                  <span className="px-3 py-1 rounded-xl bg-rose-50 text-rose-800 text-xs font-bold border border-rose-200 shadow-2xs">
+                    Absent: {modalAbsentCount}
+                  </span>
+                  <span className="px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-200 shadow-2xs">
+                    Compliance: {modalRate}%
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">
+                    Batch:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => markAllModal('Present')}
+                    className="px-3 py-1 rounded-lg bg-emerald-100/70 hover:bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200 transition-all cursor-pointer active:scale-95"
+                  >
+                    All Present
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => markAllModal('Absent')}
+                    className="px-3 py-1 rounded-lg bg-rose-100/70 hover:bg-rose-100 text-rose-800 text-xs font-bold border border-rose-200 transition-all cursor-pointer active:scale-95"
+                  >
+                    All Absent
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Bar */}
+              <div className="px-6 sm:px-8 pt-4 pb-2 shrink-0">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search student by name or roll number..."
+                    value={modalSearch}
+                    onChange={(e) => setModalSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 focus:bg-white transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Students Attendance List Body */}
+              <div className="flex-1 overflow-y-auto px-6 sm:px-8 py-3">
+                <div className="border border-slate-200/90 rounded-2xl overflow-hidden shadow-2xs">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                        <th className="py-2.5 px-4">#</th>
+                        <th className="py-2.5 px-4">Roll Number</th>
+                        <th className="py-2.5 px-4">Student Name</th>
+                        <th className="py-2.5 px-4 text-center">Status</th>
+                        <th className="py-2.5 px-4 text-right">Attendance Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs">
+                      {filteredModalStudents.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
+                            No students match your search filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredModalStudents.map((r, idx) => {
+                          const isPresent = modalRecords[r.studentId] === 'Present';
+                          return (
+                            <tr
+                              key={r.studentId || idx}
+                              className={`hover:bg-slate-50/70 transition-colors ${
+                                !isPresent ? 'bg-rose-50/20' : ''
+                              }`}
+                            >
+                              <td className="py-3 px-4 text-slate-400 font-medium">{idx + 1}</td>
+                              <td className="py-3 px-4 font-mono font-bold text-slate-800">
+                                {r.rollNumber}
+                              </td>
+                              <td className="py-3 px-4 font-semibold text-slate-800">{r.name}</td>
+                              <td className="py-3 px-4 text-center">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                    isPresent
+                                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      isPresent ? 'bg-emerald-500' : 'bg-rose-500'
+                                    }`}
+                                  />
+                                  <span>{isPresent ? 'Present' : 'Absent'}</span>
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-right">
+                                <div className="inline-flex rounded-lg p-0.5 bg-slate-100 border border-slate-200">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setModalRecords((prev) => ({
+                                        ...prev,
+                                        [r.studentId]: 'Present',
+                                      }))
+                                    }
+                                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                                      isPresent
+                                        ? 'bg-emerald-600 text-white shadow-2xs'
+                                        : 'text-slate-600 hover:text-emerald-700'
+                                    }`}
+                                  >
+                                    Present
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setModalRecords((prev) => ({
+                                        ...prev,
+                                        [r.studentId]: 'Absent',
+                                      }))
+                                    }
+                                    className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
+                                      !isPresent
+                                        ? 'bg-rose-600 text-white shadow-2xs'
+                                        : 'text-slate-600 hover:text-rose-700'
+                                    }`}
+                                  >
+                                    Absent
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Modal Sticky Footer */}
+              <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDate(sessionDetailsModal.date);
+                    setSemester(sessionDetailsModal.semester);
+                    setSubject(sessionDetailsModal.subject);
+                    setActiveTab('take');
+                    setSessionDetailsModal(null);
+                  }}
+                  className="text-xs font-bold text-indigo-700 hover:text-indigo-900 flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                >
+                  <span>Open in Full Attendance Workspace</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="flex items-center gap-2.5 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSessionDetailsModal(null)}
+                    className="px-4 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveModalSession}
+                    disabled={modalSaving}
+                    className="px-5 py-2 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 rounded-xl shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50 active:scale-98 flex items-center gap-2"
+                  >
+                    {modalSaving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Updating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Save Changes in Database</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

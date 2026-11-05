@@ -13,6 +13,7 @@ import {
   GraduationCap,
   User,
   Phone,
+  Eye,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -43,6 +44,9 @@ export const StudentsView = ({ showToast }) => {
   const [search, setSearch] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
+
+  // Full Profile Modal State
+  const [viewingStudent, setViewingStudent] = useState(null);
 
   // Helper to compute default password: First Name + Birth Year
   const computeDefaultPassword = (fName, dobVal) => {
@@ -419,9 +423,14 @@ export const StudentsView = ({ showToast }) => {
                   const initial = student.name ? student.name.charAt(0).toUpperCase() : '?';
 
                   return (
-                    <tr key={student._id} className="hover:bg-slate-50/70 transition-colors">
+                    <tr
+                      key={student._id}
+                      onClick={() => setViewingStudent(student)}
+                      className="hover:bg-indigo-50/50 transition-colors cursor-pointer group"
+                      title="Click row to view full student profile"
+                    >
                       <td className="py-3.5 px-6">
-                        <div className="font-mono font-bold text-xs text-indigo-700">
+                        <div className="font-mono font-bold text-xs text-indigo-700 group-hover:text-indigo-900 transition-colors">
                           {student.rollNumber}
                         </div>
                         <div className="text-[10px] text-slate-400 font-mono">
@@ -430,11 +439,13 @@ export const StudentsView = ({ showToast }) => {
                       </td>
                       <td className="py-3.5 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-100 border border-indigo-200/60 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-50 to-violet-100 border border-indigo-200/60 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
                             {initial}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-800">{student.name}</div>
+                            <div className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                              {student.name}
+                            </div>
                             <div className="text-xs text-slate-500 font-medium">
                               {student.email || 'No email assigned'}
                             </div>
@@ -465,17 +476,36 @@ export const StudentsView = ({ showToast }) => {
                           <span>Student Portal Active</span>
                         </span>
                       </td>
-                      <td className="py-3.5 px-6 text-right">
+                      <td className="py-3.5 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center gap-1">
                           <button
-                            onClick={() => openEditModal(student)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setViewingStudent(student);
+                            }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                            title="View Full Student Profile"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditModal(student);
+                            }}
                             className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
                             title="Edit Student & Credentials"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => setDeleteTarget(student)}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(student);
+                            }}
                             className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
                             title="Delete Student"
                           >
@@ -491,6 +521,212 @@ export const StudentsView = ({ showToast }) => {
           </div>
         )}
       </div>
+
+      {/* Full Student Profile Details Modal */}
+      {viewingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col max-h-[92vh] my-auto">
+            {/* Profile Header Banner */}
+            <div className="relative bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 text-white p-6 sm:p-7 overflow-hidden shrink-0">
+              <button
+                onClick={() => setViewingStudent(null)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/10 transition-colors cursor-pointer"
+                aria-label="Close profile modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5 relative z-10">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-indigo-500 via-indigo-600 to-violet-600 text-white font-extrabold text-2xl sm:text-3xl flex items-center justify-center shadow-xl shadow-indigo-950/50 border border-white/20 shrink-0">
+                  {viewingStudent.name ? viewingStudent.name.charAt(0).toUpperCase() : '?'}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="font-mono text-xs font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-md border border-indigo-500/30">
+                      {viewingStudent.rollNumber}
+                    </span>
+                    <span className="font-mono text-[11px] text-slate-300 bg-white/10 px-2 py-0.5 rounded-md">
+                      {viewingStudent.registrationId || `STU-${viewingStudent.rollNumber}`}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Active Student</span>
+                    </span>
+                  </div>
+
+                  <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight truncate">
+                    {viewingStudent.name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-400 mt-0.5 truncate">
+                    {viewingStudent.department} • <strong className="text-slate-200">{viewingStudent.semester}</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Decorative glows */}
+              <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-indigo-500/15 rounded-full blur-2xl pointer-events-none" />
+              <div className="absolute left-1/3 -top-8 w-48 h-48 bg-violet-500/15 rounded-full blur-2xl pointer-events-none" />
+            </div>
+
+            {/* Profile Scrollable Details Body */}
+            <div className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
+              {/* Highlight Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Semester
+                  </span>
+                  <span className="text-xs font-bold text-slate-800">
+                    {viewingStudent.semester}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Date of Birth
+                  </span>
+                  <span className="text-xs font-bold text-slate-800">
+                    {viewingStudent.dob ? formatDOB(viewingStudent.dob) : '—'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Gender
+                  </span>
+                  <span className="text-xs font-bold text-slate-800">
+                    {viewingStudent.gender || 'Not specified'}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    Blood Group
+                  </span>
+                  <span className="text-xs font-bold text-rose-600">
+                    {viewingStudent.bloodGroup || '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Academic Placement Details */}
+              <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-700">
+                  <GraduationCap className="w-4 h-4" />
+                  <span>Academic & Institutional Details</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-500 font-medium">Department / Discipline:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">{viewingStudent.department}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">University Roll Number:</span>
+                    <p className="font-mono font-bold text-slate-800 mt-0.5">{viewingStudent.rollNumber}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">Unique Registration ID:</span>
+                    <p className="font-mono font-bold text-slate-800 mt-0.5">
+                      {viewingStudent.registrationId || `STU-${viewingStudent.rollNumber}`}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">Enrolled Academic Semester:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">{viewingStudent.semester}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal & Contact Information */}
+              <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <Phone className="w-4 h-4 text-indigo-600" />
+                  <span>Contact & Communication Info</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <span className="text-slate-500 font-medium">Student Mobile Number:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">
+                      {viewingStudent.phone || <span className="text-slate-400 font-normal">Not provided</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">Official Portal Email:</span>
+                    <p className="font-bold text-indigo-700 mt-0.5">
+                      {viewingStudent.email || <span className="text-slate-400 font-normal">Not assigned</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">Guardian / Parent Name:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">
+                      {viewingStudent.guardianName || <span className="text-slate-400 font-normal">Not provided</span>}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-medium">Guardian Emergency Phone:</span>
+                    <p className="font-bold text-slate-800 mt-0.5">
+                      {viewingStudent.guardianPhone || <span className="text-slate-400 font-normal">Not provided</span>}
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <span className="text-slate-500 font-medium">Residential / Permanent Address:</span>
+                    <p className="font-medium text-slate-800 mt-0.5">
+                      {viewingStudent.address || <span className="text-slate-400 font-normal">Not specified</span>}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Student Portal Account Security */}
+              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-950 mb-1">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                    <span>Student Portal Account</span>
+                  </div>
+                  <p className="text-xs text-indigo-900/80">
+                    Login Email: <strong className="font-mono text-indigo-950">{viewingStudent.email}</strong>
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Default password pattern: First Name + Birth Year (e.g.{' '}
+                    <strong>{computeDefaultPassword(viewingStudent.firstName || viewingStudent.name, viewingStudent.dob) || 'FirstnameYear'}</strong>)
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const st = viewingStudent;
+                    setViewingStudent(null);
+                    openEditModal(st);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit Profile</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Profile Modal Footer */}
+            <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
+              <span className="text-xs text-slate-400 font-medium">
+                Click any other student in the table to view their profile
+              </span>
+              <button
+                type="button"
+                onClick={() => setViewingStudent(null)}
+                className="px-5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add / Edit Student Modal */}
       {isModalOpen && (

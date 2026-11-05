@@ -303,6 +303,55 @@ router.get('/history', async (req, res) => {
 });
 
 /**
+ * @route   PUT /api/attendance/:id
+ * @desc    Update attendance records for an existing session by ID
+ * @access  Private (Admin only)
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const { records } = req.body;
+    if (!Array.isArray(records)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Records array is required',
+      });
+    }
+
+    const session = await Attendance.findById(req.params.id);
+    if (!session) {
+      return res.status(404).json({
+        success: false,
+        message: 'Attendance session not found',
+      });
+    }
+
+    const cleanedRecords = records.map((rec) => ({
+      studentId: rec.studentId,
+      rollNumber: rec.rollNumber,
+      name: rec.name,
+      status: rec.status === 'Present' ? 'Present' : 'Absent',
+    }));
+
+    session.records = cleanedRecords;
+    session.updatedAt = new Date();
+    await session.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Attendance session records updated successfully',
+      data: session,
+    });
+  } catch (error) {
+    console.error('[Attendance PUT Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to update attendance session',
+      error: error.message,
+    });
+  }
+});
+
+/**
  * @route   DELETE /api/attendance/:id
  * @desc    Delete an attendance session
  * @access  Private
