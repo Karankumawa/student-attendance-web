@@ -1,4 +1,4 @@
-# 🎓 Shrinathji Institute of Technology & Engineering (SNITN) | Academic Management Portal
+# 🎓SNITN | Academic Management Portal
 
 A modern, full-stack institutional web portal designed for colleges and universities. Built with the **MERN Stack** (MongoDB, Express.js, React 19, Node.js) and styled with **Tailwind CSS**.
 
