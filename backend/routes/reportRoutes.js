@@ -321,21 +321,40 @@ router.get('/export-excel', async (req, res) => {
     // Create a new Excel Workbook
     const workbook = XLSX.utils.book_new();
 
+    const formattedDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
     // ----------------------------------------------------
-    // Sheet 1: ATTENDANCE SUMMARY SHEET
+    // Sheet 1: ATTENDANCE SUMMARY & AUDIT COMPLIANCE
     // ----------------------------------------------------
     const summaryRows = [
-      ['SNIT - ATTENDANCE REPORT'],
-      [`Report Generated On: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`],
+      ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY (SNIT)'],
+      ['OFFICIAL ATTENDANCE COMPLIANCE & PERFORMANCE AUDIT REPORT'],
+      ['Approved by AICTE, New Delhi | Affiliated to RTU | NAAC Accredited A+ Grade'],
       [
-        `Filters: Year [${year || 'All'}] | Semester [${semester || 'All'}] | Department [${
+        `Audit Parameters: Academic Year [${year || 'All'}] | Semester [${semester || 'All'}] | Department [${
           department || 'All'
         }] | Subject [${subject || 'All'}]`,
       ],
       [
-        `Summary: Total Students: ${stats.totalStudents} | Classes Conducted: ${stats.totalSessions} | Overall Average: ${stats.overallAvg}% | Defaulters (<${threshold}%): ${stats.defaultersCount}`,
+        `Report Generated On: ${formattedDate} | Statutory Standard: Minimum ${threshold}% Attendance Required`,
       ],
-      [], // Blank row
+      [], // Blank row 5
+      ['EXECUTIVE METRICS DASHBOARD', '', '', '', '', '', '', '', '', '', '', ''],
+      [
+        'Total Students Enrolled',
+        stats.totalStudents,
+        'Classes Conducted',
+        stats.totalSessions,
+        'Overall Institutional Average',
+        `${stats.overallAvg}%`,
+        'Eligible Candidates',
+        stats.eligibleCount,
+        'Defaulters (< ' + threshold + '%)',
+        stats.defaultersCount,
+        'Audit Status',
+        stats.defaultersCount > 0 ? 'Action Required' : 'Fully Compliant',
+      ],
+      [], // Blank row 8
       [
         'S.No',
         'Roll Number',
@@ -346,20 +365,20 @@ router.get('/export-excel', async (req, res) => {
         'Total Classes Held',
         'Classes Attended',
         'Classes Absent',
-        'Attendance %',
-        'Eligibility Status',
-        'Notice Remarks',
+        'Attendance Rate (%)',
+        'Compliance Status',
+        'Academic Action / Remarks',
       ],
     ];
 
     students.forEach((s, idx) => {
-      let remarks = 'Eligible for Examinations';
+      let remarks = 'Eligible for Semester Examinations';
       if (s.totalClasses === 0) {
         remarks = 'No classes conducted for this semester';
       } else if (s.percentage < 60) {
-        remarks = `Critical Shortfall: Needs ${s.classesNeededFor75} extra lectures`;
+        remarks = `Critical Shortfall: Needs ${s.classesNeededFor75} extra lectures (Debarment Warning)`;
       } else if (s.percentage < threshold) {
-        remarks = `Warning: Needs ${s.classesNeededFor75} lectures for ${threshold}%`;
+        remarks = `Warning Zone: Needs ${s.classesNeededFor75} lectures for ${threshold}% compliance`;
       }
 
       summaryRows.push([
@@ -380,19 +399,35 @@ router.get('/export-excel', async (req, res) => {
 
     const summarySheet = XLSX.utils.aoa_to_sheet(summaryRows);
     summarySheet['!cols'] = [
-      { wch: 6 },  // S.No
-      { wch: 14 }, // Roll Number
-      { wch: 18 }, // Registration ID
-      { wch: 24 }, // Student Name
-      { wch: 32 }, // Department
-      { wch: 14 }, // Semester
-      { wch: 18 }, // Total Classes
+      { wch: 8 },  // S.No
+      { wch: 16 }, // Roll Number
+      { wch: 20 }, // Registration ID
+      { wch: 28 }, // Student Name
+      { wch: 34 }, // Department
+      { wch: 16 }, // Semester
+      { wch: 20 }, // Total Classes Held
       { wch: 18 }, // Attended
       { wch: 16 }, // Absent
-      { wch: 14 }, // %
-      { wch: 26 }, // Eligibility Status
-      { wch: 40 }, // Remarks
+      { wch: 20 }, // Attendance %
+      { wch: 26 }, // Compliance Status
+      { wch: 48 }, // Remarks
     ];
+
+    // Merged headers for professional institutional presentation
+    summarySheet['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }, // Main Title
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } }, // Subtitle
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 11 } }, // Accreditation
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 11 } }, // Filters
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 11 } }, // Generated Info
+      { s: { r: 6, c: 0 }, e: { r: 6, c: 11 } }, // Executive Metrics Dashboard Header
+    ];
+
+    // Enable native Excel AutoFilter dropdown on table header row (row index 9 -> Row 10)
+    summarySheet['!autofilter'] = {
+      ref: `A10:L${summaryRows.length}`,
+    };
+
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Attendance Summary');
 
     // ----------------------------------------------------
@@ -404,15 +439,16 @@ router.get('/export-excel', async (req, res) => {
         'Registration ID',
         'Student Name',
         'Semester',
-        ...sessions.map((sess) => `${sess.date} (${sess.subject} - ${sess.semester})`),
+        ...sessions.map((sess) => `${sess.date} (${sess.subject})`),
         'Total Attended',
         'Total Held',
-        'Percentage',
+        'Percentage (%)',
       ];
 
       const matrixRows = [
-        ['DETAILED DATE-WISE SESSION ATTENDANCE MATRIX'],
-        [`Year: ${year || 'All'} | Total Sessions: ${sessions.length}`],
+        ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY - ATTENDANCE MATRIX'],
+        [`Academic Filter: Year [${year || 'All'}] | Total Sessions Conducted: ${sessions.length}`],
+        [`Generated On: ${formattedDate}`],
         [],
         matrixHeaders,
       ];
@@ -448,16 +484,28 @@ router.get('/export-excel', async (req, res) => {
       });
 
       const matrixSheet = XLSX.utils.aoa_to_sheet(matrixRows);
+      const totalMatrixCols = matrixHeaders.length;
       matrixSheet['!cols'] = [
-        { wch: 14 },
-        { wch: 18 },
-        { wch: 24 },
-        { wch: 14 },
+        { wch: 16 },
+        { wch: 20 },
+        { wch: 28 },
+        { wch: 16 },
         ...sessions.map(() => ({ wch: 22 })),
+        { wch: 16 },
         { wch: 14 },
-        { wch: 12 },
-        { wch: 14 },
+        { wch: 16 },
       ];
+
+      matrixSheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalMatrixCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: totalMatrixCols - 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: totalMatrixCols - 1 } },
+      ];
+
+      matrixSheet['!autofilter'] = {
+        ref: `A5:${XLSX.utils.encode_col(totalMatrixCols - 1)}${matrixRows.length}`,
+      };
+
       XLSX.utils.book_append_sheet(workbook, matrixSheet, 'Date-wise Matrix');
     }
 
@@ -466,9 +514,10 @@ router.get('/export-excel', async (req, res) => {
     // ----------------------------------------------------
     const defaulters = allStudents.filter((s) => s.isDefaulter);
     const defaulterRows = [
-      ['SNIT - STUDENTS BELOW 75% ATTENDANCE NOTICE'],
-      [`Academic Requirement: Mandatory Minimum ${threshold}% Attendance`],
-      [`Generated On: ${new Date().toLocaleString('en-IN')}`],
+      ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY (SNIT)'],
+      ['OFFICIAL NOTICE: STUDENTS DEBARRED / BELOW MANDATORY 75% ATTENDANCE'],
+      [`Statutory Requirement: Minimum ${threshold}% Attendance as per University Academic Regulations`],
+      [`Generated On: ${formattedDate} | Total Shortfall Students: ${defaulters.length}`],
       [],
       [
         'S.No',
@@ -479,13 +528,24 @@ router.get('/export-excel', async (req, res) => {
         'Semester',
         'Attended / Total Held',
         'Current %',
-        'Shortfall Classes Needed',
-        'Action Required',
+        'Shortfall Lectures Needed',
+        'Regulatory Action Required',
       ],
     ];
 
     if (defaulters.length === 0) {
-      defaulterRows.push([1, 'N/A', 'N/A', 'No students found below 75% attendance threshold!', '', '', '', '', '', '']);
+      defaulterRows.push([
+        1,
+        'N/A',
+        'N/A',
+        'Excellent! No students found below the 75% mandatory attendance threshold.',
+        '-',
+        '-',
+        '-',
+        '-',
+        '0',
+        'All students eligible for examinations',
+      ]);
     } else {
       defaulters.forEach((d, i) => {
         defaulterRows.push([
@@ -499,25 +559,37 @@ router.get('/export-excel', async (req, res) => {
           `${d.percentage}%`,
           d.classesNeededFor75,
           d.percentage < 60
-            ? 'Parent Call & Debarment Notice'
-            : 'Warning Letter & Extra Assignments',
+            ? 'DEBARRED: Formal Notice to Parents & Dean Condonation Required'
+            : 'ACADEMIC WARNING: Submission of Compensatory Assignments Required',
         ]);
       });
     }
 
     const defaulterSheet = XLSX.utils.aoa_to_sheet(defaulterRows);
     defaulterSheet['!cols'] = [
-      { wch: 6 },
-      { wch: 14 },
-      { wch: 18 },
+      { wch: 8 },
+      { wch: 16 },
+      { wch: 20 },
+      { wch: 28 },
+      { wch: 34 },
+      { wch: 16 },
       { wch: 24 },
-      { wch: 30 },
       { wch: 14 },
-      { wch: 22 },
-      { wch: 12 },
-      { wch: 24 },
-      { wch: 35 },
+      { wch: 26 },
+      { wch: 48 },
     ];
+
+    defaulterSheet['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } },
+    ];
+
+    defaulterSheet['!autofilter'] = {
+      ref: `A6:J${defaulterRows.length}`,
+    };
+
     XLSX.utils.book_append_sheet(workbook, defaulterSheet, 'Defaulters Notice (<75%)');
 
     // ----------------------------------------------------
@@ -525,17 +597,19 @@ router.get('/export-excel', async (req, res) => {
     // ----------------------------------------------------
     if (sessions.length > 0) {
       const sessionLogRows = [
-        ['LECTURE SESSIONS CONDUCTED IN SELECTED TIMEFRAME'],
+        ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY - SESSIONS AUDIT LOG'],
+        [`Sessions Log for Academic Year [${year || 'All'}] | Total Sessions: ${sessions.length}`],
+        [`Generated On: ${formattedDate}`],
         [],
         [
           'S.No',
           'Date',
-          'Subject',
+          'Subject Name',
           'Semester',
           'Total Enrolled',
           'Students Present',
           'Students Absent',
-          'Session Attendance %',
+          'Session Attendance Rate (%)',
         ],
       ];
 
@@ -561,15 +635,26 @@ router.get('/export-excel', async (req, res) => {
 
       const sessionSheet = XLSX.utils.aoa_to_sheet(sessionLogRows);
       sessionSheet['!cols'] = [
-        { wch: 6 },
-        { wch: 14 },
-        { wch: 30 },
-        { wch: 14 },
+        { wch: 8 },
+        { wch: 16 },
+        { wch: 34 },
         { wch: 16 },
         { wch: 18 },
+        { wch: 18 },
         { wch: 16 },
-        { wch: 22 },
+        { wch: 26 },
       ];
+
+      sessionSheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } },
+      ];
+
+      sessionSheet['!autofilter'] = {
+        ref: `A5:H${sessionLogRows.length}`,
+      };
+
       XLSX.utils.book_append_sheet(workbook, sessionSheet, 'Sessions Log');
     }
 

@@ -425,11 +425,12 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         {setActiveView && (
           <button
             onClick={() => setActiveView('reports')}
-            className="flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/70 transition-all cursor-pointer shadow-xs ml-auto"
-            title="Download Past Years Attendance in Excel format"
+            className="flex items-center gap-2 py-2 px-4 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-blue-50 via-indigo-50 to-emerald-50 text-indigo-900 hover:from-blue-100 hover:to-emerald-100 border border-indigo-200/80 transition-all cursor-pointer shadow-xs ml-auto"
+            title="Download Past Years Attendance in Excel, PDF & Modern Themes"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Excel Reports Download</span>
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+            <span>Download Report</span>
           </button>
         )}
       </div>
