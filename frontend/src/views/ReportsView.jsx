@@ -290,7 +290,7 @@ export const ReportsView = ({ showToast }) => {
     (themeKey = selectedTheme) => {
       const theme = REPORT_THEMES[themeKey] || REPORT_THEMES.navy;
       const genTimestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-      const reportId = `SNIT/ATT/${selectedYear || 'AUDIT'}/${Math.floor(1000 + Math.random() * 9000)}`;
+      const reportId = `SNITN/ATT/${selectedYear || 'AUDIT'}/${Math.floor(1000 + Math.random() * 9000)}`;
 
       // Palette CSS mapping
       const themeStyles = {
@@ -408,7 +408,7 @@ export const ReportsView = ({ showToast }) => {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SNIT Official Attendance Audit Report - ${selectedYear} - ${selectedSemester}</title>
+  <title>Shrinathji Institute of Technology & Engineering (SNITN) - Official Attendance Audit Report - ${selectedYear} - ${selectedSemester}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
@@ -764,16 +764,16 @@ export const ReportsView = ({ showToast }) => {
   </div>
 
   <div class="report-sheet">
-    <div class="watermark">SNIT AUDIT</div>
+    <div class="watermark">SNITN NATHDWARA</div>
 
     <!-- Official College Banner -->
     <div class="header-band">
       <div class="header-grid">
         <div class="college-brand">
-          <div class="crest">SNIT</div>
+          <div class="crest">SNITN</div>
           <div class="college-title">
-            <h1>Shree Navchetan Institute of Technology</h1>
-            <p>Approved by AICTE, New Delhi • Affiliated to RTU • NAAC 'A+' Accredited</p>
+            <h1>Shrinathji Institute of Technology & Engineering</h1>
+            <p>Shrinathji Institute of Technology, Nathdwara (SNITN) • Approved by AICTE, New Delhi • Affiliated to RTU</p>
           </div>
         </div>
         <div class="report-badge">
@@ -874,15 +874,15 @@ export const ReportsView = ({ showToast }) => {
       </div>
       <div class="sig-col">
         <div class="seal-stamp">
-          <div>★ SNIT ★</div>
-          <div>OFFICIAL</div>
-          <div>AUDIT SEAL</div>
+          <div>★ SNITN ★</div>
+          <div>NATHDWARA</div>
+          <div>OFFICIAL AUDIT</div>
         </div>
       </div>
       <div class="sig-col">
         <div class="sig-line">Approved & Authorized</div>
         <div class="sig-title">Dean / Principal</div>
-        <div class="sig-dept">Shree Navchetan Institute of Tech.</div>
+        <div class="sig-dept">Shrinathji Institute of Technology & Engg., Nathdwara</div>
       </div>
     </div>
   </div>
@@ -1554,10 +1554,10 @@ export const ReportsView = ({ showToast }) => {
                       <SnitLogo size={56} className="w-14 h-14" />
                       <div>
                         <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase leading-snug">
-                          Shree Navchetan Institute of Technology
+                          Shrinathji Institute of Technology & Engineering
                         </h2>
                         <p className="text-xs text-slate-300 font-medium">
-                          Approved by AICTE, New Delhi • Affiliated to RTU • NAAC 'A+' Accredited
+                          Shrinathji Institute of Technology, Nathdwara (SNITN) • Approved by AICTE • Affiliated to RTU
                         </p>
                       </div>
                     </div>
@@ -1567,7 +1567,7 @@ export const ReportsView = ({ showToast }) => {
                         Official Academic Audit
                       </span>
                       <p className="text-[11px] font-mono text-slate-300 mt-1">
-                        SNIT/ATT/{selectedYear}/AUDIT-{Math.floor(1000 + Math.random() * 9000)}
+                        SNITN/ATT/{selectedYear}/AUDIT-{Math.floor(1000 + Math.random() * 9000)}
                       </p>
                     </div>
                   </div>
@@ -1716,14 +1716,14 @@ export const ReportsView = ({ showToast }) => {
 
                   <div className="flex flex-col items-center justify-center p-3 rounded-full border-2 border-dashed border-indigo-400 text-indigo-700 text-[10px] font-extrabold uppercase w-24 h-24 rotate-[-12deg] opacity-75">
                     <Stamp className="w-4 h-4 mb-1" />
-                    <span>SNIT AUDIT</span>
-                    <span>VERIFIED</span>
+                    <span>SNITN AUDIT</span>
+                    <span>NATHDWARA</span>
                   </div>
 
                   <div className="text-center sm:text-right">
                     <div className="h-10 border-b border-dashed border-slate-400 w-44 ml-auto" />
                     <p className="text-xs font-bold text-slate-900 mt-2">Principal / Dean</p>
-                    <p className="text-[11px] text-slate-500">Shree Navchetan Institute of Tech.</p>
+                    <p className="text-[11px] text-slate-500">Shrinathji Institute of Technology & Engg., Nathdwara</p>
                   </div>
                 </div>
               </div>

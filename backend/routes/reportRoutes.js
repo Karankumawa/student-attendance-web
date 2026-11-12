@@ -327,9 +327,9 @@ router.get('/export-excel', async (req, res) => {
     // Sheet 1: ATTENDANCE SUMMARY & AUDIT COMPLIANCE
     // ----------------------------------------------------
     const summaryRows = [
-      ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY (SNIT)'],
-      ['OFFICIAL ATTENDANCE COMPLIANCE & PERFORMANCE AUDIT REPORT'],
-      ['Approved by AICTE, New Delhi | Affiliated to RTU | NAAC Accredited A+ Grade'],
+      ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN)'],
+      ['SHRINATHJI INSTITUTE OF TECHNOLOGY, NATHDWARA - ATTENDANCE & AUDIT REPORT'],
+      ['Approved by AICTE, New Delhi | Affiliated to RTU | Nathdwara, Rajasthan'],
       [
         `Audit Parameters: Academic Year [${year || 'All'}] | Semester [${semester || 'All'}] | Department [${
           department || 'All'
@@ -446,7 +446,7 @@ router.get('/export-excel', async (req, res) => {
       ];
 
       const matrixRows = [
-        ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY - ATTENDANCE MATRIX'],
+        ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN - NATHDWARA) - ATTENDANCE MATRIX'],
         [`Academic Filter: Year [${year || 'All'}] | Total Sessions Conducted: ${sessions.length}`],
         [`Generated On: ${formattedDate}`],
         [],
@@ -514,7 +514,7 @@ router.get('/export-excel', async (req, res) => {
     // ----------------------------------------------------
     const defaulters = allStudents.filter((s) => s.isDefaulter);
     const defaulterRows = [
-      ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY (SNIT)'],
+      ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN - NATHDWARA)'],
       ['OFFICIAL NOTICE: STUDENTS DEBARRED / BELOW MANDATORY 75% ATTENDANCE'],
       [`Statutory Requirement: Minimum ${threshold}% Attendance as per University Academic Regulations`],
       [`Generated On: ${formattedDate} | Total Shortfall Students: ${defaulters.length}`],
@@ -597,7 +597,7 @@ router.get('/export-excel', async (req, res) => {
     // ----------------------------------------------------
     if (sessions.length > 0) {
       const sessionLogRows = [
-        ['SHREE NAVCHETAN INSTITUTE OF TECHNOLOGY - SESSIONS AUDIT LOG'],
+        ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN) - SESSIONS AUDIT LOG'],
         [`Sessions Log for Academic Year [${year || 'All'}] | Total Sessions: ${sessions.length}`],
         [`Generated On: ${formattedDate}`],
         [],

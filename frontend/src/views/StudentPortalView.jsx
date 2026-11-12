@@ -294,9 +294,11 @@ export const StudentPortalView = ({ showToast }) => {
             <SnitLogo className="w-9 h-9 sm:w-10 sm:h-10 shadow-md shadow-indigo-100 shrink-0" size={38} />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-slate-900 text-base sm:text-lg leading-tight tracking-tight">SNIT</h1>
-                <span className="px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
-                  Student Portal
+                <h1 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight tracking-tight">
+                  Shrinathji Institute of Technology & Engineering
+                </h1>
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
+                  SNITN Portal
                 </span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate max-w-[210px] sm:max-w-none">

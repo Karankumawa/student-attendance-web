@@ -66,7 +66,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
-    message: '🎓 SNIT Academic Portal API is live and connected!',
+    message: '🎓 Shrinathji Institute of Technology & Engineering (SNITN) API is live and connected!',
     status: 'healthy',
     timestamp: new Date().toISOString(),
     endpoints: {
@@ -86,7 +86,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'SNIT College Management API',
+    service: 'Shrinathji Institute of Technology Nathdwara (SNITN) API',
   });
 });
 

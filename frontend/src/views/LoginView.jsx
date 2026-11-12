@@ -66,11 +66,11 @@ export const LoginView = () => {
               <SnitLogo size={52} className="w-13 h-13" />
             </div>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            SNIT College Portal
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug">
+            Shrinathji Institute of Technology & Engineering
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1.5 font-medium max-w-sm">
-            Unified Academic & Administration Gateway
+          <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium max-w-sm">
+            Shrinathji Institute of Technology, Nathdwara (SNITN) • Academic Portal
           </p>
         </div>
 

@@ -1,4 +1,4 @@
-# 🎓 SNIT | Academic Management Portal
+# 🎓 Shrinathji Institute of Technology & Engineering (SNITN) | Academic Management Portal
 
 A modern, full-stack institutional web portal designed for colleges and universities. Built with the **MERN Stack** (MongoDB, Express.js, React 19, Node.js) and styled with **Tailwind CSS**.
 
@@ -8,7 +8,7 @@ The portal provides a unified academic system featuring dual-role access control
 
 ## 📌 System Overview
 
-SNIT Portal is structured around role-based workflows that separate administrative capabilities from student self-service:
+Shrinathji Institute of Technology & Engineering (SNITN - Nathdwara) Portal is structured around role-based workflows that separate administrative capabilities from student self-service:
 
 - **Faculty & Admin Suite:**
   - **Live Dashboard:** Quick overview of daily schedules, active lectures, enrolled students, and cohort attendance rates.
