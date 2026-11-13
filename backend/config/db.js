@@ -46,8 +46,12 @@ const connectDB = async () => {
         connectTimeoutMS: 6000,
       });
     } catch (dnsOrConnErr) {
-      // If Windows local DNS fails with querySrv error, try fallback to public DNS once
-      if (dnsOrConnErr.message && (dnsOrConnErr.message.includes('querySrv') || dnsOrConnErr.message.includes('ECONNREFUSED'))) {
+      // If Windows local DNS fails with querySrv error, try fallback to public DNS once (skip if permission blocked)
+      if (
+        dnsOrConnErr.message &&
+        !dnsOrConnErr.message.includes('EACCES') &&
+        (dnsOrConnErr.message.includes('querySrv') || dnsOrConnErr.message.includes('ECONNREFUSED'))
+      ) {
         try {
           dns.setServers(['8.8.8.8', '1.1.1.1']);
           await mongoose.connect(primaryUri, {

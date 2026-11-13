@@ -81,13 +81,21 @@ router.post('/', async (req, res) => {
     const trimmedSubject = subject.trim();
     const targetSemester = semester || 'Semester 1';
 
+    // Fetch student info to guarantee valid rollNumber and name
+    const studentIds = records.map((r) => r.studentId).filter(Boolean);
+    const studentDocs = await Student.find({ _id: { $in: studentIds } });
+    const studentMap = new Map(studentDocs.map((s) => [s._id.toString(), s]));
+
     // Format and clean records - default to Absent unless explicitly marked Present
-    const cleanedRecords = records.map((rec) => ({
-      studentId: rec.studentId,
-      rollNumber: rec.rollNumber,
-      name: rec.name,
-      status: rec.status === 'Present' ? 'Present' : 'Absent',
-    }));
+    const cleanedRecords = records.map((rec) => {
+      const studentDoc = rec.studentId ? studentMap.get(rec.studentId.toString()) : null;
+      return {
+        studentId: rec.studentId,
+        rollNumber: rec.rollNumber || studentDoc?.rollNumber || 'UNKNOWN',
+        name: rec.name || studentDoc?.name || 'Student',
+        status: rec.status === 'Present' ? 'Present' : 'Absent',
+      };
+    });
 
     // Upsert attendance record for this date + subject + semester
     const updatedAttendance = await Attendance.findOneAndUpdate(
@@ -325,12 +333,19 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    const cleanedRecords = records.map((rec) => ({
-      studentId: rec.studentId,
-      rollNumber: rec.rollNumber,
-      name: rec.name,
-      status: rec.status === 'Present' ? 'Present' : 'Absent',
-    }));
+    const studentIds = records.map((r) => r.studentId).filter(Boolean);
+    const studentDocs = await Student.find({ _id: { $in: studentIds } });
+    const studentMap = new Map(studentDocs.map((s) => [s._id.toString(), s]));
+
+    const cleanedRecords = records.map((rec) => {
+      const studentDoc = rec.studentId ? studentMap.get(rec.studentId.toString()) : null;
+      return {
+        studentId: rec.studentId,
+        rollNumber: rec.rollNumber || studentDoc?.rollNumber || 'UNKNOWN',
+        name: rec.name || studentDoc?.name || 'Student',
+        status: rec.status === 'Present' ? 'Present' : 'Absent',
+      };
+    });
 
     session.records = cleanedRecords;
     session.updatedAt = new Date();

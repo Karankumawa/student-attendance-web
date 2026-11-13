@@ -9,6 +9,9 @@ const { sortSlotsByTime } = require('../utils/timeHelper');
 
 const router = express.Router();
 
+// Safe RegExp escape helper
+const escapeRegex = (str) => (str ? str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '');
+
 // Strict protection: Only authenticated students can access these routes
 router.use(protect);
 router.use(requireStudent);
@@ -50,22 +53,35 @@ router.get('/dashboard', async (req, res) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const currentDay = days[today.getDay()];
 
-    // 1. Fetch all attendance sessions for student's semester
-    const sessions = await Attendance.find({ semester: student.semester });
+    // 1. Fetch all attendance sessions applicable to this student (matching semester or explicit record)
+    const semClean = (student.semester || '').trim();
+    const semRegex = new RegExp(`^${escapeRegex(semClean)}$`, 'i');
+    const sessions = await Attendance.find({
+      $or: [
+        { semester: semRegex },
+        { 'records.studentId': student._id },
+        { 'records.rollNumber': new RegExp(`^${escapeRegex(student.rollNumber)}$`, 'i') },
+      ],
+    });
 
     let totalClasses = 0;
     let attendedClasses = 0;
 
     sessions.forEach((session) => {
+      const isSameSemester =
+        session.semester &&
+        student.semester &&
+        session.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+
       const myRecord = session.records.find(
         (rec) =>
           (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
           (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
       );
 
-      if (myRecord) {
+      if (isSameSemester || myRecord) {
         totalClasses += 1;
-        if (myRecord.status === 'Present') {
+        if (myRecord && myRecord.status === 'Present') {
           attendedClasses += 1;
         }
       }
@@ -144,7 +160,15 @@ router.get('/attendance', async (req, res) => {
       });
     }
 
-    const sessions = await Attendance.find({ semester: student.semester }).sort({
+    const semClean = (student.semester || '').trim();
+    const semRegex = new RegExp(`^${escapeRegex(semClean)}$`, 'i');
+    const sessions = await Attendance.find({
+      $or: [
+        { semester: semRegex },
+        { 'records.studentId': student._id },
+        { 'records.rollNumber': new RegExp(`^${escapeRegex(student.rollNumber)}$`, 'i') },
+      ],
+    }).sort({
       date: -1,
       createdAt: -1,
     });
@@ -155,15 +179,21 @@ router.get('/attendance', async (req, res) => {
     const personalHistory = [];
 
     sessions.forEach((session) => {
+      const isSameSemester =
+        session.semester &&
+        student.semester &&
+        session.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+
       const myRecord = session.records.find(
         (rec) =>
           (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
           (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
       );
 
-      if (myRecord) {
+      if (isSameSemester || myRecord) {
         totalClasses += 1;
-        const isPresent = myRecord.status === 'Present';
+        const status = myRecord ? myRecord.status : 'Absent';
+        const isPresent = status === 'Present';
         if (isPresent) attendedClasses += 1;
 
         // Subject breakdown
@@ -181,7 +211,7 @@ router.get('/attendance', async (req, res) => {
           date: session.date,
           subject: session.subject,
           semester: session.semester,
-          status: myRecord.status,
+          status,
         });
       }
     });
@@ -328,10 +358,11 @@ router.get('/notes', async (req, res) => {
 
 /**
  * @route   PUT /api/student-portal/change-password
+ * @route   POST /api/student-portal/change-password
  * @desc    Allow student to change their password securely
  * @access  Private (Student only)
  */
-router.put('/change-password', async (req, res) => {
+const handleStudentChangePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -380,7 +411,10 @@ router.put('/change-password', async (req, res) => {
       error: error.message,
     });
   }
-});
+};
+
+router.put('/change-password', handleStudentChangePassword);
+router.post('/change-password', handleStudentChangePassword);
 
 /**
  * @route   GET /api/student-portal/profile

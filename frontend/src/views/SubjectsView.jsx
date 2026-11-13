@@ -39,6 +39,7 @@ export const SubjectsView = ({ showToast }) => {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
 
@@ -61,12 +62,20 @@ export const SubjectsView = ({ showToast }) => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
       let query = `?semester=${selectedSemester}&department=${selectedDepartment}`;
-      if (search.trim()) {
-        query += `&search=${encodeURIComponent(search.trim())}`;
+      if (debouncedSearch) {
+        query += `&search=${encodeURIComponent(debouncedSearch)}`;
       }
       const res = await axiosClient.get(`/subjects${query}`);
       if (res.data.success) {
@@ -78,19 +87,11 @@ export const SubjectsView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedSemester, selectedDepartment, search, showToast]);
+  }, [selectedSemester, selectedDepartment, debouncedSearch, showToast]);
 
   useEffect(() => {
     fetchSubjects();
-  }, [selectedSemester, selectedDepartment, fetchSubjects]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchSubjects();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, fetchSubjects]);
+  }, [fetchSubjects]);
 
   const openAddModal = () => {
     setEditingSubject(null);

@@ -6,6 +6,9 @@ const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// Safe RegExp escape helper to prevent regex injection crashes
+const escapeRegex = (str) => (str ? str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '');
+
 // Helper to generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'supersecretkey', {
@@ -49,11 +52,12 @@ router.post('/login', async (req, res) => {
 
     // 2. Fallback: Check if student exists in Student collection (by Email, Roll Number, or Registration ID)
     if (!user) {
+      const safeSearch = escapeRegex(normalizedEmail);
       const studentProfile = await Student.findOne({
         $or: [
           { email: normalizedEmail },
-          { rollNumber: new RegExp(`^${normalizedEmail}$`, 'i') },
-          { registrationId: new RegExp(`^${normalizedEmail}$`, 'i') },
+          { rollNumber: new RegExp(`^${safeSearch}$`, 'i') },
+          { registrationId: new RegExp(`^${safeSearch}$`, 'i') },
         ],
       });
       if (studentProfile) {
@@ -229,7 +233,7 @@ router.get('/me', protect, async (req, res) => {
  * @desc    Change password for the logged-in user (strictly allowed for students)
  * @access  Private
  */
-router.put('/change-password', protect, async (req, res) => {
+const handleChangePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
@@ -279,7 +283,10 @@ router.put('/change-password', protect, async (req, res) => {
       error: error.message,
     });
   }
-});
+};
+
+router.put('/change-password', protect, handleChangePassword);
+router.post('/change-password', protect, handleChangePassword);
 
 /**
  * @route   POST /api/auth/register

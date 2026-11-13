@@ -67,12 +67,28 @@ router.post('/', requireAdmin, async (req, res) => {
       });
     }
 
+    const targetSemester = semester ? semester.trim() : 'Semester 1';
+    const cleanStartTime = startTime.trim();
+
+    // Check for duplicate/overlapping slot for same semester at same day & start time
+    const existingSlot = await Timetable.findOne({
+      dayOfWeek,
+      semester: targetSemester,
+      startTime: cleanStartTime,
+    });
+    if (existingSlot) {
+      return res.status(400).json({
+        success: false,
+        message: `Conflict: A class for "${existingSlot.subject}" is already scheduled at ${cleanStartTime} on ${dayOfWeek} for ${targetSemester}`,
+      });
+    }
+
     const newSlot = new Timetable({
       dayOfWeek,
-      startTime: startTime.trim(),
+      startTime: cleanStartTime,
       endTime: endTime.trim(),
       subject: subject.trim(),
-      semester: semester ? semester.trim() : 'Semester 1',
+      semester: targetSemester,
       roomNumber: roomNumber ? roomNumber.trim() : 'Room 101',
     });
 
@@ -109,6 +125,24 @@ router.put('/:id', requireAdmin, async (req, res) => {
     }
 
     const { dayOfWeek, startTime, endTime, subject, semester, roomNumber } = req.body;
+
+    const checkDay = dayOfWeek || slot.dayOfWeek;
+    const checkSem = semester ? semester.trim() : slot.semester;
+    const checkStart = startTime ? startTime.trim() : slot.startTime;
+
+    // Check for conflict excluding current slot
+    const existingConflict = await Timetable.findOne({
+      _id: { $ne: slot._id },
+      dayOfWeek: checkDay,
+      semester: checkSem,
+      startTime: checkStart,
+    });
+    if (existingConflict) {
+      return res.status(400).json({
+        success: false,
+        message: `Conflict: A class for "${existingConflict.subject}" is already scheduled at ${checkStart} on ${checkDay} for ${checkSem}`,
+      });
+    }
 
     if (dayOfWeek) {
       const validDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

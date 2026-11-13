@@ -87,9 +87,40 @@ export const LoginView = () => {
 
         {/* Unified Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-4.5">
+          {/* Quick Demo Credentials Helper */}
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block mb-2">
+              Quick Demo Access
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('admin@gmail.com');
+                  setPassword('karan@123');
+                  setErrorMessage('');
+                }}
+                className="py-1.5 px-2.5 rounded-xl bg-white border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-700 text-xs font-bold text-center transition-all shadow-2xs cursor-pointer active:scale-95"
+              >
+                Faculty / Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmail('CS2024-001');
+                  setPassword('student123');
+                  setErrorMessage('');
+                }}
+                className="py-1.5 px-2.5 rounded-xl bg-white border border-slate-200 hover:border-violet-400 text-slate-700 hover:text-violet-700 text-xs font-bold text-center transition-all shadow-2xs cursor-pointer active:scale-95"
+              >
+                Student Demo
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-              Email
+              Email, Roll Number, or Registration ID
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -99,7 +130,7 @@ export const LoginView = () => {
                 type="text"
                 value={email}
                 onChange={handleInputChange(setEmail)}
-                placeholder="Enter Email"
+                placeholder="e.g. admin@gmail.com or CS2024-001"
                 required
                 autoCapitalize="none"
                 spellCheck="false"

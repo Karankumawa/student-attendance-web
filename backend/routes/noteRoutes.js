@@ -63,7 +63,10 @@ router.post('/', requireAdmin, async (req, res) => {
     const cleanSubject = (subject || '').toString().trim();
     const cleanSemester = (semester || 'Semester 1').toString().trim();
     const cleanContent = (content || '').toString().trim();
-    const cleanResourceUrl = (resourceUrl || '').toString().trim();
+    let cleanResourceUrl = (resourceUrl || '').toString().trim();
+    if (cleanResourceUrl && !/^https?:\/\//i.test(cleanResourceUrl)) {
+      cleanResourceUrl = `https://${cleanResourceUrl}`;
+    }
 
     if (!cleanTitle || !cleanSubject || !cleanContent) {
       return res.status(400).json({
@@ -118,7 +121,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (subject !== undefined) note.subject = (subject || '').toString().trim();
     if (semester !== undefined) note.semester = (semester || '').toString().trim();
     if (content !== undefined) note.content = (content || '').toString().trim();
-    if (resourceUrl !== undefined) note.resourceUrl = (resourceUrl || '').toString().trim();
+    if (resourceUrl !== undefined) {
+      let cleanUrl = (resourceUrl || '').toString().trim();
+      if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) {
+        cleanUrl = `https://${cleanUrl}`;
+      }
+      note.resourceUrl = cleanUrl;
+    }
 
     const updatedNote = await note.save();
 

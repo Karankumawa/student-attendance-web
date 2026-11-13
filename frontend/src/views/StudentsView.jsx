@@ -42,6 +42,7 @@ export const StudentsView = ({ showToast }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
 
@@ -101,12 +102,20 @@ export const StudentsView = ({ showToast }) => {
   // Delete Modal State
   const [deleteTarget, setDeleteTarget] = useState(null);
 
+  // Debounced search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchStudents = useCallback(async () => {
     try {
       setLoading(true);
       let query = `?semester=${selectedSemester}&department=${selectedDepartment}`;
-      if (search.trim()) {
-        query += `&search=${encodeURIComponent(search.trim())}`;
+      if (debouncedSearch) {
+        query += `&search=${encodeURIComponent(debouncedSearch)}`;
       }
       const res = await axiosClient.get(`/students${query}`);
       if (res.data.success) {
@@ -118,23 +127,15 @@ export const StudentsView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedSemester, selectedDepartment, search, showToast]);
+  }, [selectedSemester, selectedDepartment, debouncedSearch, showToast]);
 
   useEffect(() => {
     fetchStudents();
-  }, [selectedSemester, selectedDepartment, fetchStudents]);
-
-  // Debounced search as user types
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchStudents();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, fetchStudents]);
+  }, [fetchStudents]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchStudents();
+    setDebouncedSearch(search.trim());
   };
 
   const openAddModal = () => {

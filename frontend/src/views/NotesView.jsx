@@ -34,6 +34,7 @@ export const NotesView = ({ showToast }) => {
   const [subjectsList, setSubjectsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('All');
   const [selectedSemester, setSelectedSemester] = useState('All');
 
@@ -68,12 +69,20 @@ export const NotesView = ({ showToast }) => {
     }
   }, []);
 
+  // Debounced search on input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchNotes = useCallback(async () => {
     try {
       setLoading(true);
       let query = `?subject=${selectedSubject}&semester=${selectedSemester}`;
-      if (search.trim()) {
-        query += `&search=${encodeURIComponent(search.trim())}`;
+      if (debouncedSearch) {
+        query += `&search=${encodeURIComponent(debouncedSearch)}`;
       }
       const res = await axiosClient.get(`/notes${query}`);
       if (res.data.success) {
@@ -85,7 +94,7 @@ export const NotesView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedSubject, selectedSemester, search, showToast]);
+  }, [selectedSubject, selectedSemester, debouncedSearch, showToast]);
 
   useEffect(() => {
     fetchDynamicSubjects();
@@ -93,19 +102,11 @@ export const NotesView = ({ showToast }) => {
 
   useEffect(() => {
     fetchNotes();
-  }, [selectedSubject, selectedSemester, fetchNotes]);
-
-  // Debounced search on input
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchNotes();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, fetchNotes]);
+  }, [fetchNotes]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchNotes();
+    setDebouncedSearch(search.trim());
   };
 
   const openAddModal = () => {

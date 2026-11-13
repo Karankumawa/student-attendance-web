@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Save,
   CheckCheck,
@@ -154,10 +154,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     }
   }, [initialSession]);
 
-  const effectiveSubject = useMemo(
-    () => customSubject.trim() || subject,
-    [customSubject, subject]
-  );
+  const effectiveSubject = customSubject.trim() || subject;
 
   // Load courses dynamically from database for chosen semester
   const fetchSemesterCourses = useCallback(async () => {
@@ -167,25 +164,28 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         const subjs = res.data.data.map((s) => s.name);
         setAvailableSubjects(subjs);
         if (subjs.length > 0) {
-          if (!subject || !subjs.includes(subject)) {
-            if (initialSession && initialSession.semester === semester && subjs.includes(initialSession.subject)) {
-              setSubject(initialSession.subject);
-            } else {
-              setSubject(subjs[0]);
+          setSubject((currentSubject) => {
+            if (!currentSubject || !subjs.includes(currentSubject)) {
+              if (initialSession && initialSession.semester === semester && subjs.includes(initialSession.subject)) {
+                return initialSession.subject;
+              }
+              return subjs[0];
             }
-          }
+            return currentSubject;
+          });
         }
       }
     } catch (err) {
       console.warn('Could not load subjects from database:', err);
     }
-  }, [semester, subject, initialSession]);
+  }, [semester, initialSession]);
 
   useEffect(() => {
     fetchSemesterCourses();
   }, [fetchSemesterCourses]);
 
   const loadSessionAttendance = useCallback(async () => {
+    const activeSubject = customSubject.trim() || subject;
     try {
       setLoadingRoster(true);
       // 1. Fetch all students for the chosen semester
@@ -193,7 +193,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
       const semesterStudents = studentRes.data.data || [];
       setStudents(semesterStudents);
 
-      if (!effectiveSubject.trim()) {
+      if (!activeSubject.trim()) {
         const initialMap = {};
         semesterStudents.forEach((st) => {
           initialMap[st._id] = 'Absent';
@@ -207,7 +207,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
       // 2. Fetch if attendance already exists for this date, subject, and semester
       const attRes = await axiosClient.get(
         `/attendance?date=${date}&subject=${encodeURIComponent(
-          effectiveSubject
+          activeSubject
         )}&semester=${semester}`
       );
 
@@ -242,7 +242,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     } finally {
       setLoadingRoster(false);
     }
-  }, [semester, effectiveSubject, date, showToast]);
+  }, [semester, customSubject, subject, date, showToast]);
 
   // Load roster whenever date, semester, or subject changes
   useEffect(() => {

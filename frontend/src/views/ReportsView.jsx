@@ -262,9 +262,19 @@ export const ReportsView = ({ showToast }) => {
       }
     } catch (err) {
       console.error('Excel export failed:', err);
+      let errorMsg = err.message || 'Error downloading Excel report. Please try again.';
+      if (err.response?.data instanceof Blob && err.response.data.type?.includes('json')) {
+        try {
+          const text = await err.response.data.text();
+          const parsed = JSON.parse(text);
+          if (parsed.message) errorMsg = parsed.message;
+        } catch {
+          // ignore parsing error
+        }
+      }
       if (showToast) {
         showToast({
-          message: err.message || 'Error downloading Excel report. Please try again.',
+          message: errorMsg,
           type: 'error',
         });
       }
@@ -284,6 +294,14 @@ export const ReportsView = ({ showToast }) => {
       );
     });
   }, [students, searchTerm]);
+
+  // Stable audit code & generation date for preview rendering
+  const auditReportCode = useMemo(() => {
+    const seed = stats.matchedStudents + stats.totalSessions + (selectedYear !== 'All' ? parseInt(selectedYear) || 2026 : 2026);
+    return `SNITN/ATT/${selectedYear}/AUDIT-${1000 + (seed % 9000)}`;
+  }, [selectedYear, stats.matchedStudents, stats.totalSessions]);
+
+  const [auditGeneratedDate] = useState(() => new Date().toLocaleDateString('en-IN'));
 
   // Generates standalone, themed HTML document string
   const generateThemedHtmlContent = useCallback(
@@ -890,7 +908,7 @@ export const ReportsView = ({ showToast }) => {
 </body>
 </html>`;
     },
-    [filteredStudents, minAttendance, selectedDepartment, selectedSemester, selectedYear, selectedSubject, stats]
+    [filteredStudents, minAttendance, selectedDepartment, selectedSemester, selectedYear, selectedSubject, stats, selectedTheme]
   );
 
   // Download Standalone Themed HTML Report
@@ -1567,7 +1585,7 @@ export const ReportsView = ({ showToast }) => {
                         Official Academic Audit
                       </span>
                       <p className="text-[11px] font-mono text-slate-300 mt-1">
-                        SNITN/ATT/{selectedYear}/AUDIT-{Math.floor(1000 + Math.random() * 9000)}
+                        {auditReportCode}
                       </p>
                     </div>
                   </div>
@@ -1597,7 +1615,7 @@ export const ReportsView = ({ showToast }) => {
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-500 block">Report Generated</span>
-                    <span className="font-mono text-slate-700">{new Date().toLocaleDateString('en-IN')}</span>
+                    <span className="font-mono text-slate-700">{auditGeneratedDate}</span>
                   </div>
                 </div>
 
