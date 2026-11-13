@@ -26,6 +26,8 @@ import {
   RotateCcw,
   HeartPulse,
   Users,
+  Printer,
+  Target,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
@@ -434,6 +436,16 @@ export const StudentPortalView = ({ showToast }) => {
                 </div>
 
                 <div className="flex items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    title="Print attendance report slip"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Print Slip</span>
+                  </button>
+
                   <div className="text-right">
                     <div className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
                       {overall && overall.totalClasses > 0 ? `${overall.percentage}%` : 'N/A'}
@@ -475,6 +487,48 @@ export const StudentPortalView = ({ showToast }) => {
                   <span className="text-[11px] text-rose-600">Missed lectures</span>
                 </div>
               </div>
+
+              {/* 75% Attendance Target Planner Widget */}
+              {overall && overall.totalClasses > 0 && (
+                <div className="mt-6 p-5 rounded-2xl bg-gradient-to-r from-indigo-50/90 via-slate-50 to-indigo-50/70 border border-indigo-100/90 shadow-2xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="p-2.5 rounded-xl bg-indigo-600 text-white shrink-0 shadow-xs">
+                        <Target className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-extrabold text-slate-900">
+                            75% Attendance Target Planner
+                          </h4>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                            RTU University Criterion
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                          {overall.percentage < 75 ? (
+                            <>
+                              You are currently below 75%. You need to attend the next{' '}
+                              <strong className="text-rose-600 font-extrabold">
+                                {Math.max(0, Math.ceil(3 * overall.totalClasses - 4 * overall.attendedClasses))} classes
+                              </strong>{' '}
+                              consecutively without absence to attain 75% attendance.
+                            </>
+                          ) : (
+                            <>
+                              Great job! You have satisfied the eligibility threshold. You can afford to miss up to{' '}
+                              <strong className="text-emerald-700 font-extrabold">
+                                {Math.max(0, Math.floor((4 * overall.attendedClasses - 3 * overall.totalClasses) / 3))} classes
+                              </strong>{' '}
+                              while maintaining ≥ 75% attendance.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Subject-Wise Attendance Breakdown */}
@@ -489,6 +543,8 @@ export const StudentPortalView = ({ showToast }) => {
                   {attendanceData?.subjectWise?.map((sub, idx) => {
                     const isGood = sub.percentage >= 75;
                     const isWarn = sub.percentage >= 60 && sub.percentage < 75;
+                    const neededSub = Math.max(0, Math.ceil(3 * sub.totalClasses - 4 * sub.attendedClasses));
+                    const canBunkSub = Math.max(0, Math.floor((4 * sub.attendedClasses - 3 * sub.totalClasses) / 3));
 
                     return (
                       <div
@@ -521,11 +577,22 @@ export const StudentPortalView = ({ showToast }) => {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-200/60">
-                          <span>
-                            Attended: <strong className="text-slate-800">{sub.attendedClasses}</strong> / {sub.totalClasses}
-                          </span>
-                          <span className="font-semibold text-[11px]">{sub.status}</span>
+                        <div>
+                          <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-200/60">
+                            <span>
+                              Attended: <strong className="text-slate-800">{sub.attendedClasses}</strong> / {sub.totalClasses}
+                            </span>
+                            <span className="font-semibold text-[11px]">{sub.status}</span>
+                          </div>
+
+                          <div className="mt-2.5 pt-2 border-t border-dashed border-slate-200/70 flex items-center justify-between text-[11px]">
+                            <span className="text-slate-400 font-medium">75% Target:</span>
+                            {sub.percentage < 75 ? (
+                              <span className="text-rose-600 font-bold">Attend next {neededSub} class{neededSub === 1 ? '' : 'es'}</span>
+                            ) : (
+                              <span className="text-emerald-700 font-bold">Can skip {canBunkSub} class{canBunkSub === 1 ? '' : 'es'}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );

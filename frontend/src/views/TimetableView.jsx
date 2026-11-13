@@ -10,6 +10,9 @@ import {
   X,
   AlertCircle,
   ClipboardList,
+  Printer,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -63,6 +66,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     return DAYS_OF_WEEK.includes(today) ? today : 'Monday';
   });
   const [selectedSemester, setSelectedSemester] = useState('All');
+  const [viewMode, setViewMode] = useState('day'); // 'day' or 'matrix'
   const [slots, setSlots] = useState([]);
   const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -227,6 +231,44 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setViewMode('day')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                viewMode === 'day'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span>Day View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('matrix')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                viewMode === 'matrix'
+                  ? 'bg-white text-indigo-700 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Weekly Matrix</span>
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Print lecture schedule"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Print</span>
+          </button>
+
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200/90 rounded-xl px-3 py-1.5">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Semester:</span>
             <select
@@ -253,145 +295,252 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
         </div>
       </div>
 
-      {/* Days of Week Tab Bar */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
-        {DAYS_OF_WEEK.map((day) => {
-          const isSelected = selectedDay === day;
-          const isToday = day === todayName;
-          const count = slots.filter((s) => s.dayOfWeek === day).length;
+      {viewMode === 'day' ? (
+        <>
+          {/* Days of Week Tab Bar */}
+          <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
+            {DAYS_OF_WEEK.map((day) => {
+              const isSelected = selectedDay === day;
+              const isToday = day === todayName;
+              const count = slots.filter((s) => s.dayOfWeek === day).length;
 
-          return (
-            <button
-              key={day}
-              onClick={() => setSelectedDay(day)}
-              className={`flex-1 min-w-[120px] py-3 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
-                isSelected
-                  ? 'bg-slate-950 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <span>{day}</span>
-                {isToday && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Today" />
-                )}
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`flex-1 min-w-[120px] py-3 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
+                    isSelected
+                      ? 'bg-slate-950 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>{day}</span>
+                    {isToday && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Today" />
+                    )}
+                  </div>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full ${
+                      isSelected ? 'bg-white/20 text-white font-bold' : 'bg-slate-200/60 text-slate-500'
+                    }`}
+                  >
+                    {count} {count === 1 ? 'Class' : 'Classes'}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Schedule for Selected Day */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <span>{selectedDay} Schedule</span>
+                  {selectedDay === todayName && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                      Today's Active Schedule
+                    </span>
+                  )}
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {daySlots.length} lecture period{daySlots.length === 1 ? '' : 's'} scheduled for this day
+                </p>
               </div>
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-full ${
-                  isSelected ? 'bg-white/20 text-white font-bold' : 'bg-slate-200/60 text-slate-500'
-                }`}
+
+              <button
+                onClick={() => openAddModal(selectedDay)}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors cursor-pointer"
               >
-                {count} {count === 1 ? 'Class' : 'Classes'}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+                <Plus className="w-4 h-4" />
+                <span>Add Slot for {selectedDay}</span>
+              </button>
+            </div>
 
-      {/* Schedule for Selected Day */}
-      <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-          <div>
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>{selectedDay} Schedule</span>
-              {selectedDay === todayName && (
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                  Today's Active Schedule
-                </span>
-              )}
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {daySlots.length} lecture period{daySlots.length === 1 ? '' : 's'} scheduled for this day
-            </p>
+            {loading ? (
+              <div className="py-20 text-center">
+                <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs font-semibold text-slate-500">Loading schedule...</p>
+              </div>
+            ) : daySlots.length === 0 ? (
+              <div className="py-20 text-center rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
+                <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                <h4 className="text-sm font-bold text-slate-800">No classes scheduled for {selectedDay}</h4>
+                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                  There are no class periods recorded on {selectedDay}. Click below to schedule a lecture.
+                </p>
+                <button
+                  onClick={() => openAddModal(selectedDay)}
+                  className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors cursor-pointer"
+                >
+                  Add Class Slot
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {daySlots.map((slot) => (
+                  <div
+                    key={slot._id}
+                    className="group p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-200 bg-slate-50/40 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>{slot.startTime} - {slot.endTime}</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-lg bg-slate-200/70 text-slate-700 text-[10px] font-bold">
+                          {slot.semester}
+                        </span>
+                      </div>
+
+                      <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                        {slot.subject}
+                      </h4>
+
+                      <div className="flex items-center gap-1.5 mt-2.5 text-xs text-slate-500 font-medium">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{slot.roomNumber || 'Room 101'}</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
+                      <button
+                        onClick={() => handleTakeAttendance(slot)}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                      >
+                        <ClipboardList className="w-3.5 h-3.5" />
+                        <span>Take Attendance</span>
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => openEditModal(slot)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                          title="Edit Slot"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(slot)}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Delete Slot"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-
-          <button
-            onClick={() => openAddModal(selectedDay)}
-            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Slot for {selectedDay}</span>
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <p className="text-xs font-semibold text-slate-500">Loading schedule...</p>
-          </div>
-        ) : daySlots.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
-            <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h4 className="text-sm font-bold text-slate-800">No classes scheduled for {selectedDay}</h4>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              There are no class periods recorded on {selectedDay}. Click below to schedule a lecture.
-            </p>
+        </>
+      ) : (
+        /* Weekly Schedule Matrix */
+        <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>Weekly Schedule Matrix (Mon - Sat)</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Full weekly lecture calendar view across all assigned periods
+              </p>
+            </div>
             <button
               onClick={() => openAddModal(selectedDay)}
-              className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold hover:bg-indigo-700 transition-colors cursor-pointer"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors cursor-pointer"
             >
-              Add Class Slot
+              <Plus className="w-4 h-4" />
+              <span>Add Class Slot</span>
             </button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-            {daySlots.map((slot) => (
-              <div
-                key={slot._id}
-                className="group p-5 rounded-3xl border border-slate-200/90 hover:border-indigo-200 bg-slate-50/40 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>{slot.startTime} - {slot.endTime}</span>
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-lg bg-slate-200/70 text-slate-700 text-[10px] font-bold">
-                      {slot.semester}
-                    </span>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            {DAYS_OF_WEEK.map((day) => {
+              const daySlotsForMatrix = [...slots.filter((s) => s.dayOfWeek === day)].sort(
+                (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)
+              );
+              const isToday = day === todayName;
+              return (
+                <div
+                  key={day}
+                  className={`rounded-2xl border p-4 flex flex-col justify-between ${
+                    isToday ? 'bg-indigo-50/50 border-indigo-200' : 'bg-slate-50/60 border-slate-200/80'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200/70">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs font-bold uppercase tracking-wider ${isToday ? 'text-indigo-700' : 'text-slate-800'}`}>
+                          {day}
+                        </span>
+                        {isToday && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" title="Today" />}
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-slate-600 border border-slate-200/80">
+                        {daySlotsForMatrix.length}
+                      </span>
+                    </div>
+
+                    {daySlotsForMatrix.length === 0 ? (
+                      <p className="text-[11px] text-slate-400 italic text-center py-8">No classes</p>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {daySlotsForMatrix.map((slot) => (
+                          <div
+                            key={slot._id}
+                            className="p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs hover:shadow-md transition-all group"
+                          >
+                            <div className="text-[10px] font-bold text-indigo-600 font-mono mb-1">
+                              {slot.startTime} - {slot.endTime}
+                            </div>
+                            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                              {slot.subject}
+                            </div>
+                            <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-500 font-medium">
+                              <span>{slot.roomNumber}</span>
+                              <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 font-bold">{slot.semester}</span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => openEditModal(slot)}
+                                className="p-1 text-slate-400 hover:text-indigo-600 rounded hover:bg-slate-50 transition-colors cursor-pointer"
+                                title="Edit"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteTarget(slot)}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
-                  <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
-                    {slot.subject}
-                  </h4>
-
-                  <div className="flex items-center gap-1.5 mt-2.5 text-xs text-slate-500 font-medium">
-                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{slot.roomNumber || 'Room 101'}</span>
-                  </div>
-                </div>
-
-                <div className="mt-5 pt-3.5 border-t border-slate-100 flex items-center justify-between">
                   <button
-                    onClick={() => handleTakeAttendance(slot)}
-                    className="px-3.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                    onClick={() => {
+                      setSelectedDay(day);
+                      openAddModal(day);
+                    }}
+                    className="mt-3 w-full py-1.5 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:bg-white rounded-xl border border-dashed border-indigo-200 transition-all flex items-center justify-center gap-1 cursor-pointer"
                   >
-                    <ClipboardList className="w-3.5 h-3.5" />
-                    <span>Take Attendance</span>
+                    <Plus className="w-3 h-3" />
+                    <span>Add Slot</span>
                   </button>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => openEditModal(slot)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-                      title="Edit Slot"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(slot)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-rose-50 transition-colors cursor-pointer"
-                      title="Delete Slot"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Add / Edit Timetable Modal */}
       {isModalOpen && (

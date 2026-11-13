@@ -14,6 +14,9 @@ import {
   User,
   Phone,
   Eye,
+  Download,
+  Printer,
+  Contact,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -48,6 +51,54 @@ export const StudentsView = ({ showToast }) => {
 
   // Full Profile Modal State
   const [viewingStudent, setViewingStudent] = useState(null);
+  const [idCardStudent, setIdCardStudent] = useState(null);
+
+  const exportCSV = () => {
+    if (students.length === 0) {
+      showToast?.({ message: 'No students to export', type: 'error' });
+      return;
+    }
+    const headers = [
+      'Roll Number',
+      'Registration ID',
+      'Name',
+      'Date of Birth',
+      'Department',
+      'Semester',
+      'Email',
+      'Phone',
+      'Guardian Name',
+      'Guardian Phone',
+      'Blood Group',
+    ];
+    const rows = students.map((s) => [
+      s.rollNumber,
+      s.registrationId || `STU-${s.rollNumber}`,
+      `"${(s.name || '').replace(/"/g, '""')}"`,
+      s.dob || '',
+      `"${(s.department || '').replace(/"/g, '""')}"`,
+      s.semester || '',
+      s.email || '',
+      s.phone || '',
+      `"${(s.guardianName || '').replace(/"/g, '""')}"`,
+      s.guardianPhone || '',
+      s.bloodGroup || '',
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute(
+      'download',
+      `student_roster_${selectedSemester.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast?.({ message: 'Student roster exported as CSV successfully!', type: 'success' });
+  };
 
   // Helper to compute default password: First Name + Birth Year
   const computeDefaultPassword = (fName, dobVal) => {
@@ -346,6 +397,17 @@ export const StudentsView = ({ showToast }) => {
               ))}
             </select>
           </div>
+
+          {/* Export Roster CSV */}
+          <button
+            type="button"
+            onClick={exportCSV}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            title="Export filtered student roster as CSV spreadsheet"
+          >
+            <Download className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Export CSV</span>
+          </button>
         </div>
 
         {/* Search Input */}
@@ -479,6 +541,17 @@ export const StudentsView = ({ showToast }) => {
                       </td>
                       <td className="py-3.5 px-6 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIdCardStudent(student);
+                            }}
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                            title="Generate Student ID Card"
+                          >
+                            <Contact className="w-4 h-4" />
+                          </button>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -714,15 +787,153 @@ export const StudentsView = ({ showToast }) => {
 
             {/* Profile Modal Footer */}
             <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
-              <span className="text-xs text-slate-400 font-medium">
-                Click any other student in the table to view their profile
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const st = viewingStudent;
+                  setViewingStudent(null);
+                  setIdCardStudent(st);
+                }}
+                className="px-4 py-2 text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+              >
+                <Contact className="w-3.5 h-3.5" />
+                <span>Student ID Card</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setViewingStudent(null)}
                 className="px-5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Institutional Student ID Card Modal */}
+      {idCardStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                Institutional Student ID Card
+              </span>
+              <button
+                type="button"
+                onClick={() => setIdCardStudent(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Printable ID Card Container */}
+            <div className="p-6 bg-slate-100 flex justify-center">
+              <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl border-2 border-indigo-900 overflow-hidden relative">
+                {/* ID Card Top Header */}
+                <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white p-4 text-center border-b-2 border-amber-400">
+                  <div className="text-[10px] uppercase tracking-widest text-amber-300 font-extrabold">
+                    Shrinathji Institute of Technology & Engineering
+                  </div>
+                  <div className="text-[9px] text-slate-300 tracking-wider">
+                    Affiliated to RTU, Kota • AICTE Approved
+                  </div>
+                  <div className="mt-1 text-xs font-black text-white uppercase tracking-wider">
+                    Student Identity Card
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-5">
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="w-20 h-24 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-800 text-white font-extrabold text-3xl flex items-center justify-center border-2 border-indigo-200 shadow-md shrink-0">
+                      {idCardStudent.name ? idCardStudent.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+
+                    {/* Basic details */}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-black text-slate-900 leading-tight">
+                        {idCardStudent.name}
+                      </h4>
+                      <div className="text-[11px] font-mono font-bold text-indigo-700 mt-1">
+                        Roll: {idCardStudent.rollNumber}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500">
+                        Reg ID: {idCardStudent.registrationId || `STU-${idCardStudent.rollNumber}`}
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-700 mt-1">
+                        {idCardStudent.semester}
+                      </div>
+                      <div className="text-[10px] text-slate-600 truncate">
+                        {idCardStudent.department}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 text-[10px]">
+                    <div>
+                      <span className="text-slate-400 font-bold block">DATE OF BIRTH</span>
+                      <span className="font-bold text-slate-800">
+                        {idCardStudent.dob ? formatDOB(idCardStudent.dob) : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block">BLOOD GROUP</span>
+                      <span className="font-bold text-rose-600">
+                        {idCardStudent.bloodGroup || 'O+'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block">STUDENT PHONE</span>
+                      <span className="font-bold text-slate-800">
+                        {idCardStudent.phone || '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block">VALID TILL</span>
+                      <span className="font-bold text-emerald-700">June 2027</span>
+                    </div>
+                  </div>
+
+                  {/* Barcode Strip */}
+                  <div className="mt-4 pt-3 border-t border-dashed border-slate-200 text-center">
+                    <div className="h-7 w-48 mx-auto flex items-stretch justify-center gap-0.5 opacity-80">
+                      {[1, 2, 1, 3, 1, 2, 3, 1, 1, 2, 3, 2, 1, 2, 1, 3, 2, 1, 2, 3, 1, 2, 1, 1, 3, 2].map((w, idx) => (
+                        <div key={idx} className="bg-slate-900" style={{ width: `${w * 1.5}px` }} />
+                      ))}
+                    </div>
+                    <span className="font-mono text-[9px] tracking-widest text-slate-500 block mt-1">
+                      *{idCardStudent.registrationId || idCardStudent.rollNumber}*
+                    </span>
+                  </div>
+                </div>
+
+                {/* ID Bottom Accent Bar */}
+                <div className="bg-indigo-900 text-white py-1 px-3 text-center text-[9px] font-bold tracking-wide">
+                  Official Campus Identity • Non-Transferable
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setIdCardStudent(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print ID Card</span>
               </button>
             </div>
           </div>
@@ -1071,6 +1282,135 @@ export const StudentsView = ({ showToast }) => {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Institutional Student ID Card Modal */}
+      {idCardStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-300">
+                Institutional Student ID Card
+              </span>
+              <button
+                type="button"
+                onClick={() => setIdCardStudent(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Printable ID Card Container */}
+            <div className="p-6 bg-slate-100 flex justify-center">
+              <div className="w-full max-w-sm rounded-2xl bg-white shadow-xl border-2 border-indigo-900 overflow-hidden relative">
+                {/* ID Card Top Header */}
+                <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white p-4 text-center border-b-2 border-amber-400">
+                  <div className="text-[10px] uppercase tracking-widest text-amber-300 font-extrabold">
+                    Shrinathji Institute of Technology & Engineering
+                  </div>
+                  <div className="text-[9px] text-slate-300 tracking-wider">
+                    Affiliated to RTU, Kota • AICTE Approved
+                  </div>
+                  <div className="mt-1 text-xs font-black text-white uppercase tracking-wider">
+                    Student Identity Card
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-5">
+                  <div className="flex items-start gap-4">
+                    {/* Avatar */}
+                    <div className="w-20 h-24 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-800 text-white font-extrabold text-3xl flex items-center justify-center border-2 border-indigo-200 shadow-md shrink-0">
+                      {idCardStudent.name ? idCardStudent.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+
+                    {/* Basic details */}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-black text-slate-900 leading-tight">
+                        {idCardStudent.name}
+                      </h4>
+                      <div className="text-[11px] font-mono font-bold text-indigo-700 mt-1">
+                        Roll: {idCardStudent.rollNumber}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500">
+                        Reg ID: {idCardStudent.registrationId || `STU-${idCardStudent.rollNumber}`}
+                      </div>
+                      <div className="text-[10px] font-bold text-slate-700 mt-1">
+                        {idCardStudent.semester}
+                      </div>
+                      <div className="text-[10px] text-slate-600 truncate">
+                        {idCardStudent.department}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 text-[10px]">
+                    <div>
+                      <span className="text-slate-400 font-bold block">DATE OF BIRTH</span>
+                      <span className="font-bold text-slate-800">
+                        {idCardStudent.dob ? formatDOB(idCardStudent.dob) : '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block">BLOOD GROUP</span>
+                      <span className="font-bold text-rose-600">
+                        {idCardStudent.bloodGroup || 'O+'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block">STUDENT PHONE</span>
+                      <span className="font-bold text-slate-800">
+                        {idCardStudent.phone || '—'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-bold block">VALID TILL</span>
+                      <span className="font-bold text-emerald-700">June 2027</span>
+                    </div>
+                  </div>
+
+                  {/* Barcode Strip */}
+                  <div className="mt-4 pt-3 border-t border-dashed border-slate-200 text-center">
+                    <div className="h-7 w-48 mx-auto flex items-stretch justify-center gap-0.5 opacity-80">
+                      {[1, 2, 1, 3, 1, 2, 3, 1, 1, 2, 3, 2, 1, 2, 1, 3, 2, 1, 2, 3, 1, 2, 1, 1, 3, 2].map((w, idx) => (
+                        <div key={idx} className="bg-slate-900" style={{ width: `${w * 1.5}px` }} />
+                      ))}
+                    </div>
+                    <span className="font-mono text-[9px] tracking-widest text-slate-500 block mt-1">
+                      *{idCardStudent.registrationId || idCardStudent.rollNumber}*
+                    </span>
+                  </div>
+                </div>
+
+                {/* ID Bottom Accent Bar */}
+                <div className="bg-indigo-900 text-white py-1 px-3 text-center text-[9px] font-bold tracking-wide">
+                  Official Campus Identity • Non-Transferable
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 bg-white border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setIdCardStudent(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print ID Card</span>
+              </button>
             </div>
           </div>
         </div>

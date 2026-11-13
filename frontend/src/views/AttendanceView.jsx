@@ -16,6 +16,8 @@ import {
   CheckCircle2,
   Eye,
   Sparkles,
+  Printer,
+  RefreshCw,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -57,6 +59,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const [students, setStudents] = useState([]);
   const [records, setRecords] = useState({}); // { [studentId]: 'Present' | 'Absent' }
   const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterFilter, setRosterFilter] = useState('all'); // 'all' | 'present' | 'absent'
   const [isSavedSession, setIsSavedSession] = useState(false);
   const [loadingRoster, setLoadingRoster] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -303,6 +306,22 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     });
   };
 
+  const invertAll = () => {
+    const updated = {};
+    students.forEach((s) => {
+      updated[s._id] = records[s._id] === 'Present' ? 'Absent' : 'Present';
+    });
+    setRecords(updated);
+    showToast?.({
+      message: 'Inverted attendance status for all students',
+      type: 'info',
+    });
+  };
+
+  const handlePrintSheet = () => {
+    window.print();
+  };
+
   const handleSaveAttendance = async () => {
     if (!effectiveSubject.trim()) {
       showToast?.({ message: 'Please specify a course subject name', type: 'error' });
@@ -375,6 +394,8 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
   // Filtered Roster for Taking Attendance
   const filteredRosterStudents = students.filter((s) => {
+    if (rosterFilter === 'present' && records[s._id] !== 'Present') return false;
+    if (rosterFilter === 'absent' && records[s._id] === 'Present') return false;
     if (!rosterSearch.trim()) return true;
     const term = rosterSearch.toLowerCase();
     return (
@@ -557,18 +578,36 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
               <button
                 type="button"
                 onClick={() => markAll('Present')}
-                className="px-4 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
                 <CheckCheck className="w-4 h-4" />
-                <span>Mark All Present</span>
+                <span>All Present</span>
               </button>
               <button
                 type="button"
                 onClick={() => markAll('Absent')}
-                className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
               >
                 <XCircle className="w-4 h-4" />
-                <span>Mark All Absent</span>
+                <span>All Absent</span>
+              </button>
+              <button
+                type="button"
+                onClick={invertAll}
+                className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="Flip Present to Absent and vice-versa"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Invert</span>
+              </button>
+              <button
+                type="button"
+                onClick={handlePrintSheet}
+                className="px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/70 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="Print class attendance roll call sheet"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Sheet</span>
               </button>
             </div>
 
@@ -609,7 +648,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
 
           {/* Roster Table */}
           <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
-            <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">
                   Class Student Roster ({students.length} Students)
@@ -618,7 +657,44 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                   Default status is Absent. Mark attending students as Present or use Batch Actions above.
                 </p>
               </div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Status Filter Pills */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setRosterFilter('all')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      rosterFilter === 'all'
+                        ? 'bg-white text-indigo-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All ({students.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRosterFilter('present')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      rosterFilter === 'present'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Present ({presentCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRosterFilter('absent')}
+                    className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                      rosterFilter === 'absent'
+                        ? 'bg-rose-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Absent ({absentCount})
+                  </button>
+                </div>
+
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
@@ -626,7 +702,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                     placeholder="Search roster..."
                     value={rosterSearch}
                     onChange={(e) => setRosterSearch(e.target.value)}
-                    className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-44 sm:w-52"
+                    className="pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 w-36 sm:w-44"
                   />
                   {rosterSearch && (
                     <button
