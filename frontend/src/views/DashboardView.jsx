@@ -376,8 +376,12 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
                   >
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-50 to-indigo-100 text-indigo-700 font-extrabold text-xs flex flex-col items-center justify-center shrink-0 border border-indigo-200/60 shadow-xs">
-                        <span>{item.startTime.split(' ')[0]}</span>
-                        <span className="text-[10px] font-bold text-indigo-500">{item.startTime.split(' ')[1]}</span>
+                        <span>{(item.startTime || '').trim().split(' ')[0]}</span>
+                        {(item.startTime || '').trim().split(' ')[1] && (
+                          <span className="text-[10px] font-bold text-indigo-500">
+                            {(item.startTime || '').trim().split(' ')[1]}
+                          </span>
+                        )}
                       </div>
                       <div>
                         <div className="flex flex-wrap items-center gap-2">

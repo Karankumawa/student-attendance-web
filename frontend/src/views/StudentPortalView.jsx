@@ -36,7 +36,7 @@ import SnitLogo from '../components/SnitLogo';
 const parseTimeToMinutes = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return 0;
   const clean = timeStr.trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp][Mm]))?$/);
   if (!match) return 0;
   let hours = parseInt(match[1], 10);
   const minutes = parseInt(match[2], 10);

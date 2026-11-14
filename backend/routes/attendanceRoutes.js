@@ -163,15 +163,20 @@ router.get('/summary', async (req, res) => {
       let attendedClasses = 0;
 
       sessions.forEach((session) => {
+        const isSameSemester =
+          session.semester &&
+          student.semester &&
+          session.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+
         const studentRecord = session.records.find(
           (rec) =>
             (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
             (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
         );
 
-        if (studentRecord) {
+        if (isSameSemester || studentRecord) {
           totalClasses += 1;
-          if (studentRecord.status === 'Present') {
+          if (studentRecord && studentRecord.status === 'Present') {
             attendedClasses += 1;
           }
         }

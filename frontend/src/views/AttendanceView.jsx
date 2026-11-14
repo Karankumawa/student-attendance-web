@@ -355,6 +355,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
           message: `Attendance saved successfully for ${effectiveSubject} on ${date}!`,
           type: 'success',
         });
+        fetchSessionsHistory();
       }
     } catch (err) {
       console.error('Error saving attendance:', err);
