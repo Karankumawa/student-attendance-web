@@ -22,15 +22,12 @@ import {
   Lock,
   Mail,
   Phone,
-  Save,
-  RotateCcw,
   HeartPulse,
   Users,
   Printer,
   Target,
   MessageSquare,
   Send,
-  AlertTriangle,
   RefreshCw,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
@@ -1245,9 +1242,24 @@ export const StudentPortalView = ({ showToast }) => {
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                    {studentQueries.length} {studentQueries.length === 1 ? 'Query' : 'Queries'}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {studentQueries.length} {studentQueries.length === 1 ? 'Query' : 'Queries'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={fetchStudentQueries}
+                      disabled={queriesLoading}
+                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                      title="Refresh Queries"
+                    >
+                      <RefreshCw
+                        className={`w-3.5 h-3.5 ${
+                          queriesLoading ? 'animate-spin text-indigo-600' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {queriesLoading ? (

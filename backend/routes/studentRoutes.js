@@ -58,6 +58,34 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/students/:id
+ * @desc    Get single student details by ID
+ * @access  Private (Admin only)
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student record not found',
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      data: student,
+    });
+  } catch (error) {
+    console.error('[Student GET Single Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch student details',
+      error: error.message,
+    });
+  }
+});
+
+/**
  * @route   POST /api/students
  * @desc    Add a new student & automatically provision student portal login account
  * @access  Private (Admin only)

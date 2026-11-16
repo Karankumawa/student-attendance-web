@@ -2,13 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   MessageSquare,
   Search,
-  Filter,
   Trash2,
   CheckCircle2,
   Clock,
   AlertCircle,
   Eye,
-  User,
   Mail,
   Phone,
   MapPin,
@@ -17,11 +15,8 @@ import {
   Users,
   Edit2,
   RefreshCw,
-  ExternalLink,
   Check,
   X,
-  ShieldCheck,
-  AlertTriangle,
   Send,
   Download,
   GraduationCap,
@@ -228,9 +223,30 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     setEditError('');
     setEditModalQuery(query);
 
-    let studentData = query.studentId && typeof query.studentId === 'object' ? query.studentId : null;
+    let studentData = null;
+    const studentId =
+      query.studentId?._id ||
+      (typeof query.studentId === 'string' ? query.studentId : null);
 
-    if (!studentData || !studentData._id) {
+    // 1. Fetch fresh record by ID if available
+    if (studentId) {
+      try {
+        const freshRes = await axiosClient.get(`/students/${studentId}`);
+        if (freshRes.data.success && freshRes.data.data) {
+          studentData = freshRes.data.data;
+        }
+      } catch (err) {
+        console.warn('Could not fetch student by ID, trying fallback search:', err);
+      }
+    }
+
+    // 2. Fallback to populated object
+    if (!studentData && query.studentId && typeof query.studentId === 'object' && query.studentId._id) {
+      studentData = query.studentId;
+    }
+
+    // 3. Fallback to search by rollNumber
+    if (!studentData) {
       try {
         const res = await axiosClient.get(`/students?search=${encodeURIComponent(query.rollNumber)}`);
         if (res.data.success && res.data.data?.length > 0) {
@@ -399,6 +415,17 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+            {setActiveView && (
+              <button
+                onClick={() => setActiveView('students')}
+                className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                title="Navigate to Student Register"
+              >
+                <Users className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Student Register</span>
+              </button>
+            )}
+
             <button
               onClick={exportQueriesCSV}
               disabled={queries.length === 0}
