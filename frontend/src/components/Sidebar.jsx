@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ClipboardCheck,
@@ -14,6 +14,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import axiosClient from '../api/axiosClient';
 import SnitLogo from './SnitLogo';
 
 const NAV_ITEMS = [
@@ -21,7 +22,7 @@ const NAV_ITEMS = [
   { id: 'attendance', label: 'Take & View Attendance', icon: ClipboardCheck, badge: 'Live' },
   { id: 'reports', label: 'Attendance Reports', icon: FileSpreadsheet, badge: 'Excel' },
   { id: 'students', label: 'Student Register', icon: Users },
-  { id: 'queries', label: 'Student Queries', icon: MessageSquare, badge: 'Requests' },
+  { id: 'queries', label: 'Student Queries', icon: MessageSquare },
   { id: 'subjects', label: 'Subjects & Courses', icon: BookOpen },
   { id: 'timetable', label: 'Timetable Manager', icon: CalendarClock, badge: 'Weekly' },
   { id: 'notes', label: 'Notes & Materials', icon: BookOpenCheck },
@@ -29,6 +30,31 @@ const NAV_ITEMS = [
 
 export const Sidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOpen }) => {
   const { user, logout } = useAuth();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchPendingQueries = async () => {
+      try {
+        const res = await axiosClient.get('/student-queries');
+        if (isMounted && res.data?.stats?.pending !== undefined) {
+          setPendingCount(res.data.stats.pending);
+        }
+      } catch {
+        // Ignore unauthorized or offline errors
+      }
+    };
+
+    fetchPendingQueries();
+    const interval = setInterval(fetchPendingQueries, 30000); // 30s auto-refresh
+    window.addEventListener('queries:updated', fetchPendingQueries);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      window.removeEventListener('queries:updated', fetchPendingQueries);
+    };
+  }, []);
 
   const handleNavClick = (viewId) => {
     setActiveView(viewId);
@@ -113,11 +139,24 @@ export const Sidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOp
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {item.badge && !isActive && (
+                    {item.id === 'queries' ? (
+                      pendingCount > 0 ? (
+                        <span
+                          className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-xs flex items-center gap-1 ${
+                            isActive
+                              ? 'bg-amber-400 text-slate-950 font-black'
+                              : 'bg-amber-500 text-white animate-pulse'
+                          }`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                          <span>{pendingCount} New</span>
+                        </span>
+                      ) : null
+                    ) : item.badge && !isActive ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-900 text-indigo-400 border border-slate-800">
                         {item.badge}
                       </span>
-                    )}
+                    ) : null}
                     <ChevronRight
                       className={`w-4 h-4 transition-transform ${
                         isActive

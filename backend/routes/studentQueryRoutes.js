@@ -16,8 +16,14 @@ const getStudentProfile = async (userId, studentId) => {
   if (byUser) return byUser;
 
   const user = await User.findById(userId);
-  if (user && user.email) {
-    return Student.findOne({ email: user.email });
+  if (user) {
+    if (user.studentId) {
+      const byUserStudentId = await Student.findById(user.studentId);
+      if (byUserStudentId) return byUserStudentId;
+    }
+    if (user.email) {
+      return Student.findOne({ email: user.email });
+    }
   }
   return null;
 };
@@ -111,7 +117,13 @@ router.get('/my-queries', requireStudent, async (req, res) => {
       });
     }
 
-    const queries = await StudentQuery.find({ studentId: student._id }).sort({
+    const queries = await StudentQuery.find({
+      $or: [
+        { studentId: student._id },
+        { rollNumber: student.rollNumber },
+        { userId: req.user._id },
+      ],
+    }).sort({
       createdAt: -1,
     });
 
@@ -137,11 +149,19 @@ router.get('/my-queries', requireStudent, async (req, res) => {
  */
 router.get('/', requireAdmin, async (req, res) => {
   try {
-    const { status, search } = req.query;
+    const { status, search, department, semester } = req.query;
     const filter = {};
 
     if (status && status !== 'All') {
       filter.status = status;
+    }
+
+    if (department && department !== 'All') {
+      filter.department = department;
+    }
+
+    if (semester && semester !== 'All') {
+      filter.semester = semester;
     }
 
     if (search && search.trim() !== '') {
@@ -159,7 +179,7 @@ router.get('/', requireAdmin, async (req, res) => {
     }
 
     const queries = await StudentQuery.find(filter)
-      .populate('studentId', 'name rollNumber department semester email phone dob gender address guardianName guardianPhone bloodGroup registrationId')
+      .populate('studentId', 'name firstName lastName rollNumber department semester email phone dob gender address guardianName guardianPhone bloodGroup registrationId')
       .sort({ createdAt: -1 });
 
     const totalCount = await StudentQuery.countDocuments();

@@ -23,6 +23,8 @@ import {
   ShieldCheck,
   AlertTriangle,
   Send,
+  Download,
+  GraduationCap,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -52,7 +54,13 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All'); // 'All' | 'Pending' | 'Reviewed' | 'Resolved'
+  const [selectedDepartment, setSelectedDepartment] = useState('All');
+  const [selectedSemester, setSelectedSemester] = useState('All');
   const [stats, setStats] = useState({ total: 0, pending: 0, reviewed: 0, resolved: 0 });
+
+  // Admin reply drafts state (queryId -> reply text)
+  const [replyDrafts, setReplyDrafts] = useState({});
+  const [savingReplyId, setSavingReplyId] = useState(null);
 
   // Delete modal state
   const [queryToDelete, setQueryToDelete] = useState(null);
@@ -70,8 +78,8 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     lastName: '',
     dob: '',
     rollNumber: '',
-    department: '',
-    semester: '',
+    department: 'Computer Science & Engineering',
+    semester: 'Semester 1',
     email: '',
     phone: '',
     gender: '',
@@ -79,6 +87,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     address: '',
     guardianName: '',
     guardianPhone: '',
+    password: '',
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState('');
@@ -90,6 +99,12 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
       const params = {};
       if (selectedStatus !== 'All') {
         params.status = selectedStatus;
+      }
+      if (selectedDepartment !== 'All') {
+        params.department = selectedDepartment;
+      }
+      if (selectedSemester !== 'All') {
+        params.semester = selectedSemester;
       }
       if (search.trim()) {
         params.search = search.trim();
@@ -108,7 +123,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedStatus, search, showToast]);
+  }, [selectedStatus, selectedDepartment, selectedSemester, search, showToast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -133,6 +148,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
           message: `Query marked as ${newStatus} successfully!`,
           type: 'success',
         });
+        window.dispatchEvent(new Event('queries:updated'));
         // Refresh counts
         const allRes = await axiosClient.get('/student-queries');
         if (allRes.data.stats) {
@@ -150,6 +166,35 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     }
   };
 
+  // Save Admin Note / Reply to Student
+  const handleSaveAdminReply = async (queryId) => {
+    const draftText = replyDrafts[queryId];
+    if (draftText === undefined) return;
+
+    try {
+      setSavingReplyId(queryId);
+      const res = await axiosClient.patch(`/student-queries/${queryId}/status`, {
+        adminResponse: draftText.trim(),
+      });
+
+      if (res.data.success) {
+        setQueries((prev) =>
+          prev.map((q) => (q._id === queryId ? { ...q, adminResponse: draftText.trim() } : q))
+        );
+        showToast?.({ message: 'Reply note sent to student successfully!', type: 'success' });
+        window.dispatchEvent(new Event('queries:updated'));
+      }
+    } catch (err) {
+      console.error('Error saving admin reply:', err);
+      showToast?.({
+        message: err.response?.data?.message || 'Failed to send reply note',
+        type: 'error',
+      });
+    } finally {
+      setSavingReplyId(null);
+    }
+  };
+
   // Delete query
   const handleDeleteQuery = async () => {
     if (!queryToDelete) return;
@@ -160,6 +205,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
         setQueries((prev) => prev.filter((q) => q._id !== queryToDelete._id));
         showToast?.({ message: 'Query message deleted from database!', type: 'success' });
         setQueryToDelete(null);
+        window.dispatchEvent(new Event('queries:updated'));
         // Refresh stats
         const allRes = await axiosClient.get('/student-queries');
         if (allRes.data.stats) {
@@ -182,16 +228,16 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     setEditError('');
     setEditModalQuery(query);
 
-    // If populated studentId object exists, use it; otherwise fetch by rollNumber
     let studentData = query.studentId && typeof query.studentId === 'object' ? query.studentId : null;
 
     if (!studentData || !studentData._id) {
       try {
         const res = await axiosClient.get(`/students?search=${encodeURIComponent(query.rollNumber)}`);
         if (res.data.success && res.data.data?.length > 0) {
-          studentData = res.data.data.find(
-            (s) => s.rollNumber?.toUpperCase() === query.rollNumber?.toUpperCase()
-          ) || res.data.data[0];
+          studentData =
+            res.data.data.find(
+              (s) => s.rollNumber?.toUpperCase() === query.rollNumber?.toUpperCase()
+            ) || res.data.data[0];
         }
       } catch (err) {
         console.error('Error finding student for edit:', err);
@@ -206,11 +252,16 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
       return;
     }
 
+    const fName = studentData.firstName || (studentData.name ? studentData.name.split(' ')[0] : '');
+    const lName =
+      studentData.lastName ||
+      (studentData.name ? studentData.name.split(' ').slice(1).join(' ') : '');
+
     setEditModalStudent(studentData);
     setEditFormData({
-      name: studentData.name || '',
-      firstName: studentData.firstName || '',
-      lastName: studentData.lastName || '',
+      name: studentData.name || `${fName} ${lName}`.trim(),
+      firstName: fName,
+      lastName: lName,
       dob: studentData.dob || '',
       rollNumber: studentData.rollNumber || query.rollNumber || '',
       department: studentData.department || query.department || 'Computer Science & Engineering',
@@ -222,6 +273,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
       address: studentData.address || '',
       guardianName: studentData.guardianName || '',
       guardianPhone: studentData.guardianPhone || '',
+      password: '',
     });
   };
 
@@ -248,6 +300,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
 
         setEditModalStudent(null);
         setEditModalQuery(null);
+        window.dispatchEvent(new Event('queries:updated'));
         fetchQueries();
       }
     } catch (err) {
@@ -258,6 +311,58 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     } finally {
       setEditSaving(false);
     }
+  };
+
+  // Export queries to CSV
+  const exportQueriesCSV = () => {
+    if (queries.length === 0) {
+      showToast?.({ message: 'No queries to export', type: 'error' });
+      return;
+    }
+    const headers = [
+      'Student Name',
+      'Roll Number',
+      'Department',
+      'Semester',
+      'Email',
+      'Phone',
+      'Field to Change',
+      'Requested Change',
+      'Reason',
+      'Additional Message',
+      'Status',
+      'Admin Response',
+      'Date Submitted',
+    ];
+    const rows = queries.map((q) => [
+      `"${(q.studentName || '').replace(/"/g, '""')}"`,
+      q.rollNumber || '',
+      `"${(q.department || '').replace(/"/g, '""')}"`,
+      q.semester || '',
+      q.email || '',
+      q.phone || '',
+      `"${(q.fieldToChange || '').replace(/"/g, '""')}"`,
+      `"${(q.requestedChange || '').replace(/"/g, '""')}"`,
+      `"${(q.reason || '').replace(/"/g, '""')}"`,
+      `"${(q.message || '').replace(/"/g, '""')}"`,
+      q.status || 'Pending',
+      `"${(q.adminResponse || '').replace(/"/g, '""')}"`,
+      new Date(q.createdAt).toISOString(),
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute(
+      'download',
+      `student_queries_${new Date().toISOString().split('T')[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast?.({ message: 'Student queries exported to CSV successfully!', type: 'success' });
   };
 
   const formatDate = (isoString) => {
@@ -289,18 +394,30 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
               <h2 className="text-xl sm:text-2xl font-black tracking-tight">Student Queries & Requests</h2>
             </div>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-              Review profile change requests and queries submitted directly by students. You can review what they want changed, reason provided, edit student records directly, and manage query statuses.
+              Review profile change requests and queries submitted directly by students. You can review what they want changed, reasons provided, edit student records directly, send notes, and manage query statuses.
             </p>
           </div>
 
-          <button
-            onClick={fetchQueries}
-            disabled={loading}
-            className="self-start md:self-auto px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
-            <span>Refresh Messages</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+            <button
+              onClick={exportQueriesCSV}
+              disabled={queries.length === 0}
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+              title="Export all queries as CSV file"
+            >
+              <Download className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Export CSV</span>
+            </button>
+
+            <button
+              onClick={fetchQueries}
+              disabled={loading}
+              className="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-indigo-400' : ''}`} />
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Decorative background glow */}
@@ -338,47 +455,78 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        {/* Status filter tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl w-full md:w-auto overflow-x-auto no-scrollbar">
-          {['All', 'Pending', 'Reviewed', 'Resolved'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setSelectedStatus(status)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
-                selectedStatus === status
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {status}
-              {status === 'Pending' && stats.pending > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px]">
-                  {stats.pending}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-xs space-y-3">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Status filter tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100/80 rounded-xl overflow-x-auto no-scrollbar">
+            {['All', 'Pending', 'Reviewed', 'Resolved'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setSelectedStatus(status)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer active:scale-95 ${
+                  selectedStatus === status
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {status}
+                {status === 'Pending' && stats.pending > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.2 rounded-full bg-amber-500 text-white text-[10px]">
+                    {stats.pending}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
-        {/* Search input */}
-        <div className="relative w-full md:w-80">
-          <input
-            type="text"
-            placeholder="Search student, roll no, or query..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-          />
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          {search && (
-            <button
-              onClick={() => setSearch('')}
-              className="p-1 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
+          {/* Department & Semester Dropdowns */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
             >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+              <option value="All">All Departments</option>
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedSemester}
+              onChange={(e) => setSelectedSemester(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+            >
+              <option value="All">All Semesters</option>
+              {SEMESTERS.map((sem) => (
+                <option key={sem} value={sem}>
+                  {sem}
+                </option>
+              ))}
+            </select>
+
+            {/* Search input */}
+            <div className="relative flex-1 sm:w-64">
+              <input
+                type="text"
+                placeholder="Search student, roll no, or query..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-4 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+              />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="p-1 text-slate-400 hover:text-slate-600 absolute right-2.5 top-1/2 -translate-y-1/2 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -395,7 +543,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
           </div>
           <h3 className="text-base font-bold text-slate-800">No Student Queries Found</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            {search || selectedStatus !== 'All'
+            {search || selectedStatus !== 'All' || selectedDepartment !== 'All' || selectedSemester !== 'All'
               ? 'No queries match your active filters or search terms. Try clearing your search.'
               : 'Students have not submitted any profile change queries or messages yet. When a student submits a query, it will appear here.'}
           </p>
@@ -517,6 +665,44 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
                       <span>{query.message}</span>
                     </div>
                   )}
+
+                  {/* Admin Reply / Status Note Box */}
+                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Admin Response Note (Visible to Student)</span>
+                      </span>
+                      {query.adminResponse && (
+                        <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                          Note Saved
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Type a confirmation or response note for the student..."
+                        value={
+                          replyDrafts[query._id] !== undefined
+                            ? replyDrafts[query._id]
+                            : query.adminResponse || ''
+                        }
+                        onChange={(e) =>
+                          setReplyDrafts({ ...replyDrafts, [query._id]: e.target.value })
+                        }
+                        className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                      />
+                      <button
+                        onClick={() => handleSaveAdminReply(query._id)}
+                        disabled={savingReplyId === query._id}
+                        className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 shadow-xs"
+                      >
+                        <Send className="w-3 h-3" />
+                        <span>{savingReplyId === query._id ? 'Saving...' : 'Send Note'}</span>
+                      </button>
+                    </div>
+                  </div>
 
                   {/* Admin Actions Bar */}
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
@@ -653,16 +839,43 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
 
             <form onSubmit={handleSaveStudentProfile} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Full Name */}
-                <div className="sm:col-span-2">
+                {/* First Name */}
+                <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Student Full Name
+                    First Name
                   </label>
                   <input
                     type="text"
                     required
-                    value={editFormData.name}
-                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    value={editFormData.firstName}
+                    onChange={(e) => {
+                      const fVal = e.target.value;
+                      setEditFormData({
+                        ...editFormData,
+                        firstName: fVal,
+                        name: `${fVal} ${editFormData.lastName}`.trim(),
+                      });
+                    }}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                  />
+                </div>
+
+                {/* Last Name */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editFormData.lastName}
+                    onChange={(e) => {
+                      const lVal = e.target.value;
+                      setEditFormData({
+                        ...editFormData,
+                        lastName: lVal,
+                        name: `${editFormData.firstName} ${lVal}`.trim(),
+                      });
+                    }}
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                   />
                 </div>
@@ -692,6 +905,43 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
                     onChange={(e) => setEditFormData({ ...editFormData, dob: e.target.value })}
                     className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                   />
+                </div>
+
+                {/* Academic Department */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <GraduationCap className="w-3 h-3 text-indigo-600" />
+                    <span>Department</span>
+                  </label>
+                  <select
+                    value={editFormData.department}
+                    onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Current Semester */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Semester
+                  </label>
+                  <select
+                    value={editFormData.semester}
+                    onChange={(e) => setEditFormData({ ...editFormData, semester: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                  >
+                    {SEMESTERS.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Contact Phone */}

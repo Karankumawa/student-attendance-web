@@ -27,10 +27,16 @@ const getStudentProfile = async (userId, studentId) => {
   const byUser = await Student.findOne({ userId });
   if (byUser) return byUser;
 
-  // Fallback search by email
+  // Fallback search by User's studentId or email
   const user = await User.findById(userId);
-  if (user && user.email) {
-    return Student.findOne({ email: user.email });
+  if (user) {
+    if (user.studentId) {
+      const byUserStudentId = await Student.findById(user.studentId);
+      if (byUserStudentId) return byUserStudentId;
+    }
+    if (user.email) {
+      return Student.findOne({ email: user.email });
+    }
   }
   return null;
 };
@@ -564,7 +570,13 @@ router.get('/queries', async (req, res) => {
       });
     }
 
-    const queries = await StudentQuery.find({ studentId: student._id }).sort({
+    const queries = await StudentQuery.find({
+      $or: [
+        { studentId: student._id },
+        { rollNumber: student.rollNumber },
+        { userId: req.user._id },
+      ],
+    }).sort({
       createdAt: -1,
     });
 

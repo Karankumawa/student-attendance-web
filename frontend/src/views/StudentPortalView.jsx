@@ -50,6 +50,48 @@ const parseTimeToMinutes = (timeStr) => {
   return hours * 60 + minutes;
 };
 
+const formatDobDisplay = (dobStr) => {
+  if (!dobStr) return 'Not Provided';
+  try {
+    const parts = String(dobStr).split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      if (!isNaN(d.getTime())) {
+        return `${parts[2]}/${parts[1]}/${parts[0]} (${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      }
+    }
+  } catch {}
+  return dobStr;
+};
+
+const getFieldPlaceholder = (field) => {
+  switch (field) {
+    case 'Contact Phone Number':
+      return 'e.g., Update my phone to +91 98765 43210';
+    case 'Residential Address':
+      return 'e.g., H.No 123, Near City Center, Nathdwara, Rajasthan';
+    case 'Date of Birth (DOB)':
+      return 'e.g., 2004-05-15 (15 May 2004)';
+    case 'Full Name / Spelling':
+      return 'e.g., Correct spelling to: Karan Kumawat';
+    case 'Gender':
+      return 'e.g., Male / Female / Other';
+    case 'Blood Group':
+      return 'e.g., B+ or O+';
+    case 'Parent / Guardian Name':
+      return 'e.g., Rajesh Kumawat';
+    case 'Guardian Contact Phone':
+      return 'e.g., +91 91234 56789';
+    case 'Email Address':
+      return 'e.g., student.name@gmail.com';
+    default:
+      return 'Specify the exact new value or modification needed';
+  }
+};
+
 export const StudentPortalView = ({ showToast }) => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'timetable' | 'notes' | 'security'
@@ -289,9 +331,15 @@ export const StudentPortalView = ({ showToast }) => {
     );
   }
 
+  const pendingQueriesCount = studentQueries.filter((q) => q.status === 'Pending').length;
+
   const NAV_TABS = [
     { id: 'attendance', label: 'My Attendance', icon: ClipboardCheck },
-    { id: 'profile', label: 'My Profile', icon: User },
+    {
+      id: 'profile',
+      label: pendingQueriesCount > 0 ? `My Profile (${pendingQueriesCount} Pending)` : 'My Profile',
+      icon: User,
+    },
     { id: 'timetable', label: 'Classes & Schedule', icon: CalendarClock },
     { id: 'notes', label: `Study Notes (${notes.length})`, icon: BookOpenCheck },
     { id: 'security', label: 'Change Password', icon: KeyRound },
@@ -900,7 +948,7 @@ export const StudentPortalView = ({ showToast }) => {
                       <input
                         type="text"
                         disabled
-                        value={profileData?.dob || 'Not Provided'}
+                        value={formatDobDisplay(profileData?.dob)}
                         className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
                       />
                       <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
@@ -1120,7 +1168,7 @@ export const StudentPortalView = ({ showToast }) => {
                       <input
                         type="text"
                         required
-                        placeholder="e.g., Update my phone number to +91 9876543210"
+                        placeholder={getFieldPlaceholder(queryForm.fieldToChange)}
                         value={queryForm.requestedChange}
                         onChange={(e) => setQueryForm({ ...queryForm, requestedChange: e.target.value })}
                         className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"

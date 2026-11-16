@@ -252,8 +252,6 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    if (firstName !== undefined) student.firstName = firstName.trim();
-    if (lastName !== undefined) student.lastName = lastName.trim();
     if (dob !== undefined) student.dob = String(dob).trim();
     if (phone !== undefined) student.phone = String(phone).trim();
     if (guardianName !== undefined) student.guardianName = String(guardianName).trim();
@@ -262,13 +260,23 @@ router.put('/:id', async (req, res) => {
     if (bloodGroup !== undefined) student.bloodGroup = String(bloodGroup).trim();
     if (address !== undefined) student.address = String(address).trim();
 
-    if (student.firstName || student.lastName) {
-      student.name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
-    } else if (name) {
+    // Synchronize name, firstName, and lastName reliably
+    if (name && firstName === undefined && lastName === undefined) {
       student.name = name.trim();
       const parts = student.name.split(' ');
       student.firstName = parts[0] || '';
       student.lastName = parts.slice(1).join(' ') || '';
+    } else {
+      if (firstName !== undefined) student.firstName = firstName.trim();
+      if (lastName !== undefined) student.lastName = lastName.trim();
+      if (student.firstName || student.lastName) {
+        student.name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
+      } else if (name) {
+        student.name = name.trim();
+        const parts = student.name.split(' ');
+        student.firstName = parts[0] || '';
+        student.lastName = parts.slice(1).join(' ') || '';
+      }
     }
 
     if (department) student.department = department.trim();
