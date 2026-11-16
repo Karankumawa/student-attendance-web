@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const Timetable = require('../models/Timetable');
 const Note = require('../models/Note');
+const StudentQuery = require('../models/StudentQuery');
 const { protect, requireStudent } = require('../middleware/authMiddleware');
 const { sortSlotsByTime } = require('../utils/timeHelper');
 
@@ -467,10 +468,93 @@ router.get('/profile', async (req, res) => {
 
 /**
  * @route   PUT /api/student-portal/profile
- * @desc    Update allowed details of the logged-in student (Name and Email are strictly immutable by student)
+ * @desc    Disabled: Students are not allowed to directly modify profile details
  * @access  Private (Student only)
  */
 router.put('/profile', async (req, res) => {
+  return res.status(403).json({
+    success: false,
+    message: 'Profile editing is strictly restricted. Students cannot directly modify profile records. Please submit a Profile Change Query to the college administration.',
+  });
+});
+
+/**
+ * @route   POST /api/student-portal/queries
+ * @desc    Submit a profile change query or direct message to administration
+ * @access  Private (Student only)
+ */
+router.post('/queries', async (req, res) => {
+  try {
+    const student = await getStudentProfile(req.user._id, req.user.studentId);
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student profile not linked to this account',
+      });
+    }
+
+    const { fieldToChange, requestedChange, reason, message } = req.body;
+
+    if (!fieldToChange || !fieldToChange.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please specify which field or detail you want to change',
+      });
+    }
+
+    if (!requestedChange || !requestedChange.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please specify what you want to change (new value / requested change)',
+      });
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a reason why you need this change',
+      });
+    }
+
+    const newQuery = new StudentQuery({
+      studentId: student._id,
+      userId: req.user._id,
+      studentName: student.name,
+      rollNumber: student.rollNumber,
+      department: student.department || '',
+      semester: student.semester || '',
+      email: student.email || req.user.email || '',
+      phone: student.phone || '',
+      fieldToChange: fieldToChange.trim(),
+      requestedChange: requestedChange.trim(),
+      reason: reason.trim(),
+      message: message ? message.trim() : '',
+      status: 'Pending',
+    });
+
+    await newQuery.save();
+
+    return res.status(201).json({
+      success: true,
+      message: 'Your query has been sent to the college administration successfully!',
+      data: newQuery,
+    });
+  } catch (error) {
+    console.error('[Student Portal Query POST Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to submit profile query',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * @route   GET /api/student-portal/queries
+ * @desc    Get all queries submitted by the logged-in student (Student can only view)
+ * @access  Private (Student only)
+ */
+router.get('/queries', async (req, res) => {
   try {
     const student = await getStudentProfile(req.user._id, req.user.studentId);
     if (!student) {
@@ -480,92 +564,20 @@ router.put('/profile', async (req, res) => {
       });
     }
 
-    const {
-      dob,
-      phone,
-      gender,
-      address,
-      guardianName,
-      guardianPhone,
-      bloodGroup,
-      currentPassword,
-      newPassword,
-    } = req.body;
-
-    // Strict security: Student cannot modify Name, Email, Contact Phone, or Parent & Guardian details!
-    // These official records are managed by college administration.
-    if (dob !== undefined) student.dob = typeof dob === 'string' ? dob.trim() : dob;
-    if (gender !== undefined) student.gender = typeof gender === 'string' ? gender.trim() : gender;
-    if (address !== undefined) student.address = typeof address === 'string' ? address.trim() : address;
-    if (bloodGroup !== undefined) student.bloodGroup = typeof bloodGroup === 'string' ? bloodGroup.trim() : bloodGroup;
-
-    await student.save();
-
-    // If student requested password update through profile form
-    if (newPassword && newPassword.trim() !== '') {
-      if (!currentPassword) {
-        return res.status(400).json({
-          success: false,
-          message: 'Current password is required to change password',
-        });
-      }
-      if (newPassword.length < 6) {
-        return res.status(400).json({
-          success: false,
-          message: 'New password must be at least 6 characters long',
-        });
-      }
-
-      const user = await User.findById(req.user._id);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User account not found',
-        });
-      }
-
-      const isMatch = await user.comparePassword(currentPassword);
-      if (!isMatch) {
-        return res.status(400).json({
-          success: false,
-          message: 'Current password is incorrect',
-        });
-      }
-
-      user.password = newPassword;
-      await user.save();
-    }
-
-    const user = await User.findById(req.user._id);
+    const queries = await StudentQuery.find({ studentId: student._id }).sort({
+      createdAt: -1,
+    });
 
     return res.status(200).json({
       success: true,
-      message: 'Student profile details updated successfully in database!',
-      data: {
-        _id: student._id,
-        name: student.name,
-        firstName: student.firstName || '',
-        lastName: student.lastName || '',
-        email: student.email || user?.email || '',
-        rollNumber: student.rollNumber,
-        registrationId: student.registrationId || `STU-${student.rollNumber}`,
-        department: student.department || 'Computer Science & Engineering',
-        semester: student.semester || 'Semester 1',
-        dob: student.dob || '',
-        phone: student.phone || '',
-        gender: student.gender || '',
-        address: student.address || '',
-        guardianName: student.guardianName || '',
-        guardianPhone: student.guardianPhone || '',
-        bloodGroup: student.bloodGroup || '',
-        createdAt: student.createdAt,
-      },
+      count: queries.length,
+      data: queries,
     });
   } catch (error) {
-    console.error('[Student Profile Update Error]:', error);
+    console.error('[Student Portal Query GET Error]:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to update student profile',
+      message: 'Failed to fetch your profile queries',
       error: error.message,
     });
   }

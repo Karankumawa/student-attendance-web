@@ -28,6 +28,10 @@ import {
   Users,
   Printer,
   Target,
+  MessageSquare,
+  Send,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
@@ -84,17 +88,35 @@ export const StudentPortalView = ({ showToast }) => {
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
 
-  // Profile data & edit form states
+  // Profile data (Read-only for student)
   const [profileData, setProfileData] = useState(null);
-  const [profileForm, setProfileForm] = useState({
-    dob: '',
-    gender: '',
-    address: '',
-    bloodGroup: '',
+
+  // Student Query / Message states (New Feature)
+  const [studentQueries, setStudentQueries] = useState([]);
+  const [queriesLoading, setQueriesLoading] = useState(false);
+  const [queryForm, setQueryForm] = useState({
+    fieldToChange: 'Contact Phone Number',
+    requestedChange: '',
+    reason: '',
+    message: '',
   });
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState('');
+  const [querySubmitting, setQuerySubmitting] = useState(false);
+  const [queryError, setQueryError] = useState('');
+  const [querySuccess, setQuerySuccess] = useState('');
+
+  const fetchStudentQueries = useCallback(async () => {
+    try {
+      setQueriesLoading(true);
+      const res = await axiosClient.get('/student-portal/queries');
+      if (res.data.success) {
+        setStudentQueries(res.data.data || []);
+      }
+    } catch (err) {
+      console.warn('Could not load student queries:', err);
+    } finally {
+      setQueriesLoading(false);
+    }
+  }, []);
 
   const fetchStudentData = useCallback(async () => {
     try {
@@ -110,14 +132,7 @@ export const StudentPortalView = ({ showToast }) => {
       try {
         const profileRes = await axiosClient.get('/student-portal/profile');
         if (profileRes.data.success && profileRes.data.data) {
-          const p = profileRes.data.data;
-          setProfileData(p);
-          setProfileForm({
-            dob: p.dob || '',
-            gender: p.gender || '',
-            address: p.address || '',
-            bloodGroup: p.bloodGroup || '',
-          });
+          setProfileData(profileRes.data.data);
         }
       } catch (pErr) {
         console.warn('Could not load student profile record:', pErr);
@@ -140,63 +155,67 @@ export const StudentPortalView = ({ showToast }) => {
       if (notesRes.data.success) {
         setNotes(notesRes.data.data || []);
       }
+
+      // Fetch student's submitted profile queries
+      await fetchStudentQueries();
     } catch (err) {
       console.error('Error fetching student data:', err);
       showToast?.({ message: 'Error loading student portal data', type: 'error' });
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, fetchStudentQueries]);
 
   useEffect(() => {
     fetchStudentData();
   }, [fetchStudentData]);
 
-  const handleProfileSubmit = async (e) => {
+  // Submit profile change query / message to admin
+  const handleQuerySubmit = async (e) => {
     e.preventDefault();
-    setProfileError('');
-    setProfileSuccess('');
+    setQueryError('');
+    setQuerySuccess('');
+
+    if (!queryForm.fieldToChange?.trim()) {
+      setQueryError('Please select which field you want to change.');
+      return;
+    }
+    if (!queryForm.requestedChange?.trim()) {
+      setQueryError('Please describe what you want to change (new value / requested detail).');
+      return;
+    }
+    if (!queryForm.reason?.trim()) {
+      setQueryError('Please provide a reason why you need this change.');
+      return;
+    }
 
     try {
-      setProfileSaving(true);
-      const res = await axiosClient.put('/student-portal/profile', {
-        dob: profileForm.dob,
-        gender: profileForm.gender,
-        bloodGroup: profileForm.bloodGroup,
-        address: profileForm.address,
+      setQuerySubmitting(true);
+      const res = await axiosClient.post('/student-portal/queries', {
+        fieldToChange: queryForm.fieldToChange.trim(),
+        requestedChange: queryForm.requestedChange.trim(),
+        reason: queryForm.reason.trim(),
+        message: queryForm.message?.trim() || '',
       });
 
-      if (res.data.success && res.data.data) {
-        const updated = res.data.data;
-        setProfileData(updated);
-        setProfileForm({
-          dob: updated.dob || '',
-          gender: updated.gender || '',
-          address: updated.address || '',
-          bloodGroup: updated.bloodGroup || '',
+      if (res.data.success) {
+        setQuerySuccess('Your query has been submitted to the administration successfully!');
+        showToast?.({ message: 'Query sent to admin successfully!', type: 'success' });
+        setQueryForm({
+          fieldToChange: 'Contact Phone Number',
+          requestedChange: '',
+          reason: '',
+          message: '',
         });
-        setProfileSuccess('Profile details saved and updated successfully in database!');
-        showToast?.({ message: 'Profile updated in database!', type: 'success' });
+        fetchStudentQueries();
       }
     } catch (err) {
-      const errMsg = err.response?.data?.message || 'Failed to update profile';
-      setProfileError(errMsg);
-      showToast?.({ message: errMsg, type: 'error' });
+      console.error('Error submitting query:', err);
+      const msg = err.response?.data?.message || 'Failed to submit query to administration';
+      setQueryError(msg);
+      showToast?.({ message: msg, type: 'error' });
     } finally {
-      setProfileSaving(false);
-    }
-  };
-
-  const handleResetProfile = () => {
-    if (profileData) {
-      setProfileForm({
-        dob: profileData.dob || '',
-        gender: profileData.gender || '',
-        address: profileData.address || '',
-        bloodGroup: profileData.bloodGroup || '',
-      });
-      setProfileError('');
-      setProfileSuccess('');
+      setQuerySubmitting(false);
     }
   };
 
@@ -717,33 +736,24 @@ export const StudentPortalView = ({ showToast }) => {
             </div>
 
             {/* Policy Notice Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-amber-50/90 border border-amber-200/90 text-amber-900 text-xs sm:text-sm flex items-start gap-3.5 shadow-xs">
-              <div className="p-2 rounded-xl bg-amber-100 text-amber-800 shrink-0 mt-0.5">
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm flex items-start gap-3.5 shadow-md">
+              <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0 mt-0.5">
                 <Lock className="w-4 h-4" />
               </div>
               <div className="space-y-1">
-                <h4 className="font-bold text-amber-950">Institutional Records & Permissions Notice</h4>
-                <p className="text-xs text-amber-800/95 leading-relaxed">
-                  In accordance with institutional guidelines, your <strong>Official Full Name</strong>, <strong>Assigned Email</strong>, <strong>Contact Phone Number</strong>, and <strong>Parent & Guardian Information</strong> are official administrative records and can only be modified by the college administration. You have permission to update your Date of Birth, Gender, Blood Group, and Residential Address.
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-white text-sm">Official Academic Records (Strictly Read-Only)</h4>
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30">
+                    Editing Disabled
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  In accordance with institutional policy, students cannot directly edit or alter their official profile information. All data including <strong>Name, Date of Birth, Contact Phone, Gender, Address, Blood Group, and Guardian Information</strong> are official administrative records. If you need any corrections or updates, please submit a <strong>Profile Change Query</strong> to the college administration using the form below.
                 </p>
               </div>
             </div>
 
-            {profileError && (
-              <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-3">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                <span className="font-medium">{profileError}</span>
-              </div>
-            )}
-
-            {profileSuccess && (
-              <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
-                <span className="font-medium">{profileSuccess}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleProfileSubmit} className="space-y-6">
+            <div className="space-y-6">
               {/* Section 1: Official Identity (Locked / Read-Only) */}
               <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
@@ -756,8 +766,9 @@ export const StudentPortalView = ({ showToast }) => {
                       <p className="text-xs text-slate-500">Official student credentials managed by college administration (Read-Only)</p>
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                    Protected
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    <span>Protected</span>
                   </span>
                 </div>
 
@@ -766,7 +777,7 @@ export const StudentPortalView = ({ showToast }) => {
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                       <span>Full Name</span>
-                      <span className="text-[10px] text-rose-500 font-semibold">Not Editable</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
                     <div className="relative">
                       <input
@@ -784,7 +795,7 @@ export const StudentPortalView = ({ showToast }) => {
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                       <span>Official Email</span>
-                      <span className="text-[10px] text-rose-500 font-semibold">Not Editable</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
                     <div className="relative">
                       <input
@@ -857,40 +868,47 @@ export const StudentPortalView = ({ showToast }) => {
                 </div>
               </div>
 
-              {/* Section 2: Personal & Contact Information (Editable by Student) */}
+              {/* Section 2: Personal & Contact Information (Read-Only for Student) */}
               <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
                       <User className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-slate-900">Personal & Contact Details</h3>
-                      <p className="text-xs text-slate-500">You can edit and update these personal details anytime in database</p>
+                      <p className="text-xs text-slate-500">Official student demographic & contact information (Read-Only)</p>
                     </div>
                   </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Editable
+                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    <span>Read Only</span>
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Date of Birth (DOB) */}
+                  {/* Date of Birth (DOB) (Read-only) */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Date of Birth (Day / Month / Year)</span>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Date of Birth</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <input
-                      type="date"
-                      value={profileForm.dob}
-                      onChange={(e) => setProfileForm({ ...profileForm, dob: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
-                    />
-                    <p className="text-[10px] text-slate-400 mt-1">Stored format: YYYY-MM-DD</p>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        disabled
+                        value={profileData?.dob || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Official registered date of birth</p>
                   </div>
 
-                  {/* Phone Number (Read-only for student) */}
+                  {/* Phone Number (Read-only) */}
                   <div>
                     <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
@@ -901,71 +919,73 @@ export const StudentPortalView = ({ showToast }) => {
                     </label>
                     <div className="relative">
                       <input
-                        type="tel"
+                        type="text"
                         disabled
                         value={profileData?.phone || 'Not Provided'}
                         className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
                       />
                       <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Managed by administration</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Official contact number</p>
                   </div>
 
-                  {/* Gender */}
+                  {/* Gender (Read-only) */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                      Gender
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span>Gender</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <select
-                      value={profileForm.gender}
-                      onChange={(e) => setProfileForm({ ...profileForm, gender: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        disabled
+                        value={profileData?.gender || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
                     <p className="text-[10px] text-slate-400 mt-1">Official gender identity</p>
                   </div>
 
-                  {/* Blood Group */}
+                  {/* Blood Group (Read-only) */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Blood Group</span>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Blood Group</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <select
-                      value={profileForm.bloodGroup}
-                      onChange={(e) => setProfileForm({ ...profileForm, bloodGroup: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
-                    >
-                      <option value="">Select Blood Group</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                    </select>
-                    <p className="text-[10px] text-slate-400 mt-1">For campus medical records</p>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        disabled
+                        value={profileData?.bloodGroup || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">Campus medical record</p>
                   </div>
 
-                  {/* Address */}
+                  {/* Address (Read-only) */}
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Residential Address</span>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Residential Address</span>
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
                     </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Enter permanent or current residential address..."
-                      value={profileForm.address}
-                      onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all resize-none"
-                    />
+                    <div className="relative">
+                      <textarea
+                        rows={2}
+                        disabled
+                        value={profileData?.address || 'Not Provided'}
+                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed select-none resize-none"
+                      />
+                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
+                    </div>
                     <p className="text-[10px] text-slate-400 mt-0.5">Full residential correspondence address</p>
                   </div>
                 </div>
@@ -975,12 +995,12 @@ export const StudentPortalView = ({ showToast }) => {
               <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 border border-violet-100">
+                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
                       <Users className="w-5 h-5" />
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-slate-900">Parent & Guardian Information</h3>
-                      <p className="text-xs text-slate-500">Contact information for parent or local guardian</p>
+                      <p className="text-xs text-slate-500">Official contact information for parent or guardian (Read-Only)</p>
                     </div>
                   </div>
                   <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
@@ -1004,7 +1024,7 @@ export const StudentPortalView = ({ showToast }) => {
                       />
                       <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official guardian record (Admin editable)</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Official guardian record</p>
                   </div>
 
                   <div>
@@ -1017,49 +1037,278 @@ export const StudentPortalView = ({ showToast }) => {
                     </label>
                     <div className="relative">
                       <input
-                        type="tel"
+                        type="text"
                         disabled
                         value={profileData?.guardianPhone || 'Not Provided'}
                         className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
                       />
                       <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Contact administration to update guardian details</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Guardian contact number</p>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleResetProfile}
-                  disabled={profileSaving}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Changes</span>
-                </button>
+              {/* ================= SECTION 4: PROFILE CHANGE QUERY / DIRECT MESSAGE TO ADMIN (NEW FEATURE) ================= */}
+              <div className="bg-white rounded-3xl border border-indigo-200/90 p-6 sm:p-7 shadow-xs space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-indigo-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900">Request Profile Update / Query Admin</h3>
+                        <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold uppercase tracking-wider">
+                          Direct Support
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Need any details changed or corrected? Send a direct query to the college administration explaining what and why.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                <button
-                  type="submit"
-                  disabled={profileSaving}
-                  className="px-6 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-95"
-                >
-                  {profileSaving ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Saving to Database...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-3.5 h-3.5" />
-                      <span>Save Profile Details</span>
-                    </>
-                  )}
-                </button>
+                {queryError && (
+                  <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-3">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                    <span className="font-medium">{queryError}</span>
+                  </div>
+                )}
+
+                {querySuccess && (
+                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                    <span className="font-medium">{querySuccess}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleQuerySubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Field to change */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Detail / Field to Update</span>
+                        <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
+                      </label>
+                      <select
+                        value={queryForm.fieldToChange}
+                        onChange={(e) => setQueryForm({ ...queryForm, fieldToChange: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                      >
+                        <option value="Contact Phone Number">Contact Phone Number</option>
+                        <option value="Residential Address">Residential Address</option>
+                        <option value="Date of Birth (DOB)">Date of Birth (DOB)</option>
+                        <option value="Full Name / Spelling">Full Name / Spelling Correction</option>
+                        <option value="Gender">Gender</option>
+                        <option value="Blood Group">Blood Group</option>
+                        <option value="Parent / Guardian Name">Parent / Guardian Name</option>
+                        <option value="Guardian Contact Phone">Guardian Contact Phone</option>
+                        <option value="Email Address">Official Email Address</option>
+                        <option value="Other Detail">Other Detail</option>
+                      </select>
+                      <p className="text-[10px] text-slate-400 mt-1">Select the item you want updated</p>
+                    </div>
+
+                    {/* What to change (Requested change) */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>What to Change (New Value / Detail)</span>
+                        <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g., Update my phone number to +91 9876543210"
+                        value={queryForm.requestedChange}
+                        onChange={(e) => setQueryForm({ ...queryForm, requestedChange: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Specify exactly what the new value should be</p>
+                    </div>
+
+                    {/* Why to change (Reason) */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Reason for Change (Kyu change krna h)</span>
+                        <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        required
+                        placeholder="e.g., My previous phone was lost / Updated to new residence / Typo in initial registration"
+                        value={queryForm.reason}
+                        onChange={(e) => setQueryForm({ ...queryForm, reason: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all resize-none"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-0.5">Briefly explain why this modification is required</p>
+                    </div>
+
+                    {/* Additional Message */}
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                        <span>Additional Message / Notes for Admin (Optional)</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">Optional</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Any additional information or urgent notes for the administrator..."
+                        value={queryForm.message}
+                        onChange={(e) => setQueryForm({ ...queryForm, message: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={querySubmitting}
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      {querySubmitting ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Submitting Query to Database...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-3.5 h-3.5" />
+                          <span>Send Query to Admin</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
+
+              {/* ================= SECTION 5: MY SUBMITTED QUERIES (STUDENT READ-ONLY VIEW) ================= */}
+              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-4">
+                <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900">My Submitted Profile Queries & Requests</h3>
+                      <p className="text-xs text-slate-500">
+                        All queries you sent to administration are saved in database (View Only)
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    {studentQueries.length} {studentQueries.length === 1 ? 'Query' : 'Queries'}
+                  </span>
+                </div>
+
+                {queriesLoading ? (
+                  <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                    <span>Loading your submitted queries...</span>
+                  </div>
+                ) : studentQueries.length === 0 ? (
+                  <div className="p-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-slate-500 space-y-1.5">
+                    <MessageSquare className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-700">No Profile Queries Submitted Yet</p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                      If you ever need to correct or update any profile record, fill out the form above to message the college administration.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {studentQueries.map((q) => {
+                      const isPending = q.status === 'Pending';
+                      const isReviewed = q.status === 'Reviewed';
+                      const isResolved = q.status === 'Resolved';
+
+                      return (
+                        <div
+                          key={q._id}
+                          className={`p-4 sm:p-5 rounded-2xl border transition-all text-xs space-y-3 ${
+                            isPending
+                              ? 'bg-amber-50/40 border-amber-200/80'
+                              : isReviewed
+                              ? 'bg-indigo-50/40 border-indigo-200/80'
+                              : 'bg-emerald-50/40 border-emerald-200/80'
+                          }`}
+                        >
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200/60">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 text-sm">{q.fieldToChange}</span>
+                              <span className="text-[10px] text-slate-400">•</span>
+                              <span className="text-[11px] text-slate-500 font-mono">
+                                {new Date(q.createdAt).toLocaleDateString('en-US', {
+                                  day: 'numeric',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+
+                            {/* Status Pill */}
+                            <span
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${
+                                isPending
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : isReviewed
+                                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                              }`}
+                            >
+                              {isPending && <Clock className="w-3 h-3 text-amber-600" />}
+                              {isReviewed && <Eye className="w-3 h-3 text-indigo-600" />}
+                              {isResolved && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                              <span>{q.status}</span>
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="bg-white p-3 rounded-xl border border-slate-200/80">
+                              <span className="font-bold text-slate-700 block text-[11px] mb-1">
+                                Requested Change (Kya change krna h):
+                              </span>
+                              <p className="text-slate-900 font-semibold">{q.requestedChange}</p>
+                            </div>
+
+                            <div className="bg-white p-3 rounded-xl border border-slate-200/80">
+                              <span className="font-bold text-slate-700 block text-[11px] mb-1">
+                                Reason Given (Kyu change krna h):
+                              </span>
+                              <p className="text-slate-800">{q.reason}</p>
+                            </div>
+                          </div>
+
+                          {q.message && (
+                            <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200/60 text-slate-600 text-[11px]">
+                              <span className="font-bold text-slate-700 mr-1">Additional Note:</span>
+                              <span>{q.message}</span>
+                            </div>
+                          )}
+
+                          {q.adminResponse && (
+                            <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-200 text-indigo-900 text-xs">
+                              <span className="font-bold block mb-0.5">Admin Response / Note:</span>
+                              <span>{q.adminResponse}</span>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                            <span className="flex items-center gap-1">
+                              <Lock className="w-3 h-3" />
+                              <span>Stored in Institute Database (Read-Only)</span>
+                            </span>
+                            <span>Query ID: {q._id?.slice(-8)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

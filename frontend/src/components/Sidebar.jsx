@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   BookOpen,
   X,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import SnitLogo from './SnitLogo';
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { id: 'attendance', label: 'Take & View Attendance', icon: ClipboardCheck, badge: 'Live' },
   { id: 'reports', label: 'Attendance Reports', icon: FileSpreadsheet, badge: 'Excel' },
   { id: 'students', label: 'Student Register', icon: Users },
+  { id: 'queries', label: 'Student Queries', icon: MessageSquare, badge: 'Requests' },
   { id: 'subjects', label: 'Subjects & Courses', icon: BookOpen },
   { id: 'timetable', label: 'Timetable Manager', icon: CalendarClock, badge: 'Weekly' },
   { id: 'notes', label: 'Notes & Materials', icon: BookOpenCheck },

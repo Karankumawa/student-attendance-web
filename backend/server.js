@@ -17,6 +17,7 @@ const noteRoutes = require('./routes/noteRoutes');
 const studentPortalRoutes = require('./routes/studentPortalRoutes');
 const reportRoutes = require('./routes/reportRoutes');
 const subjectRoutes = require('./routes/subjectRoutes');
+const studentQueryRoutes = require('./routes/studentQueryRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -114,6 +115,9 @@ app.use('/reports', reportRoutes);
 
 app.use('/api/subjects', subjectRoutes);
 app.use('/subjects', subjectRoutes);
+
+app.use('/api/student-queries', studentQueryRoutes);
+app.use('/student-queries', studentQueryRoutes);
 
 // Optional: Serve frontend static build if deployed as all-in-one service
 const distPath = path.join(__dirname, '../frontend/dist');
