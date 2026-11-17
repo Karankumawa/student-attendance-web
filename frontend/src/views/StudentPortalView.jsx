@@ -12,12 +12,11 @@ import {
   Search,
   ExternalLink,
   Eye,
+  EyeOff,
   ShieldCheck,
   AlertCircle,
   FileText,
   User,
-  ChevronRight,
-  Menu,
   X,
   Lock,
   Phone,
@@ -133,7 +132,6 @@ const getFieldPlaceholder = (field) => {
 export const StudentPortalView = ({ showToast }) => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'timetable' | 'notes' | 'security'
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Data states
   const [dashboardData, setDashboardData] = useState(null);
@@ -164,9 +162,15 @@ export const StudentPortalView = ({ showToast }) => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Profile data (Read-only for student)
   const [profileData, setProfileData] = useState(null);
@@ -264,6 +268,18 @@ export const StudentPortalView = ({ showToast }) => {
   useEffect(() => {
     fetchStudentData();
   }, [fetchStudentData]);
+
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
+      await fetchStudentData();
+      showToast?.({ message: 'Portal data refreshed successfully!', type: 'success' });
+    } catch {
+      // Handled in fetchStudentData
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Submit profile change query / message to admin
   const handleQuerySubmit = async (e) => {
@@ -387,49 +403,83 @@ export const StudentPortalView = ({ showToast }) => {
   const pendingQueriesCount = studentQueries.filter((q) => q.status === 'Pending').length;
 
   const NAV_TABS = [
-    { id: 'attendance', label: 'My Attendance', icon: ClipboardCheck },
+    {
+      id: 'attendance',
+      label: 'My Attendance',
+      shortLabel: 'Attendance',
+      icon: ClipboardCheck,
+    },
     {
       id: 'profile',
       label: pendingQueriesCount > 0 ? `Student ID & Profile (${pendingQueriesCount})` : 'Student ID & Profile',
+      shortLabel: 'ID & Profile',
       icon: IdCard,
+      badgeCount: pendingQueriesCount,
     },
-    { id: 'timetable', label: 'Classes & Schedule', icon: CalendarClock },
-    { id: 'notes', label: `Study Notes (${notes.length})`, icon: BookOpenCheck },
-    { id: 'security', label: 'Change Password', icon: KeyRound },
+    {
+      id: 'timetable',
+      label: 'Classes & Schedule',
+      shortLabel: 'Schedule',
+      icon: CalendarClock,
+    },
+    {
+      id: 'notes',
+      label: `Study Notes (${notes.length})`,
+      shortLabel: 'Notes',
+      icon: BookOpenCheck,
+      badgeCount: notes.length,
+    },
+    {
+      id: 'security',
+      label: 'Change Password',
+      shortLabel: 'Password',
+      icon: KeyRound,
+    },
   ];
 
   const handleTabClick = (tabId) => {
     setActiveTab(tabId);
-    setIsMobileMenuOpen(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/60 text-slate-800 flex flex-col font-sans antialiased">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 flex flex-col font-sans antialiased overflow-x-hidden">
       {/* Sticky Top Header & Responsive Navbar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-xs transition-all">
         {/* Brand & User Topbar */}
-        <div className="px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between border-b border-slate-100/80">
-          <div className="flex items-center gap-3">
-            <SnitLogo className="w-9 h-9 sm:w-10 sm:h-10 shadow-md shadow-indigo-100 shrink-0" size={38} />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight tracking-tight">
-                  Shrinathji Institute of Technology & Engineering
+        <div className="px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between border-b border-slate-100/80">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <SnitLogo className="w-8 h-8 sm:w-10 sm:h-10 shadow-md shadow-indigo-100 shrink-0" size={36} />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="font-extrabold text-slate-900 text-xs sm:text-base leading-tight tracking-tight truncate">
+                  Shrinathji Institute of Technology
                 </h1>
                 <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider">
                   SNITN Portal
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate max-w-[210px] sm:max-w-none">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5 truncate">
                 {student?.name} • <span className="font-mono font-semibold text-slate-700">{student?.rollNumber}</span> ({student?.semester})
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Quick Refresh Button */}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl border border-slate-200/80 bg-slate-50 hover:bg-slate-100 text-slate-600 hover:text-slate-900 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50 shadow-2xs"
+              title="Refresh portal data"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-600 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            </button>
+
             <div className="hidden md:flex flex-col text-right">
               <span className="text-xs font-bold text-slate-900">{student?.registrationId || 'STU-ACTIVE'}</span>
               <span className="text-[11px] text-slate-500 font-medium">{student?.department}</span>
@@ -437,25 +487,16 @@ export const StudentPortalView = ({ showToast }) => {
 
             <button
               onClick={logout}
-              className="hidden md:flex items-center gap-1.5 px-3.5 py-1.5 sm:py-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200/80 hover:border-rose-200 cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all border border-slate-200/80 hover:border-rose-200 cursor-pointer active:scale-95 shadow-2xs"
               title="Logout from portal"
             >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </button>
-
-            {/* Mobile Hamburger / Close Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden flex items-center justify-center w-9 h-9 rounded-xl border border-slate-200/80 bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition-all cursor-pointer active:scale-95"
-              aria-label="Toggle navigation menu"
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5 text-slate-800" /> : <Menu className="w-5 h-5 text-slate-800" />}
+              <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
 
-        {/* Tab Options Bar - Hidden on Mobile, Shown on Desktop / Tablets (>= md) */}
+        {/* Tab Options Bar - Shown on Desktop / Tablets (>= md) */}
         <div className="hidden md:block px-3 sm:px-6 lg:px-8 py-2 bg-slate-50/75 border-b border-slate-100 overflow-x-auto no-scrollbar">
           <div className="max-w-7xl mx-auto flex items-center gap-1.5 sm:gap-2 min-w-max">
             {NAV_TABS.map((tab) => {
@@ -478,130 +519,81 @@ export const StudentPortalView = ({ showToast }) => {
             })}
           </div>
         </div>
-
-        {/* Mobile Dropdown Menu Drawer */}
-        {isMobileMenuOpen && (
-          <>
-            {/* Backdrop for closing when tapping outside */}
-            <div
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="fixed inset-0 top-[60px] z-30 bg-slate-950/40 backdrop-blur-xs md:hidden"
-              aria-hidden="true"
-            />
-            <div className="relative z-40 md:hidden border-t border-slate-200 bg-white/98 backdrop-blur-xl px-4 py-3 shadow-xl space-y-2 animate-fade-in">
-              <div className="pb-2 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold text-slate-700">{student?.department}</span>
-                <span className="font-mono">{student?.registrationId || 'STU-ACTIVE'}</span>
-              </div>
-              <div className="space-y-1">
-                {NAV_TABS.map((tab) => {
-                  const Icon = tab.icon;
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabClick(tab.id)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        isActive
-                          ? 'bg-slate-900 text-white shadow-xs'
-                          : 'text-slate-700 hover:bg-slate-100 active:bg-slate-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span>{tab.label}</span>
-                      </div>
-                      <ChevronRight className={`w-3.5 h-3.5 ${isActive ? 'text-white/70' : 'text-slate-400'}`} />
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="pt-2 border-t border-slate-100">
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    logout();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 transition-all cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Logout</span>
-                </button>
-              </div>
-            </div>
-          </>
-        )}
       </header>
 
-      {/* Main Container */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* Main Container with safe bottom spacing for mobile bottom dock */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-3.5 sm:p-6 lg:p-8 space-y-6 pb-28 md:pb-12">
 
         {/* ================= VIEW 1: MY ATTENDANCE ================= */}
         {activeTab === 'attendance' && (
-          <div className="space-y-6 animate-fade-in">
+          <div className="space-y-5 sm:space-y-6 animate-fade-in">
             {/* Attendance Overview Card */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-slate-100">
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-5 sm:p-8 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
                 <div>
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100 text-xs font-bold text-indigo-700 mb-2">
                     <ShieldCheck className="w-3.5 h-3.5" />
                     <span>Personal Academic Standing</span>
                   </div>
                   <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                    Cumulative Attendance Report
+                    Cumulative Attendance Overview
                   </h2>
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-slate-500 mt-0.5">
                     Your personal record across all lecture periods in {student?.semester}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                    title="Print attendance report slip"
-                  >
-                    <Printer className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Print Slip</span>
-                  </button>
-
-                  <div className="text-right">
+                <div className="flex items-center sm:flex-col sm:items-end justify-between gap-2 bg-slate-50 sm:bg-transparent p-3.5 sm:p-0 rounded-2xl border sm:border-0 border-slate-200/80">
+                  <div className="text-left sm:text-right">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block sm:hidden">
+                      Cumulative Rate
+                    </span>
                     <div className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
                       {overall && overall.totalClasses > 0 ? `${overall.percentage}%` : 'N/A'}
                     </div>
-                    <span
-                      className={`inline-block mt-1 px-3 py-0.5 rounded-full text-xs font-bold ${
-                        !overall || overall.totalClasses === 0
-                          ? 'bg-slate-100 text-slate-600 border border-slate-200'
-                          : overall.percentage >= 75
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : overall.percentage >= 60
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-rose-50 text-rose-700 border border-rose-200'
-                      }`}
-                    >
-                      {overall?.status || 'Active'}
-                    </span>
                   </div>
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${
+                      !overall || overall.totalClasses === 0
+                        ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                        : overall.percentage >= 75
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : overall.percentage >= 60
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full ${
+                        !overall || overall.totalClasses === 0
+                          ? 'bg-slate-400'
+                          : overall.percentage >= 75
+                          ? 'bg-emerald-500'
+                          : overall.percentage >= 60
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
+                      }`}
+                    />
+                    <span>{overall?.status || 'Active'}</span>
+                  </span>
                 </div>
               </div>
 
               {/* Stat Counters */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
-                <div className="p-5 rounded-3xl bg-slate-50/80 border border-slate-200/60">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-6">
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-slate-50/80 border border-slate-200/60">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Classes Held</span>
                   <div className="text-2xl font-black text-slate-900 mt-1">{overall?.totalClasses || 0}</div>
                   <span className="text-[11px] text-slate-400">Recorded by faculty</span>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-emerald-50/60 border border-emerald-100">
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-emerald-50/60 border border-emerald-100">
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Classes Attended</span>
                   <div className="text-2xl font-black text-emerald-800 mt-1">{overall?.attendedClasses || 0}</div>
                   <span className="text-[11px] text-emerald-600">Present in lecture</span>
                 </div>
 
-                <div className="p-5 rounded-3xl bg-rose-50/60 border border-rose-100">
+                <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-rose-50/60 border border-rose-100">
                   <span className="text-xs font-bold uppercase tracking-wider text-rose-700">Classes Absent</span>
                   <div className="text-2xl font-black text-rose-800 mt-1">{overall?.absentClasses || 0}</div>
                   <span className="text-[11px] text-rose-600">Missed lectures</span>
@@ -723,7 +715,7 @@ export const StudentPortalView = ({ showToast }) => {
 
             {/* Date-Wise Personal History (Only THIS student's records) */}
             <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
-              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-100 flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Your Class Session History</h3>
                   <p className="text-xs text-slate-500 mt-0.5">Showing only your personal lecture attendances</p>
@@ -738,54 +730,88 @@ export const StudentPortalView = ({ showToast }) => {
                   No attendance entries recorded for your semester yet.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                        <th className="py-3.5 px-6">Date</th>
-                        <th className="py-3.5 px-6">Subject Name</th>
-                        <th className="py-3.5 px-6">Semester</th>
-                        <th className="py-3.5 px-6 text-right">Your Attendance Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {attendanceData?.history?.map((rec, idx) => {
-                        const isPresent = rec.status === 'Present';
+                <>
+                  {/* Mobile-optimized card feed (< sm screens) */}
+                  <div className="sm:hidden divide-y divide-slate-100">
+                    {attendanceData?.history?.map((rec, idx) => {
+                      const isPresent = rec.status === 'Present';
+                      return (
+                        <div key={idx} className="p-4 flex items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors">
+                          <div className="min-w-0 space-y-1">
+                            <h4 className="text-xs font-bold text-slate-900 truncate">
+                              {rec.subject}
+                            </h4>
+                            <div className="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                              <span className="font-mono text-slate-700 font-semibold">{rec.date}</span>
+                              <span>•</span>
+                              <span>{rec.semester}</span>
+                            </div>
+                          </div>
+                          <span
+                            className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              isPresent
+                                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                : 'bg-rose-50 text-rose-800 border border-rose-200'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${isPresent ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                            <span>{rec.status}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
 
-                        return (
-                          <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
-                            <td className="py-3.5 px-6 font-mono text-xs font-bold text-slate-700">
-                              {rec.date}
-                            </td>
-                            <td className="py-3.5 px-6 font-bold text-slate-900">{rec.subject}</td>
-                            <td className="py-3.5 px-6 text-xs text-slate-500">{rec.semester}</td>
-                            <td className="py-3.5 px-6 text-right">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-                                  isPresent
-                                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                                    : 'bg-rose-50 text-rose-800 border border-rose-200'
-                                }`}
-                              >
-                                {isPresent ? (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                    <span>Present</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                                    <span>Absent</span>
-                                  </>
-                                )}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                  {/* Tablet & Desktop structured table (>= sm screens) */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead>
+                        <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                          <th className="py-3.5 px-6">Date</th>
+                          <th className="py-3.5 px-6">Subject Name</th>
+                          <th className="py-3.5 px-6">Semester</th>
+                          <th className="py-3.5 px-6 text-right">Your Attendance Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {attendanceData?.history?.map((rec, idx) => {
+                          const isPresent = rec.status === 'Present';
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-3.5 px-6 font-mono text-xs font-bold text-slate-700">
+                                {rec.date}
+                              </td>
+                              <td className="py-3.5 px-6 font-bold text-slate-900">{rec.subject}</td>
+                              <td className="py-3.5 px-6 text-xs text-slate-500">{rec.semester}</td>
+                              <td className="py-3.5 px-6 text-right">
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                                    isPresent
+                                      ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                                  }`}
+                                >
+                                  {isPresent ? (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                      <span>Present</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                      <span>Absent</span>
+                                    </>
+                                  )}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -1875,48 +1901,78 @@ export const StudentPortalView = ({ showToast }) => {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Current Password *
                   </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter current password"
-                    value={passwordForm.currentPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword.current ? 'text' : 'password'}
+                      required
+                      placeholder="Enter current password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                      }
+                      className="w-full pl-3.5 pr-11 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => ({ ...p, current: !p.current }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
+                      title={showPassword.current ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     New Password * (Min 6 characters)
                   </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Enter new password"
-                    value={passwordForm.newPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword.new ? 'text' : 'password'}
+                      required
+                      placeholder="Enter new password"
+                      value={passwordForm.newPassword}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                      }
+                      className="w-full pl-3.5 pr-11 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => ({ ...p, new: !p.new }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
+                      title={showPassword.new ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Confirm New Password *
                   </label>
-                  <input
-                    type="password"
-                    required
-                    placeholder="Re-enter new password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword.confirm ? 'text' : 'password'}
+                      required
+                      placeholder="Re-enter new password"
+                      value={passwordForm.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                      }
+                      className="w-full pl-3.5 pr-11 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((p) => ({ ...p, confirm: !p.confirm }))}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer transition-colors"
+                      title={showPassword.confirm ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="pt-2">
@@ -1939,7 +1995,41 @@ export const StudentPortalView = ({ showToast }) => {
             </div>
           </div>
         )}
-      </div>
+      </main>
+
+      {/* Fixed Bottom Navigation Dock for Mobile Devices (< md) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 shadow-lg px-2 py-1.5 flex justify-around items-center">
+        {NAV_TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleTabClick(tab.id)}
+              className={`flex-1 py-1 px-1 flex flex-col items-center justify-center gap-1 transition-all cursor-pointer relative active:scale-90 ${
+                isActive ? 'text-indigo-600 font-extrabold' : 'text-slate-500 hover:text-slate-700 font-medium'
+              }`}
+            >
+              <div
+                className={`p-1.5 rounded-xl transition-all ${
+                  isActive ? 'bg-indigo-50 text-indigo-600 shadow-2xs' : ''
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+              </div>
+              <span className="text-[10px] leading-tight text-center truncate max-w-[64px]">
+                {tab.shortLabel}
+              </span>
+              {tab.badgeCount > 0 && (
+                <span className="absolute top-0.5 right-1/4 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center shadow-xs">
+                  {tab.badgeCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
       {/* View Full Note Modal */}
       {viewingNote && (
