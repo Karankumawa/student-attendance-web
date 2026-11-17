@@ -36,7 +36,7 @@ export const Sidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOp
     let isMounted = true;
     const fetchPendingQueries = async () => {
       try {
-        const res = await axiosClient.get('/student-queries');
+        const res = await axiosClient.get('/student-queries/stats');
         if (isMounted && res.data?.stats?.pending !== undefined) {
           setPendingCount(res.data.stats.pending);
         }

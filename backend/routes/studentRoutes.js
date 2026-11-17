@@ -3,6 +3,7 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
 
@@ -29,7 +30,7 @@ router.get('/', async (req, res) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       filter.$or = [
         { name: searchRegex },
         { firstName: searchRegex },
@@ -41,7 +42,7 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    const students = await Student.find(filter).sort({ rollNumber: 1 });
+    const students = await Student.find(filter).sort({ rollNumber: 1 }).lean();
     return res.status(200).json({
       success: true,
       count: students.length,
@@ -64,7 +65,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const student = await Student.findById(req.params.id).lean();
     if (!student) {
       return res.status(404).json({
         success: false,
@@ -416,9 +417,14 @@ router.delete('/:id', async (req, res) => {
       ],
     });
 
-    // Clean up student's past records from attendance
+    // Clean up student's past records from attendance using index filter
     await Attendance.updateMany(
-      {},
+      {
+        $or: [
+          { 'records.studentId': student._id },
+          { 'records.rollNumber': student.rollNumber },
+        ],
+      },
       {
         $pull: {
           records: {

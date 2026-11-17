@@ -1,18 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import LoginView from './views/LoginView';
-import StudentPortalView from './views/StudentPortalView';
-import DashboardView from './views/DashboardView';
-import AttendanceView from './views/AttendanceView';
-import ReportsView from './views/ReportsView';
-import StudentsView from './views/StudentsView';
-import StudentQueriesView from './views/StudentQueriesView';
-import SubjectsView from './views/SubjectsView';
-import TimetableView from './views/TimetableView';
-import NotesView from './views/NotesView';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import Toast from './components/Toast';
+
+// Code-splitting with dynamic lazy loading for optimal initial bundle size & load speed
+const LoginView = lazy(() => import('./views/LoginView'));
+const StudentPortalView = lazy(() => import('./views/StudentPortalView'));
+const DashboardView = lazy(() => import('./views/DashboardView'));
+const AttendanceView = lazy(() => import('./views/AttendanceView'));
+const ReportsView = lazy(() => import('./views/ReportsView'));
+const StudentsView = lazy(() => import('./views/StudentsView'));
+const StudentQueriesView = lazy(() => import('./views/StudentQueriesView'));
+const SubjectsView = lazy(() => import('./views/SubjectsView'));
+const TimetableView = lazy(() => import('./views/TimetableView'));
+const NotesView = lazy(() => import('./views/NotesView'));
+
+const ViewLoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[55vh]">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-9 h-9 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <p className="text-xs font-semibold text-slate-500">Loading module...</p>
+    </div>
+  </div>
+);
 
 const MainApp = () => {
   const { isAuthenticated, user, logout, loading } = useAuth();
@@ -21,13 +32,14 @@ const MainApp = () => {
   const [toast, setToast] = useState(null);
   const [selectedAttendanceSession, setSelectedAttendanceSession] = useState(null);
 
-  const showToast = ({ message, type = 'info' }) => {
+  // Stable callback references to prevent cascading child re-renders & fetch loops
+  const showToast = useCallback(({ message, type = 'info' }) => {
     setToast({ message, type });
-  };
+  }, []);
 
-  const handleCloseToast = () => {
+  const handleCloseToast = useCallback(() => {
     setToast(null);
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -41,20 +53,24 @@ const MainApp = () => {
   }
 
   if (!isAuthenticated) {
-    return <LoginView />;
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <LoginView />
+      </Suspense>
+    );
   }
 
   // Role Protection: Students strictly render Student Portal
   if (user?.role === 'student') {
     return (
-      <>
+      <Suspense fallback={<ViewLoadingFallback />}>
         <StudentPortalView showToast={showToast} />
         <Toast toast={toast} onClose={handleCloseToast} />
-      </>
+      </Suspense>
     );
   }
 
-  // Active view renderer for Admin / Faculty
+  // Active view renderer for Admin / Faculty with Suspense
   const renderActiveView = () => {
     switch (activeView) {
       case 'dashboard':
@@ -117,7 +133,9 @@ const MainApp = () => {
           <Navbar activeView={activeView} setIsMobileOpen={setIsMobileOpen} />
 
           <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-            {renderActiveView()}
+            <Suspense fallback={<ViewLoadingFallback />}>
+              {renderActiveView()}
+            </Suspense>
           </main>
         </div>
 

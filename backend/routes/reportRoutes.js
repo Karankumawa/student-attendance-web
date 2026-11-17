@@ -50,60 +50,67 @@ const buildReportFilter = (query) => {
 const computeReportData = async (filters, reportType = 'all', minAttendance = 75) => {
   const { studentQuery, attendanceQuery } = buildReportFilter(filters);
 
-  // Fetch Students & Sessions from MongoDB
-  const students = await Student.find(studentQuery).sort({ rollNumber: 1 });
-  const sessions = await Attendance.find(attendanceQuery).sort({ date: 1, subject: 1 });
+  // Parallel fetch students & sessions as lean plain objects
+  const [students, sessions] = await Promise.all([
+    Student.find(studentQuery).sort({ rollNumber: 1 }).lean(),
+    Attendance.find(attendanceQuery).sort({ date: 1, subject: 1 }).lean(),
+  ]);
 
-  // Map student attendance scoped specifically to each student's semester / enrolled sessions
+  // Pre-index session records into fast lookup maps: O(S * R) setup vs O(N * S * R) repeated search
+  const sessionLookups = sessions.map((sess) => {
+    const statusByStudentId = new Map();
+    const statusByRoll = new Map();
+    const sessionSem = (sess.semester || '').trim().toLowerCase();
+
+    for (const rec of sess.records || []) {
+      if (rec.studentId) statusByStudentId.set(String(rec.studentId), rec.status);
+      if (rec.rollNumber) statusByRoll.set(String(rec.rollNumber).toUpperCase(), rec.status);
+    }
+
+    return {
+      date: sess.date,
+      subject: sess.subject,
+      semester: sess.semester,
+      sessionSem,
+      statusByStudentId,
+      statusByRoll,
+    };
+  });
+
+  // Map student attendance scoped specifically to each student with O(1) record lookups
   const studentReports = students.map((student, index) => {
-    // Determine which sessions apply to this specific student:
-    // 1) Session belongs to the student's semester, OR
-    // 2) Student has an explicit record in that session (cross-enrolled/elective)
-    const studentApplicableSessions = sessions.filter((sess) => {
-      const isSameSemester =
-        sess.semester &&
-        student.semester &&
-        sess.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
-
-      const hasRecord =
-        sess.records &&
-        sess.records.some(
-          (rec) =>
-            (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
-            (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
-        );
-
-      return isSameSemester || hasRecord;
-    });
+    const studentIdStr = String(student._id);
+    const studentRollUpper = (student.rollNumber || '').toUpperCase();
+    const studentSem = (student.semester || '').trim().toLowerCase();
 
     let attended = 0;
     let absent = 0;
+    let totalClasses = 0;
     const sessionDetails = [];
 
-    // Calculate attendance only on sessions applicable to this student
-    studentApplicableSessions.forEach((session) => {
-      const record = session.records.find(
-        (rec) =>
-          (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
-          (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
-      );
+    for (const sess of sessionLookups) {
+      const isSameSemester = sess.sessionSem && studentSem && sess.sessionSem === studentSem;
+      const recordStatus =
+        sess.statusByStudentId.get(studentIdStr) ||
+        sess.statusByRoll.get(studentRollUpper);
 
-      const status = record ? record.status : 'Absent';
-      if (status === 'Present') {
-        attended++;
-      } else {
-        absent++;
+      if (isSameSemester || recordStatus !== undefined) {
+        totalClasses += 1;
+        const status = recordStatus || 'Absent';
+        if (status === 'Present') {
+          attended++;
+        } else {
+          absent++;
+        }
+
+        sessionDetails.push({
+          date: sess.date,
+          subject: sess.subject,
+          semester: sess.semester,
+          status: status,
+        });
       }
-
-      sessionDetails.push({
-        date: session.date,
-        subject: session.subject,
-        semester: session.semester,
-        status: status,
-      });
-    });
-
-    const totalClasses = studentApplicableSessions.length;
+    }
     const percentage = totalClasses > 0 ? Number(((attended / totalClasses) * 100).toFixed(1)) : 0;
 
     let statusLabel = 'Eligible';
@@ -193,17 +200,33 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
  */
 router.get('/filters', async (req, res) => {
   try {
-    // Extract distinct years from attendance records in MongoDB
-    const attendanceDates = await Attendance.find({}, { date: 1, _id: 0 });
+    // Parallelize distinct filter extraction directly in MongoDB
+    const [
+      distinctDates,
+      totalRecordsInDb,
+      departments,
+      semesters,
+      catalogSubjects,
+      attendanceSubjects,
+      timetableSubjects,
+    ] = await Promise.all([
+      Attendance.distinct('date'),
+      Attendance.countDocuments(),
+      Student.distinct('department'),
+      Student.distinct('semester'),
+      Subject.distinct('name'),
+      Attendance.distinct('subject'),
+      Timetable.distinct('subject'),
+    ]);
+
     const dbYears = Array.from(
       new Set(
-        attendanceDates
-          .map((doc) => (doc.date ? doc.date.slice(0, 4) : null))
+        distinctDates
+          .map((d) => (d ? String(d).slice(0, 4) : null))
           .filter((y) => y && /^\d{4}$/.test(y))
       )
     );
 
-    // Merge with past 5 years and current year so admin can filter any past or future years
     const currentYear = new Date().getFullYear();
     const standardYears = [
       currentYear + 1,
@@ -218,14 +241,6 @@ router.get('/filters', async (req, res) => {
       .sort()
       .reverse();
 
-    // Distinct departments & semesters from Student collection
-    const departments = await Student.distinct('department');
-    const semesters = await Student.distinct('semester');
-
-    // Distinct subjects from database Subject collection, Attendance & Timetable
-    const catalogSubjects = await Subject.distinct('name');
-    const attendanceSubjects = await Attendance.distinct('subject');
-    const timetableSubjects = await Timetable.distinct('subject');
     const mergedSubjects = Array.from(
       new Set([...catalogSubjects, ...attendanceSubjects, ...timetableSubjects])
     )
@@ -242,7 +257,7 @@ router.get('/filters', async (req, res) => {
           'Semester 5', 'Semester 6', 'Semester 7', 'Semester 8',
         ],
         subjects: mergedSubjects,
-        totalRecordsInDb: attendanceDates.length,
+        totalRecordsInDb,
       },
     });
   } catch (error) {
@@ -453,23 +468,31 @@ router.get('/export-excel', async (req, res) => {
         matrixHeaders,
       ];
 
+      const matrixSessionLookups = sessions.map((sess) => {
+        const statusByStudentId = new Map();
+        const statusByRoll = new Map();
+        const sessionSem = (sess.semester || '').trim().toLowerCase();
+        for (const rec of sess.records || []) {
+          if (rec.studentId) statusByStudentId.set(String(rec.studentId), rec.status);
+          if (rec.rollNumber) statusByRoll.set(String(rec.rollNumber).toUpperCase(), rec.status);
+        }
+        return { sessionSem, statusByStudentId, statusByRoll };
+      });
+
       allStudents.forEach((student) => {
         const row = [student.rollNumber, student.registrationId, student.name, student.semester];
+        const studentIdStr = String(student.studentId || '');
+        const rollUpper = String(student.rollNumber || '').toUpperCase();
+        const studentSem = (student.semester || '').trim().toLowerCase();
 
-        sessions.forEach((sess) => {
-          const isSameSemester =
-            sess.semester &&
-            student.semester &&
-            sess.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+        matrixSessionLookups.forEach((sess) => {
+          const isSameSemester = sess.sessionSem && studentSem && sess.sessionSem === studentSem;
+          const status =
+            sess.statusByStudentId.get(studentIdStr) ||
+            sess.statusByRoll.get(rollUpper);
 
-          const rec = sess.records.find(
-            (r) =>
-              (r.studentId && r.studentId.toString() === student.studentId.toString()) ||
-              (r.rollNumber && r.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
-          );
-
-          if (rec) {
-            row.push(rec.status === 'Present' ? 'P' : 'A');
+          if (status !== undefined) {
+            row.push(status === 'Present' ? 'P' : 'A');
           } else if (isSameSemester) {
             row.push('A');
           } else {

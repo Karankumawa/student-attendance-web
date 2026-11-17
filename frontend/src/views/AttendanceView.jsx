@@ -84,7 +84,8 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     setSessionDetailsModal(sess);
     const initialMap = {};
     (sess.records || []).forEach((r) => {
-      initialMap[r.studentId] = r.status;
+      const sId = String(r.studentId?._id || r.studentId || '');
+      if (sId) initialMap[sId] = r.status;
     });
     setModalRecords(initialMap);
     setModalSearch('');
@@ -94,12 +95,15 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     if (!sessionDetailsModal) return;
     try {
       setModalSaving(true);
-      const updatedRecords = (sessionDetailsModal.records || []).map((r) => ({
-        studentId: r.studentId,
-        rollNumber: r.rollNumber,
-        name: r.name,
-        status: modalRecords[r.studentId] === 'Present' ? 'Present' : 'Absent',
-      }));
+      const updatedRecords = (sessionDetailsModal.records || []).map((r) => {
+        const sId = String(r.studentId?._id || r.studentId || '');
+        return {
+          studentId: r.studentId,
+          rollNumber: r.rollNumber,
+          name: r.name,
+          status: modalRecords[sId] === 'Present' ? 'Present' : 'Absent',
+        };
+      });
 
       const res = await axiosClient.put(`/attendance/${sessionDetailsModal._id}`, {
         records: updatedRecords,
@@ -1196,10 +1200,11 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                         </tr>
                       ) : (
                         filteredModalStudents.map((r, idx) => {
-                          const isPresent = modalRecords[r.studentId] === 'Present';
+                          const sId = String(r.studentId?._id || r.studentId || '');
+                          const isPresent = modalRecords[sId] === 'Present';
                           return (
                             <tr
-                              key={r.studentId || idx}
+                              key={sId || idx}
                               className={`hover:bg-slate-50/70 transition-colors ${
                                 !isPresent ? 'bg-rose-50/20' : ''
                               }`}
@@ -1232,7 +1237,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                                     onClick={() =>
                                       setModalRecords((prev) => ({
                                         ...prev,
-                                        [r.studentId]: 'Present',
+                                        [sId]: 'Present',
                                       }))
                                     }
                                     className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${
@@ -1248,7 +1253,7 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
                                     onClick={() =>
                                       setModalRecords((prev) => ({
                                         ...prev,
-                                        [r.studentId]: 'Absent',
+                                        [sId]: 'Absent',
                                       }))
                                     }
                                     className={`px-2.5 py-1 text-[11px] font-bold rounded-md transition-all cursor-pointer ${

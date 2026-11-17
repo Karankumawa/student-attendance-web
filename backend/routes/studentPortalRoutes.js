@@ -60,31 +60,52 @@ router.get('/dashboard', async (req, res) => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const currentDay = days[today.getDay()];
 
-    // 1. Fetch all attendance sessions applicable to this student (matching semester or explicit record)
+    // 1. Parallel fetch attendance sessions, today's classes, and recent notes
     const semClean = (student.semester || '').trim();
     const semRegex = new RegExp(`^${escapeRegex(semClean)}$`, 'i');
-    const sessions = await Attendance.find({
-      $or: [
-        { semester: semRegex },
-        { 'records.studentId': student._id },
-        { 'records.rollNumber': new RegExp(`^${escapeRegex(student.rollNumber)}$`, 'i') },
-      ],
-    });
+
+    const [sessions, rawTodaysClasses, recentNotes] = await Promise.all([
+      Attendance.find({
+        $or: [
+          { semester: semRegex },
+          { 'records.studentId': student._id },
+          { 'records.rollNumber': new RegExp(`^${escapeRegex(student.rollNumber)}$`, 'i') },
+        ],
+      }).lean(),
+      Timetable.find({
+        semester: student.semester,
+        dayOfWeek: currentDay,
+      }).lean(),
+      Note.find({
+        semester: { $in: [student.semester, 'All', 'All Semesters'] },
+      })
+        .sort({ createdAt: -1 })
+        .limit(3)
+        .lean(),
+    ]);
 
     let totalClasses = 0;
     let attendedClasses = 0;
+    const studentIdStr = String(student._id);
+    const studentRollUpper = (student.rollNumber || '').toUpperCase();
+    const studentSem = (student.semester || '').trim().toLowerCase();
 
-    sessions.forEach((session) => {
+    for (const session of sessions) {
       const isSameSemester =
         session.semester &&
-        student.semester &&
-        session.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+        studentSem &&
+        session.semester.trim().toLowerCase() === studentSem;
 
-      const myRecord = session.records.find(
-        (rec) =>
-          (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
-          (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
-      );
+      let myRecord = null;
+      for (const rec of session.records || []) {
+        if (
+          (rec.studentId && String(rec.studentId) === studentIdStr) ||
+          (rec.rollNumber && String(rec.rollNumber).toUpperCase() === studentRollUpper)
+        ) {
+          myRecord = rec;
+          break;
+        }
+      }
 
       if (isSameSemester || myRecord) {
         totalClasses += 1;
@@ -92,7 +113,7 @@ router.get('/dashboard', async (req, res) => {
           attendedClasses += 1;
         }
       }
-    });
+    }
 
     const percentage =
       totalClasses > 0 ? Number(((attendedClasses / totalClasses) * 100).toFixed(1)) : 0;
@@ -104,19 +125,8 @@ router.get('/dashboard', async (req, res) => {
       else academicStanding = 'Good';
     }
 
-    // 2. Fetch today's classes strictly for student's semester sorted chronologically
-    const rawTodaysClasses = await Timetable.find({
-      semester: student.semester,
-      dayOfWeek: currentDay,
-    });
+    // 2. Sort today's classes chronologically
     const todaysClasses = sortSlotsByTime(rawTodaysClasses);
-
-    // 3. Fetch recent notes for student's semester
-    const recentNotes = await Note.find({
-      semester: { $in: [student.semester, 'All', 'All Semesters'] },
-    })
-      .sort({ createdAt: -1 })
-      .limit(3);
 
     return res.status(200).json({
       success: true,
@@ -178,7 +188,7 @@ router.get('/attendance', async (req, res) => {
     }).sort({
       date: -1,
       createdAt: -1,
-    });
+    }).lean();
 
     let totalClasses = 0;
     let attendedClasses = 0;
@@ -293,7 +303,7 @@ router.get('/timetable', async (req, res) => {
       filter.dayOfWeek = dayOfWeek;
     }
 
-    const rawSchedule = await Timetable.find(filter);
+    const rawSchedule = await Timetable.find(filter).lean();
     const schedule = sortSlotsByTime(rawSchedule);
 
     return res.status(200).json({
@@ -337,7 +347,7 @@ router.get('/notes', async (req, res) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       filter.$or = [
         { title: searchRegex },
         { content: searchRegex },
@@ -345,7 +355,7 @@ router.get('/notes', async (req, res) => {
       ];
     }
 
-    const notes = await Note.find(filter).sort({ createdAt: -1 });
+    const notes = await Note.find(filter).sort({ createdAt: -1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -438,7 +448,7 @@ router.get('/profile', async (req, res) => {
       });
     }
 
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).lean();
 
     return res.status(200).json({
       success: true,
@@ -578,7 +588,7 @@ router.get('/queries', async (req, res) => {
       ],
     }).sort({
       createdAt: -1,
-    });
+    }).lean();
 
     return res.status(200).json({
       success: true,

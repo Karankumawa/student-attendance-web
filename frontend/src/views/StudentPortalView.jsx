@@ -161,49 +161,42 @@ export const StudentPortalView = ({ showToast }) => {
     try {
       setLoading(true);
 
-      // Fetch dashboard overview & stats
-      const dashRes = await axiosClient.get('/student-portal/dashboard');
-      if (dashRes.data.success) {
-        setDashboardData(dashRes.data.data);
-      }
+      // Parallelize all student portal resources simultaneously
+      const [dashRes, profileRes, attRes, ttRes, notesRes, queriesRes] =
+        await Promise.allSettled([
+          axiosClient.get('/student-portal/dashboard'),
+          axiosClient.get('/student-portal/profile'),
+          axiosClient.get('/student-portal/attendance'),
+          axiosClient.get('/student-portal/timetable'),
+          axiosClient.get('/student-portal/notes'),
+          axiosClient.get('/student-portal/queries'),
+        ]);
 
-      // Fetch personal profile details
-      try {
-        const profileRes = await axiosClient.get('/student-portal/profile');
-        if (profileRes.data.success && profileRes.data.data) {
-          setProfileData(profileRes.data.data);
-        }
-      } catch (pErr) {
-        console.warn('Could not load student profile record:', pErr);
+      if (dashRes.status === 'fulfilled' && dashRes.value.data?.success) {
+        setDashboardData(dashRes.value.data.data);
       }
-
-      // Fetch personal attendance
-      const attRes = await axiosClient.get('/student-portal/attendance');
-      if (attRes.data.success) {
-        setAttendanceData(attRes.data.data);
+      if (profileRes.status === 'fulfilled' && profileRes.value.data?.success) {
+        setProfileData(profileRes.value.data.data);
       }
-
-      // Fetch timetable
-      const ttRes = await axiosClient.get('/student-portal/timetable');
-      if (ttRes.data.success) {
-        setTimetableSlots(ttRes.data.data || []);
+      if (attRes.status === 'fulfilled' && attRes.value.data?.success) {
+        setAttendanceData(attRes.value.data.data);
       }
-
-      // Fetch notes
-      const notesRes = await axiosClient.get('/student-portal/notes');
-      if (notesRes.data.success) {
-        setNotes(notesRes.data.data || []);
+      if (ttRes.status === 'fulfilled' && ttRes.value.data?.success) {
+        setTimetableSlots(ttRes.value.data.data || []);
       }
-
-      // Fetch student's submitted profile queries
-      await fetchStudentQueries();
+      if (notesRes.status === 'fulfilled' && notesRes.value.data?.success) {
+        setNotes(notesRes.value.data.data || []);
+      }
+      if (queriesRes.status === 'fulfilled' && queriesRes.value.data?.success) {
+        setStudentQueries(queriesRes.value.data.data || []);
+      }
     } catch (err) {
       console.error('Error fetching student data:', err);
       showToast?.({ message: 'Error loading student portal data', type: 'error' });
     } finally {
       setLoading(false);
     }
-  }, [showToast, fetchStudentQueries]);
+  }, [showToast]);
 
   useEffect(() => {
     fetchStudentData();

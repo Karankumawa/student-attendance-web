@@ -93,25 +93,26 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch dashboard overview stats
-      const statsRes = await axiosClient.get('/attendance/dashboard-stats');
-      if (statsRes.data.success) {
-        setStats(statsRes.data.stats);
+      // Fetch stats, attendance summary, and recent notes in parallel
+      const [statsResult, summaryResult, notesResult] = await Promise.allSettled([
+        axiosClient.get('/attendance/dashboard-stats'),
+        axiosClient.get('/attendance/summary'),
+        axiosClient.get('/notes'),
+      ]);
+
+      if (statsResult.status === 'fulfilled' && statsResult.value.data?.success) {
+        setStats(statsResult.value.data.stats);
       }
 
-      // Fetch attendance summary to identify defaulters (<75%)
-      const summaryRes = await axiosClient.get('/attendance/summary');
-      if (summaryRes.data.success) {
-        const lowAttendanceStudents = summaryRes.data.data
+      if (summaryResult.status === 'fulfilled' && summaryResult.value.data?.success) {
+        const lowAttendanceStudents = (summaryResult.value.data.data || [])
           .filter((s) => s.totalClasses > 0 && s.percentage < 75)
           .slice(0, 5);
         setDefaulters(lowAttendanceStudents);
       }
 
-      // Fetch recent notes
-      const notesRes = await axiosClient.get('/notes');
-      if (notesRes.data.success) {
-        setRecentNotes(notesRes.data.data.slice(0, 3));
+      if (notesResult.status === 'fulfilled' && notesResult.value.data?.success) {
+        setRecentNotes((notesResult.value.data.data || []).slice(0, 3));
       }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

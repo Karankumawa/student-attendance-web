@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
       filter.semester = semester;
     }
 
-    const rawSlots = await Timetable.find(filter);
+    const rawSlots = await Timetable.find(filter).lean();
     const slots = sortSlotsByTime(rawSlots);
     return res.status(200).json({
       success: true,
@@ -159,7 +159,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     if (endTime) slot.endTime = endTime.trim();
     if (subject) slot.subject = subject.trim();
     if (semester) slot.semester = semester.trim();
-    if (roomNumber !== undefined) slot.roomNumber = roomNumber.trim();
+    if (roomNumber !== undefined) slot.roomNumber = roomNumber ? String(roomNumber).trim() : 'Room 101';
 
     await slot.save();
 

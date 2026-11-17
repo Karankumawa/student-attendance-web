@@ -1,6 +1,7 @@
 const express = require('express');
 const Note = require('../models/Note');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
 
@@ -26,7 +27,7 @@ router.get('/', async (req, res) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       filter.$or = [
         { title: searchRegex },
         { content: searchRegex },
@@ -34,7 +35,7 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    const notes = await Note.find(filter).sort({ createdAt: -1 });
+    const notes = await Note.find(filter).sort({ createdAt: -1 }).lean();
     return res.status(200).json({
       success: true,
       count: notes.length,

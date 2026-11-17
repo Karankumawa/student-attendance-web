@@ -144,8 +144,8 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
           type: 'success',
         });
         window.dispatchEvent(new Event('queries:updated'));
-        // Refresh counts
-        const allRes = await axiosClient.get('/student-queries');
+        // Refresh counts via lightweight stats endpoint
+        const allRes = await axiosClient.get('/student-queries/stats');
         if (allRes.data.stats) {
           setStats(allRes.data.stats);
         }

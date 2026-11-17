@@ -55,35 +55,55 @@ const seedInitialData = async () => {
       console.log(`[Seed] Seeded ${seededStudents.length} students.`);
     }
 
-    // Ensure all students have student login accounts & registration IDs
-    const allStudents = await Student.find({});
-    for (const st of allStudents) {
-      let changed = false;
-      if (!st.registrationId) {
-        st.registrationId = `STU-${st.rollNumber.replace(/[^A-Za-z0-9]/g, '')}`;
-        changed = true;
-      }
-      if (!st.email) {
-        st.email = `${st.rollNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@snitn.edu`;
-        changed = true;
-      }
-      if (changed) {
-        await st.save();
-      }
+    // Ensure students without login accounts or registration IDs are provisioned
+    const unprovisionedStudents = await Student.find({
+      $or: [
+        { userId: { $exists: false } },
+        { userId: null },
+        { registrationId: { $exists: false } },
+        { registrationId: '' },
+        { email: { $exists: false } },
+        { email: '' },
+      ],
+    });
 
-      const existingAccount = await User.findOne({ email: st.email });
-      if (!existingAccount) {
-        const studentUser = new User({
-          email: st.email,
-          password: 'student123',
-          name: st.name,
-          role: 'student',
-          studentId: st._id,
+    if (unprovisionedStudents.length > 0) {
+      console.log(`[Seed] Synchronizing credentials for ${unprovisionedStudents.length} student profile(s)...`);
+      for (const st of unprovisionedStudents) {
+        let changed = false;
+        if (!st.registrationId) {
+          st.registrationId = `STU-${st.rollNumber.replace(/[^A-Za-z0-9]/g, '')}`;
+          changed = true;
+        }
+        if (!st.email) {
+          st.email = `${st.rollNumber.toLowerCase().replace(/[^a-z0-9]/g, '')}@snitn.edu`;
+          changed = true;
+        }
+
+        const existingAccount = await User.findOne({
+          $or: [{ email: st.email }, { studentId: st._id }],
         });
-        await studentUser.save();
-        st.userId = studentUser._id;
-        await st.save();
-        console.log(`[Seed] Provisioned login account for ${st.name} (${st.email})`);
+
+        if (!existingAccount) {
+          const studentUser = new User({
+            email: st.email,
+            password: 'student123',
+            name: st.name,
+            role: 'student',
+            studentId: st._id,
+          });
+          await studentUser.save();
+          st.userId = studentUser._id;
+          changed = true;
+          console.log(`[Seed] Provisioned login account for ${st.name} (${st.email})`);
+        } else if (!st.userId) {
+          st.userId = existingAccount._id;
+          changed = true;
+        }
+
+        if (changed) {
+          await st.save();
+        }
       }
     }
 

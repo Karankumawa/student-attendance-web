@@ -38,14 +38,14 @@ router.get('/', async (req, res) => {
 
     // If specific subject & semester requested, fetch single document efficiently
     if (subject && semester && semester !== 'All') {
-      const single = await Attendance.findOne({ date, subject: subject.trim(), semester });
+      const single = await Attendance.findOne({ date, subject: subject.trim(), semester }).lean();
       return res.status(200).json({
         success: true,
         data: single,
       });
     }
 
-    const attendanceRecords = await Attendance.find(query).sort({ subject: 1 });
+    const attendanceRecords = await Attendance.find(query).sort({ subject: 1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -148,39 +148,50 @@ router.get('/summary', async (req, res) => {
     if (semester && semester !== 'All') studentQuery.semester = semester;
     if (department && department !== 'All') studentQuery.department = department;
 
-    const students = await Student.find(studentQuery).sort({ rollNumber: 1 });
+    const [students, sessions] = await Promise.all([
+      Student.find(studentQuery).sort({ rollNumber: 1 }).lean(),
+      Attendance.find(attendanceQuery).lean(),
+    ]);
 
-    // Filter attendance sessions
-    const attendanceQuery = {};
-    if (semester && semester !== 'All') attendanceQuery.semester = semester;
-    if (subject && subject !== 'All') attendanceQuery.subject = subject;
+    // Pre-index session records into fast lookup maps (O(S * R) setup vs O(N * S * R) repeated search)
+    const sessionLookups = sessions.map((session) => {
+      const statusByStudentId = new Map();
+      const statusByRoll = new Map();
+      const sessionSem = (session.semester || '').trim().toLowerCase();
 
-    const sessions = await Attendance.find(attendanceQuery);
+      for (const rec of session.records || []) {
+        if (rec.studentId) statusByStudentId.set(String(rec.studentId), rec.status);
+        if (rec.rollNumber) statusByRoll.set(String(rec.rollNumber).toUpperCase(), rec.status);
+      }
 
-    // Aggregate statistics per student
+      return {
+        sessionSem,
+        statusByStudentId,
+        statusByRoll,
+      };
+    });
+
+    // Aggregate statistics per student with O(1) lookup
     const studentStats = students.map((student) => {
       let totalClasses = 0;
       let attendedClasses = 0;
+      const studentIdStr = String(student._id);
+      const studentRollUpper = (student.rollNumber || '').toUpperCase();
+      const studentSem = (student.semester || '').trim().toLowerCase();
 
-      sessions.forEach((session) => {
-        const isSameSemester =
-          session.semester &&
-          student.semester &&
-          session.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
+      for (const sess of sessionLookups) {
+        const isSameSemester = sess.sessionSem && studentSem && sess.sessionSem === studentSem;
+        const status =
+          sess.statusByStudentId.get(studentIdStr) ||
+          sess.statusByRoll.get(studentRollUpper);
 
-        const studentRecord = session.records.find(
-          (rec) =>
-            (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
-            (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())
-        );
-
-        if (isSameSemester || studentRecord) {
+        if (isSameSemester || status !== undefined) {
           totalClasses += 1;
-          if (studentRecord && studentRecord.status === 'Present') {
+          if (status === 'Present') {
             attendedClasses += 1;
           }
         }
-      });
+      }
 
       const percentage =
         totalClasses > 0
@@ -238,30 +249,35 @@ router.get('/dashboard-stats', async (req, res) => {
     const currentDay = days[today.getDay()];
     const todayDateString = getLocalDateString(today);
 
-    // Total Students
-    const totalStudents = await Student.countDocuments();
+    // Parallelize all queries and use MongoDB aggregation for stats
+    const [
+      totalStudents,
+      totalNotes,
+      rawTodaysClasses,
+      todaysAttendanceSessions,
+      attendanceStatsAgg,
+    ] = await Promise.all([
+      Student.countDocuments(),
+      Note.countDocuments(),
+      Timetable.find({ dayOfWeek: currentDay }).lean(),
+      Attendance.find({ date: todayDateString }).lean(),
+      Attendance.aggregate([
+        { $unwind: '$records' },
+        {
+          $group: {
+            _id: null,
+            totalRecords: { $sum: 1 },
+            totalPresent: {
+              $sum: { $cond: [{ $eq: ['$records.status', 'Present'] }, 1, 0] },
+            },
+          },
+        },
+      ]),
+    ]);
 
-    // Total Notes
-    const totalNotes = await Note.countDocuments();
-
-    // Today's classes from Timetable sorted chronologically
-    const rawTodaysClasses = await Timetable.find({ dayOfWeek: currentDay });
     const todaysClasses = sortSlotsByTime(rawTodaysClasses);
-
-    // Today's attendance sessions recorded
-    const todaysAttendanceSessions = await Attendance.find({ date: todayDateString });
-
-    // Overall attendance percentage calculation
-    const allSessions = await Attendance.find({});
-    let totalPresentCount = 0;
-    let totalRecordsCount = 0;
-
-    allSessions.forEach((sess) => {
-      sess.records.forEach((r) => {
-        totalRecordsCount++;
-        if (r.status === 'Present') totalPresentCount++;
-      });
-    });
+    const totalRecordsCount = attendanceStatsAgg[0]?.totalRecords || 0;
+    const totalPresentCount = attendanceStatsAgg[0]?.totalPresent || 0;
 
     const averageAttendance =
       totalRecordsCount > 0
@@ -299,7 +315,7 @@ router.get('/dashboard-stats', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
   try {
-    const sessions = await Attendance.find({}).sort({ date: -1, createdAt: -1 }).limit(30);
+    const sessions = await Attendance.find({}).sort({ date: -1, createdAt: -1 }).limit(30).lean();
     return res.status(200).json({
       success: true,
       count: sessions.length,

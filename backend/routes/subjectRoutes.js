@@ -1,6 +1,7 @@
 const express = require('express');
 const Subject = require('../models/Subject');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
 
@@ -27,11 +28,11 @@ router.get('/', async (req, res) => {
       query.academicYear = academicYear;
     }
     if (search && search.trim() !== '') {
-      const reg = new RegExp(search.trim(), 'i');
+      const reg = new RegExp(escapeRegex(search.trim()), 'i');
       query.$or = [{ name: reg }, { code: reg }, { description: reg }];
     }
 
-    const subjects = await Subject.find(query).sort({ semester: 1, name: 1 });
+    const subjects = await Subject.find(query).sort({ semester: 1, name: 1 }).lean();
 
     return res.status(200).json({
       success: true,
@@ -55,7 +56,7 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
-    const subject = await Subject.findById(req.params.id);
+    const subject = await Subject.findById(req.params.id).lean();
     if (!subject) {
       return res.status(404).json({
         success: false,
@@ -99,7 +100,7 @@ router.post('/', requireAdmin, async (req, res) => {
 
     // Check for duplicate in same department & semester
     const duplicate = await Subject.findOne({
-      name: new RegExp(`^${trimmedName}$`, 'i'),
+      name: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i'),
       semester: targetSemester,
       department: targetDept,
     });
@@ -163,7 +164,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
       // Duplicate check (excluding itself)
       const duplicate = await Subject.findOne({
         _id: { $ne: subject._id },
-        name: new RegExp(`^${trimmedName}$`, 'i'),
+        name: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i'),
         semester: targetSemester,
         department: targetDept,
       });

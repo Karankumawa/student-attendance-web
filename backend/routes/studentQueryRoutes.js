@@ -3,6 +3,7 @@ const StudentQuery = require('../models/StudentQuery');
 const Student = require('../models/Student');
 const User = require('../models/User');
 const { protect, requireAdmin, requireStudent } = require('../middleware/authMiddleware');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
 
@@ -143,6 +144,34 @@ router.get('/my-queries', requireStudent, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/student-queries/stats
+ * @desc    Lightweight counts for sidebar badges without transferring full query records
+ * @access  Private (Admin only)
+ */
+router.get('/stats', requireAdmin, async (req, res) => {
+  try {
+    const [total, pending, reviewed, resolved] = await Promise.all([
+      StudentQuery.countDocuments(),
+      StudentQuery.countDocuments({ status: 'Pending' }),
+      StudentQuery.countDocuments({ status: 'Reviewed' }),
+      StudentQuery.countDocuments({ status: 'Resolved' }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      stats: { total, pending, reviewed, resolved },
+    });
+  } catch (error) {
+    console.error('[Admin Query Stats Error]:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch query statistics',
+      error: error.message,
+    });
+  }
+});
+
+/**
  * @route   GET /api/student-queries
  * @desc    Get all student queries & messages for Admin review
  * @access  Private (Admin only)
@@ -165,7 +194,7 @@ router.get('/', requireAdmin, async (req, res) => {
     }
 
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
       filter.$or = [
         { studentName: searchRegex },
         { rollNumber: searchRegex },
@@ -178,14 +207,16 @@ router.get('/', requireAdmin, async (req, res) => {
       ];
     }
 
-    const queries = await StudentQuery.find(filter)
-      .populate('studentId', 'name firstName lastName rollNumber department semester email phone dob gender address guardianName guardianPhone bloodGroup registrationId')
-      .sort({ createdAt: -1 });
-
-    const totalCount = await StudentQuery.countDocuments();
-    const pendingCount = await StudentQuery.countDocuments({ status: 'Pending' });
-    const reviewedCount = await StudentQuery.countDocuments({ status: 'Reviewed' });
-    const resolvedCount = await StudentQuery.countDocuments({ status: 'Resolved' });
+    const [queries, totalCount, pendingCount, reviewedCount, resolvedCount] = await Promise.all([
+      StudentQuery.find(filter)
+        .populate('studentId', 'name firstName lastName rollNumber department semester email phone dob gender address guardianName guardianPhone bloodGroup registrationId')
+        .sort({ createdAt: -1 })
+        .lean(),
+      StudentQuery.countDocuments(),
+      StudentQuery.countDocuments({ status: 'Pending' }),
+      StudentQuery.countDocuments({ status: 'Reviewed' }),
+      StudentQuery.countDocuments({ status: 'Resolved' }),
+    ]);
 
     return res.status(200).json({
       success: true,
