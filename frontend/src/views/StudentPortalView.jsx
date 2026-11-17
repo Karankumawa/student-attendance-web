@@ -29,10 +29,91 @@ import {
   MessageSquare,
   Send,
   RefreshCw,
+  BadgeCheck,
+  Copy,
+  Check,
+  Sparkles,
+  Palette,
+  IdCard,
+  Download,
+  GraduationCap,
+  Building2,
+  QrCode,
+  ShieldAlert,
+  ArrowRight,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 import SnitLogo from '../components/SnitLogo';
+
+// Theme Presets for Student Profile Card & Identity Showcase
+const PROFILE_THEMES = {
+  indigo: {
+    id: 'indigo',
+    name: 'Sapphire Academic',
+    tag: 'Classic University',
+    swatch: 'bg-indigo-600',
+    cardGradient: 'from-indigo-950 via-slate-900 to-slate-950',
+    accentText: 'text-indigo-600',
+    accentBg: 'bg-indigo-50',
+    accentBorder: 'border-indigo-200',
+    badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+    primaryBtn: 'from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-indigo-500/20',
+    ringColor: 'focus:ring-indigo-500/20 focus:border-indigo-600',
+  },
+  emerald: {
+    id: 'emerald',
+    name: 'Emerald Campus',
+    tag: 'Collegiate Green',
+    swatch: 'bg-emerald-600',
+    cardGradient: 'from-emerald-950 via-slate-900 to-slate-950',
+    accentText: 'text-emerald-600',
+    accentBg: 'bg-emerald-50',
+    accentBorder: 'border-emerald-200',
+    badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    primaryBtn: 'from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/20',
+    ringColor: 'focus:ring-emerald-500/20 focus:border-emerald-600',
+  },
+  crimson: {
+    id: 'crimson',
+    name: 'Crimson Heritage',
+    tag: 'Engineering Crest',
+    swatch: 'bg-rose-600',
+    cardGradient: 'from-rose-950 via-slate-900 to-slate-950',
+    accentText: 'text-rose-600',
+    accentBg: 'bg-rose-50',
+    accentBorder: 'border-rose-200',
+    badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+    primaryBtn: 'from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/20',
+    ringColor: 'focus:ring-rose-500/20 focus:border-rose-600',
+  },
+  purple: {
+    id: 'purple',
+    name: 'Cyber Violet',
+    tag: 'Modern High-Tech',
+    swatch: 'bg-purple-600',
+    cardGradient: 'from-purple-950 via-slate-900 to-slate-950',
+    accentText: 'text-purple-600',
+    accentBg: 'bg-purple-50',
+    accentBorder: 'border-purple-200',
+    badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+    primaryBtn: 'from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 shadow-purple-500/20',
+    ringColor: 'focus:ring-purple-500/20 focus:border-purple-600',
+  },
+  midnight: {
+    id: 'midnight',
+    name: 'Midnight Gold',
+    tag: 'Executive Stealth',
+    swatch: 'bg-slate-900',
+    cardGradient: 'from-slate-950 via-zinc-950 to-slate-900',
+    accentText: 'text-amber-600',
+    accentBg: 'bg-amber-50',
+    accentBorder: 'border-amber-200',
+    badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    primaryBtn: 'from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-amber-500/20',
+    ringColor: 'focus:ring-amber-500/20 focus:border-amber-600',
+  },
+};
 
 const parseTimeToMinutes = (timeStr) => {
   if (!timeStr || typeof timeStr !== 'string') return 0;
@@ -62,6 +143,26 @@ const formatDobDisplay = (dobStr) => {
     }
   } catch {}
   return dobStr;
+};
+
+const computeAge = (dobStr) => {
+  if (!dobStr) return null;
+  try {
+    const parts = String(dobStr).split('-');
+    if (parts.length === 3) {
+      const birthYear = parseInt(parts[0], 10);
+      const birthMonth = parseInt(parts[1], 10) - 1;
+      const birthDay = parseInt(parts[2], 10);
+      const today = new Date();
+      let age = today.getFullYear() - birthYear;
+      const m = today.getMonth() - birthMonth;
+      if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
+        age--;
+      }
+      return age > 0 ? `${age} Years` : null;
+    }
+  } catch {}
+  return null;
 };
 
 const getFieldPlaceholder = (field) => {
@@ -129,6 +230,39 @@ export const StudentPortalView = ({ showToast }) => {
 
   // Profile data (Read-only for student)
   const [profileData, setProfileData] = useState(null);
+
+  // Modern Theme & Sub-Tab states for Profile Section
+  const [profileTheme, setProfileTheme] = useState(() => {
+    return localStorage.getItem('student_profile_theme') || 'indigo';
+  });
+  const [profileSubTab, setProfileSubTab] = useState('overview'); // 'overview' | 'query' | 'history'
+  const [copiedField, setCopiedField] = useState(null);
+
+  const activeTheme = PROFILE_THEMES[profileTheme] || PROFILE_THEMES.indigo;
+
+  const handleThemeChange = (newTheme) => {
+    setProfileTheme(newTheme);
+    localStorage.setItem('student_profile_theme', newTheme);
+    showToast?.({
+      message: `Profile theme updated to ${PROFILE_THEMES[newTheme]?.name || newTheme}!`,
+      type: 'info',
+    });
+  };
+
+  const handleCopy = (field, value) => {
+    if (!value) return;
+    try {
+      navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      showToast?.({
+        message: `${field} copied to clipboard!`,
+        type: 'info',
+      });
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      // Fallback if clipboard API is restricted
+    }
+  };
 
   // Student Query / Message states (New Feature)
   const [studentQueries, setStudentQueries] = useState([]);
@@ -327,8 +461,8 @@ export const StudentPortalView = ({ showToast }) => {
     { id: 'attendance', label: 'My Attendance', icon: ClipboardCheck },
     {
       id: 'profile',
-      label: pendingQueriesCount > 0 ? `My Profile (${pendingQueriesCount} Pending)` : 'My Profile',
-      icon: User,
+      label: pendingQueriesCount > 0 ? `Student ID & Profile (${pendingQueriesCount})` : 'Student ID & Profile',
+      icon: IdCard,
     },
     { id: 'timetable', label: 'Classes & Schedule', icon: CalendarClock },
     { id: 'notes', label: `Study Notes (${notes.length})`, icon: BookOpenCheck },
@@ -730,634 +864,895 @@ export const StudentPortalView = ({ showToast }) => {
 
         {/* ================= VIEW 2: STUDENT PROFILE ================= */}
         {activeTab === 'profile' && (
-          <div className="space-y-6 animate-fade-in max-w-5xl mx-auto">
-            {/* Hero / ID Banner */}
-            <div className="relative overflow-hidden rounded-3xl bg-slate-950 border border-slate-800 p-6 sm:p-8 text-white shadow-xl">
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-center gap-5">
-                  <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-500 text-white font-extrabold text-2xl sm:text-3xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-500/30 border border-white/20">
-                    {student?.name?.charAt(0)?.toUpperCase() || 'S'}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-xl sm:text-2xl font-black tracking-tight">{student?.name}</h2>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold">
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>Enrolled Student</span>
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-slate-400 font-mono flex items-center gap-2">
-                      <Mail className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>{profileData?.email || student?.email || user?.email}</span>
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-300">
-                      <span className="px-2.5 py-0.5 rounded-md bg-white/10 font-mono font-bold">
-                        Roll: {student?.rollNumber}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 font-semibold border border-indigo-500/30">
-                        {student?.registrationId || `STU-${student?.rollNumber}`}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-md bg-white/10 font-semibold">
-                        {student?.department}
-                      </span>
-                      <span className="px-2.5 py-0.5 rounded-md bg-white/10 font-semibold">
-                        {student?.semester}
-                      </span>
-                    </div>
-                  </div>
+          <div className="space-y-6 animate-fade-in max-w-6xl mx-auto pb-12">
+            {/* Top Control Bar: Title & Dynamic Profile Theme Switcher */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-white rounded-3xl border border-slate-200/90 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-2xl ${activeTheme.accentBg} ${activeTheme.accentText} border ${activeTheme.accentBorder} shadow-xs`}>
+                  <IdCard className="w-5 h-5" />
                 </div>
-              </div>
-
-              {/* Decorative background effects */}
-              <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute left-1/3 -top-10 w-48 h-48 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
-            </div>
-
-            {/* Policy Notice Box */}
-            <div className="p-4 sm:p-5 rounded-2xl bg-slate-900 border border-slate-800 text-white text-xs sm:text-sm flex items-start gap-3.5 shadow-md">
-              <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0 mt-0.5">
-                <Lock className="w-4 h-4" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-white text-sm">Official Academic Records (Strictly Read-Only)</h4>
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30">
-                    Editing Disabled
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300 leading-relaxed">
-                  In accordance with institutional policy, students cannot directly edit or alter their official profile information. All data including <strong>Name, Date of Birth, Contact Phone, Gender, Address, Blood Group, and Guardian Information</strong> are official administrative records. If you need any corrections or updates, please submit a <strong>Profile Change Query</strong> to the college administration using the form below.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {/* Section 1: Official Identity (Locked / Read-Only) */}
-              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
-                      <Lock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">Institutional Identity</h3>
-                      <p className="text-xs text-slate-500">Official student credentials managed by college administration (Read-Only)</p>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Protected</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Name (Cannot be changed) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Full Name</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.name || student?.name || ''}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official registered student name</p>
-                  </div>
-
-                  {/* Email (Cannot be changed) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Official Email</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        disabled
-                        value={profileData?.email || student?.email || user?.email || ''}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Institutional login email (@snitn.edu)</p>
-                  </div>
-
-                  {/* Roll Number (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Roll Number</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Permanent</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.rollNumber || student?.rollNumber || ''}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">University roll identifier</p>
-                  </div>
-
-                  {/* Registration ID (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                      Registration ID
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={profileData?.registrationId || student?.registrationId || `STU-${student?.rollNumber}`}
-                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-mono font-semibold text-indigo-700 cursor-not-allowed select-none"
-                    />
-                  </div>
-
-                  {/* Department (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                      Academic Department
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={profileData?.department || student?.department || ''}
-                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                    />
-                  </div>
-
-                  {/* Current Semester (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                      Current Semester
-                    </label>
-                    <input
-                      type="text"
-                      disabled
-                      value={profileData?.semester || student?.semester || ''}
-                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 2: Personal & Contact Information (Read-Only for Student) */}
-              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
-                      <User className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">Personal & Contact Details</h3>
-                      <p className="text-xs text-slate-500">Official student demographic & contact information (Read-Only)</p>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Read Only</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Date of Birth (DOB) (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Date of Birth</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={formatDobDisplay(profileData?.dob)}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official registered date of birth</p>
-                  </div>
-
-                  {/* Phone Number (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Contact Phone Number</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.phone || 'Not Provided'}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official contact number</p>
-                  </div>
-
-                  {/* Gender (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Gender</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.gender || 'Not Provided'}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official gender identity</p>
-                  </div>
-
-                  {/* Blood Group (Read-only) */}
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
-                        <span>Blood Group</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.bloodGroup || 'Not Provided'}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Campus medical record</p>
-                  </div>
-
-                  {/* Address (Read-only) */}
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Residential Address</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <textarea
-                        rows={2}
-                        disabled
-                        value={profileData?.address || 'Not Provided'}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 cursor-not-allowed select-none resize-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-3" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Full residential correspondence address</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Section 3: Parent & Guardian Information (Read-Only for Student) */}
-              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">Parent & Guardian Information</h3>
-                      <p className="text-xs text-slate-500">Official contact information for parent or guardian (Read-Only)</p>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-slate-400" />
-                    <span>Read Only</span>
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span>Guardian / Parent Name</span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.guardianName || 'Not Provided'}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Official guardian record</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Guardian Contact Phone</span>
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">Read Only</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        disabled
-                        value={profileData?.guardianPhone || 'Not Provided'}
-                        className="w-full pl-3.5 pr-9 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-not-allowed select-none"
-                      />
-                      <Lock className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                    </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Guardian contact number</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ================= SECTION 4: PROFILE CHANGE QUERY / DIRECT MESSAGE TO ADMIN (NEW FEATURE) ================= */}
-              <div className="bg-white rounded-3xl border border-indigo-200/90 p-6 sm:p-7 shadow-xs space-y-5">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-indigo-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-200">
-                      <MessageSquare className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-slate-900">Request Profile Update / Query Admin</h3>
-                        <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold uppercase tracking-wider">
-                          Direct Support
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500">
-                        Need any details changed or corrected? Send a direct query to the college administration explaining what and why.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {queryError && (
-                  <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-3">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
-                    <span className="font-medium">{queryError}</span>
-                  </div>
-                )}
-
-                {querySuccess && (
-                  <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
-                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
-                    <span className="font-medium">{querySuccess}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleQuerySubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Field to change */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                        <span>Detail / Field to Update</span>
-                        <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
-                      </label>
-                      <select
-                        value={queryForm.fieldToChange}
-                        onChange={(e) => setQueryForm({ ...queryForm, fieldToChange: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
-                      >
-                        <option value="Contact Phone Number">Contact Phone Number</option>
-                        <option value="Residential Address">Residential Address</option>
-                        <option value="Date of Birth (DOB)">Date of Birth (DOB)</option>
-                        <option value="Full Name / Spelling">Full Name / Spelling Correction</option>
-                        <option value="Gender">Gender</option>
-                        <option value="Blood Group">Blood Group</option>
-                        <option value="Parent / Guardian Name">Parent / Guardian Name</option>
-                        <option value="Guardian Contact Phone">Guardian Contact Phone</option>
-                        <option value="Email Address">Official Email Address</option>
-                        <option value="Other Detail">Other Detail</option>
-                      </select>
-                      <p className="text-[10px] text-slate-400 mt-1">Select the item you want updated</p>
-                    </div>
-
-                    {/* What to change (Requested change) */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                        <span>What to Change (New Value / Detail)</span>
-                        <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder={getFieldPlaceholder(queryForm.fieldToChange)}
-                        value={queryForm.requestedChange}
-                        onChange={(e) => setQueryForm({ ...queryForm, requestedChange: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                      />
-                      <p className="text-[10px] text-slate-400 mt-1">Specify exactly what the new value should be</p>
-                    </div>
-
-                    {/* Why to change (Reason) */}
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                        <span>Reason for Change (Kyu change krna h)</span>
-                        <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
-                      </label>
-                      <textarea
-                        rows={2}
-                        required
-                        placeholder="e.g., My previous phone was lost / Updated to new residence / Typo in initial registration"
-                        value={queryForm.reason}
-                        onChange={(e) => setQueryForm({ ...queryForm, reason: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all resize-none"
-                      />
-                      <p className="text-[10px] text-slate-400 mt-0.5">Briefly explain why this modification is required</p>
-                    </div>
-
-                    {/* Additional Message */}
-                    <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-                        <span>Additional Message / Notes for Admin (Optional)</span>
-                        <span className="text-[10px] text-slate-400 font-semibold">Optional</span>
-                      </label>
-                      <textarea
-                        rows={2}
-                        placeholder="Any additional information or urgent notes for the administrator..."
-                        value={queryForm.message}
-                        onChange={(e) => setQueryForm({ ...queryForm, message: e.target.value })}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all resize-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end pt-2">
-                    <button
-                      type="submit"
-                      disabled={querySubmitting}
-                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
-                    >
-                      {querySubmitting ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Submitting Query to Database...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-3.5 h-3.5" />
-                          <span>Send Query to Admin</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* ================= SECTION 5: MY SUBMITTED QUERIES (STUDENT READ-ONLY VIEW) ================= */}
-              <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-4">
-                <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
-                      <Clock className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-slate-900">My Submitted Profile Queries & Requests</h3>
-                      <p className="text-xs text-slate-500">
-                        All queries you sent to administration are saved in database (View Only)
-                      </p>
-                    </div>
-                  </div>
+                <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      {studentQueries.length} {studentQueries.length === 1 ? 'Query' : 'Queries'}
+                    <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+                      Student Identity & Academic Dossier
+                    </h2>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${activeTheme.badgeBg}`}>
+                      {activeTheme.name}
                     </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Verified institutional records & digital campus pass • Shrinathji Institute of Technology
+                  </p>
+                </div>
+              </div>
+
+              {/* Theme Customizer Controls */}
+              <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/90 self-start sm:self-auto overflow-x-auto no-scrollbar">
+                <span className="text-[11px] font-bold text-slate-500 px-2 flex items-center gap-1">
+                  <Palette className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="hidden md:inline">Theme:</span>
+                </span>
+                {Object.values(PROFILE_THEMES).map((th) => {
+                  const isSelected = profileTheme === th.id;
+                  return (
                     <button
+                      key={th.id}
                       type="button"
-                      onClick={fetchStudentQueries}
-                      disabled={queriesLoading}
-                      className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
-                      title="Refresh Queries"
+                      onClick={() => handleThemeChange(th.id)}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-white text-slate-900 shadow-xs border border-slate-300 ring-2 ring-indigo-500/20'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                      }`}
+                      title={th.tag}
                     >
-                      <RefreshCw
-                        className={`w-3.5 h-3.5 ${
-                          queriesLoading ? 'animate-spin text-indigo-600' : ''
-                        }`}
-                      />
+                      <span className={`w-3 h-3 rounded-full ${th.swatch} shrink-0`} />
+                      <span className="hidden sm:inline">{th.name.split(' ')[0]}</span>
                     </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Main Responsive 2-Column Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* ================= LEFT COLUMN: DIGITAL STUDENT ID SMART CARD (5 Cols) ================= */}
+              <div className="lg:col-span-5 space-y-5">
+                {/* The Digital Student Smart ID Card */}
+                <div
+                  id="digital-student-id-card"
+                  className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${activeTheme.cardGradient} border border-white/10 text-white p-6 sm:p-7 shadow-2xl transition-all duration-300`}
+                >
+                  {/* Institutional Top Header */}
+                  <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/10 relative z-10">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md">
+                        <SnitLogo size={32} className="w-8 h-8" />
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-[12px] sm:text-xs tracking-tight text-white leading-tight uppercase">
+                          Shrinathji Institute of Technology
+                        </h3>
+                        <p className="text-[10px] text-slate-300 tracking-wider">
+                          Nathdwara, Raj. • AICTE Approved & RTU Affiliated
+                        </p>
+                      </div>
+                    </div>
+                    {/* Realistic Holographic RFID Chip Graphic */}
+                    <div className="shrink-0">
+                      <div className="w-10 h-7 rounded-md bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-inner border border-amber-200/60 p-0.5 flex flex-col justify-between">
+                        <div className="flex justify-between h-1 border-b border-amber-600/30" />
+                        <div className="text-[7px] font-mono font-black text-amber-950 text-center tracking-widest">
+                          RFID
+                        </div>
+                        <div className="flex justify-between h-1 border-t border-amber-600/30" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Student Portrait & Primary Info */}
+                  <div className="py-5 relative z-10 flex items-center gap-4">
+                    <div className="relative shrink-0">
+                      <div
+                        className={`w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr ${activeTheme.primaryBtn} text-white font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg border-2 border-white/30`}
+                      >
+                        {student?.name?.charAt(0)?.toUpperCase() || 'S'}
+                      </div>
+                      <span className="absolute -bottom-1 -right-1 p-1 rounded-full bg-emerald-500 text-white shadow-md">
+                        <BadgeCheck className="w-4 h-4" />
+                      </span>
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+                          {student?.name || 'Enrolled Student'}
+                        </h3>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-slate-300">
+                          Roll: {student?.rollNumber || 'N/A'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopy('Roll Number', student?.rollNumber)}
+                          className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                          title="Copy Roll Number"
+                        >
+                          {copiedField === 'Roll Number' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-white/10 text-indigo-200 font-mono text-[11px] font-semibold border border-white/10">
+                          {student?.registrationId || `STU-${student?.rollNumber}`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopy(
+                              'Registration ID',
+                              student?.registrationId || `STU-${student?.rollNumber}`
+                            )
+                          }
+                          className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                          title="Copy Registration ID"
+                        >
+                          {copiedField === 'Registration ID' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Academic Coordinates Matrix */}
+                  <div className="grid grid-cols-2 gap-2.5 p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md relative z-10 text-xs">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        Department
+                      </span>
+                      <span className="font-semibold text-slate-200 line-clamp-1">
+                        {student?.department || 'Computer Science & Engg.'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        Semester
+                      </span>
+                      <span className="font-semibold text-slate-200">
+                        {student?.semester || 'Semester 1'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        Blood Group
+                      </span>
+                      <span className="font-bold text-rose-300 inline-flex items-center gap-1">
+                        <HeartPulse className="w-3 h-3 text-rose-400" />
+                        <span>{profileData?.bloodGroup || 'Not Recorded'}</span>
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                        Date of Birth
+                      </span>
+                      <span className="font-semibold text-slate-200">
+                        {profileData?.dob ? formatDobDisplay(profileData.dob).split(' ')[0] : 'Not Recorded'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Footer: QR Badge & Verification Bar */}
+                  <div className="pt-4 mt-4 border-t border-white/10 flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1 rounded-lg bg-white/10 border border-white/20">
+                        <QrCode className="w-7 h-7 text-white" />
+                      </div>
+                      <div className="text-[10px] text-slate-300 font-mono leading-tight">
+                        <span className="font-bold text-white block">CAMPUS DIGITAL ID</span>
+                        <span>SECURE-AUTH-2026</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Active Scholar</span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Decorative ambient lights */}
+                  <div className="absolute -top-12 -right-12 w-48 h-48 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
+                </div>
+
+                {/* Card Quick Actions: Print ID & Copy Info */}
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="flex-1 py-2.5 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                  >
+                    <Printer className="w-4 h-4 text-slate-600" />
+                    <span>Print Student ID Card</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleCopy(
+                        'Complete Student Credentials',
+                        `Name: ${student?.name}\nRoll: ${student?.rollNumber}\nReg ID: ${student?.registrationId || 'STU-' + student?.rollNumber}\nDepartment: ${student?.department}\nSemester: ${student?.semester}\nEmail: ${profileData?.email || student?.email}`
+                      )
+                    }
+                    className="p-2.5 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 shadow-xs hover:shadow-md transition-all cursor-pointer"
+                    title="Copy Full Credentials"
+                  >
+                    {copiedField === 'Complete Student Credentials' ? (
+                      <Check className="w-4 h-4 text-emerald-600" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Academic Standing Metrics Card */}
+                <div className="p-5 rounded-3xl bg-white border border-slate-200/90 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4 text-indigo-600" />
+                      <span>Academic Standing</span>
+                    </span>
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        (dashboardData?.attendanceStats?.percentage ?? 0) >= 75
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : (dashboardData?.attendanceStats?.percentage ?? 0) >= 60
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-rose-100 text-rose-800 border border-rose-200'
+                      }`}
+                    >
+                      {dashboardData?.attendanceStats?.academicStanding || 'Enrolled'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/70">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                        Attendance Rate
+                      </span>
+                      <span className="text-xl font-black text-slate-900">
+                        {dashboardData?.attendanceStats?.percentage !== undefined
+                          ? `${dashboardData.attendanceStats.percentage}%`
+                          : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/70">
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">
+                        Lectures Attended
+                      </span>
+                      <span className="text-xl font-black text-slate-900">
+                        {dashboardData?.attendanceStats?.attendedClasses ?? 0}
+                        <span className="text-xs font-medium text-slate-500">
+                          {' '}/ {dashboardData?.attendanceStats?.totalClasses ?? 0}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {queriesLoading ? (
-                  <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                    <span>Loading your submitted queries...</span>
+                {/* Institutional Policy Notice */}
+                <div className="p-4 rounded-3xl bg-slate-900 border border-slate-800 text-white text-xs space-y-2 shadow-sm">
+                  <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Administrative Record Protection</span>
                   </div>
-                ) : studentQueries.length === 0 ? (
-                  <div className="p-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-slate-500 space-y-1.5">
-                    <MessageSquare className="w-6 h-6 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-slate-700">No Profile Queries Submitted Yet</p>
-                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
-                      If you ever need to correct or update any profile record, fill out the form above to message the college administration.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {studentQueries.map((q) => {
-                      const isPending = q.status === 'Pending';
-                      const isReviewed = q.status === 'Reviewed';
-                      const isResolved = q.status === 'Resolved';
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    All records displayed are authenticated university records. To modify any personal, contact, or guardian details, please submit an official request via the <strong>Request Profile Change</strong> tab.
+                  </p>
+                </div>
+              </div>
 
-                      return (
-                        <div
-                          key={q._id}
-                          className={`p-4 sm:p-5 rounded-2xl border transition-all text-xs space-y-3 ${
-                            isPending
-                              ? 'bg-amber-50/40 border-amber-200/80'
-                              : isReviewed
-                              ? 'bg-indigo-50/40 border-indigo-200/80'
-                              : 'bg-emerald-50/40 border-emerald-200/80'
-                          }`}
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200/60">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-slate-900 text-sm">{q.fieldToChange}</span>
-                              <span className="text-[10px] text-slate-400">•</span>
-                              <span className="text-[11px] text-slate-500 font-mono">
-                                {new Date(q.createdAt).toLocaleDateString('en-US', {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                })}
-                              </span>
-                            </div>
+              {/* ================= RIGHT COLUMN: SUB-TABS (DOSSIER / REQUEST / QUERIES) (7 Cols) ================= */}
+              <div className="lg:col-span-7 space-y-5">
+                {/* Modern Segmented Navigation Sub-Tabs */}
+                <div className="flex p-1.5 bg-white rounded-2xl border border-slate-200/90 shadow-xs gap-1.5 overflow-x-auto no-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => setProfileSubTab('overview')}
+                    className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      profileSubTab === 'overview'
+                        ? 'bg-slate-950 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <IdCard className="w-4 h-4" />
+                    <span>Official Dossier</span>
+                  </button>
 
-                            {/* Status Pill */}
-                            <span
-                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${
-                                isPending
-                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
-                                  : isReviewed
-                                  ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
-                                  : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                              }`}
-                            >
-                              {isPending && <Clock className="w-3 h-3 text-amber-600" />}
-                              {isReviewed && <Eye className="w-3 h-3 text-indigo-600" />}
-                              {isResolved && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
-                              <span>{q.status}</span>
-                            </span>
+                  <button
+                    type="button"
+                    onClick={() => setProfileSubTab('query')}
+                    className={`flex-1 min-w-[150px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      profileSubTab === 'query'
+                        ? 'bg-slate-950 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Request Change</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setProfileSubTab('history')}
+                    className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      profileSubTab === 'history'
+                        ? 'bg-slate-950 text-white shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>My Queries</span>
+                    {studentQueries.length > 0 && (
+                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                        profileSubTab === 'history' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                      }`}>
+                        {studentQueries.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* SUB-TAB 1: OFFICIAL DOSSIER & RECORDS */}
+                {profileSubTab === 'overview' && (
+                  <div className="space-y-5 animate-fade-in">
+                    {/* Group 1: Institutional Credentials */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-xl ${activeTheme.accentBg} ${activeTheme.accentText} border ${activeTheme.accentBorder}`}>
+                            <Building2 className="w-4 h-4" />
                           </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div className="bg-white p-3 rounded-xl border border-slate-200/80">
-                              <span className="font-bold text-slate-700 block text-[11px] mb-1">
-                                Requested Change (Kya change krna h):
-                              </span>
-                              <p className="text-slate-900 font-semibold">{q.requestedChange}</p>
-                            </div>
-
-                            <div className="bg-white p-3 rounded-xl border border-slate-200/80">
-                              <span className="font-bold text-slate-700 block text-[11px] mb-1">
-                                Reason Given (Kyu change krna h):
-                              </span>
-                              <p className="text-slate-800">{q.reason}</p>
-                            </div>
-                          </div>
-
-                          {q.message && (
-                            <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200/60 text-slate-600 text-[11px]">
-                              <span className="font-bold text-slate-700 mr-1">Additional Note:</span>
-                              <span>{q.message}</span>
-                            </div>
-                          )}
-
-                          {q.adminResponse && (
-                            <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-200 text-indigo-900 text-xs">
-                              <span className="font-bold block mb-0.5">Admin Response / Note:</span>
-                              <span>{q.adminResponse}</span>
-                            </div>
-                          )}
-
-                          <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
-                            <span className="flex items-center gap-1">
-                              <Lock className="w-3 h-3" />
-                              <span>Stored in Institute Database (Read-Only)</span>
-                            </span>
-                            <span>Query ID: {q._id?.slice(-8)}</span>
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-900">Institutional Credentials</h3>
+                            <p className="text-[11px] text-slate-500">Official university identifiers and enrollment data</p>
                           </div>
                         </div>
-                      );
-                    })}
+                        <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                          <BadgeCheck className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Verified</span>
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        {/* Full Legal Name */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                            Student Full Legal Name
+                          </span>
+                          <span className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                            <span>{profileData?.name || student?.name || 'N/A'}</span>
+                            <BadgeCheck className="w-4 h-4 text-indigo-600 shrink-0" />
+                          </span>
+                        </div>
+
+                        {/* University Roll Number */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                              University Roll Number
+                            </span>
+                            <span className="text-sm font-mono font-bold text-slate-900">
+                              {student?.rollNumber || 'N/A'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy('Roll Number', student?.rollNumber)}
+                            className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                            title="Copy Roll Number"
+                          >
+                            {copiedField === 'Roll Number' ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Registration ID */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                              Institutional Registration ID
+                            </span>
+                            <span className="text-sm font-mono font-bold text-indigo-700">
+                              {student?.registrationId || `STU-${student?.rollNumber}`}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopy(
+                                'Registration ID',
+                                student?.registrationId || `STU-${student?.rollNumber}`
+                              )
+                            }
+                            className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+                            title="Copy Registration ID"
+                          >
+                            {copiedField === 'Registration ID' ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Academic Department */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                            Department / Academic Branch
+                          </span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {student?.department || 'Computer Science & Engineering'}
+                          </span>
+                        </div>
+
+                        {/* Current Semester */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                            Current Semester
+                          </span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {student?.semester || 'Semester 1'}
+                          </span>
+                        </div>
+
+                        {/* Institutional Email */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all flex items-center justify-between">
+                          <div className="min-w-0 pr-2">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                              Campus Login Email
+                            </span>
+                            <span className="text-xs font-mono font-bold text-slate-900 truncate block">
+                              {profileData?.email || student?.email || user?.email || 'N/A'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopy(
+                                'Official Email',
+                                profileData?.email || student?.email || user?.email
+                              )
+                            }
+                            className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer shrink-0"
+                            title="Copy Email"
+                          >
+                            {copiedField === 'Official Email' ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Group 2: Personal Demographics & Health Profile */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-xl ${activeTheme.accentBg} ${activeTheme.accentText} border ${activeTheme.accentBorder}`}>
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-900">Demographic & Health Profile</h3>
+                            <p className="text-[11px] text-slate-500">Student vital records & correspondence address</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        {/* Date of Birth & Age */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>Date of Birth</span>
+                            </span>
+                            {computeAge(profileData?.dob) && (
+                              <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-bold text-[10px]">
+                                {computeAge(profileData?.dob)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-900">
+                            {formatDobDisplay(profileData?.dob)}
+                          </span>
+                        </div>
+
+                        {/* Gender */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                            Gender Identity
+                          </span>
+                          <span className="text-sm font-semibold text-slate-900">
+                            {profileData?.gender || 'Not Recorded'}
+                          </span>
+                        </div>
+
+                        {/* Blood Group */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1 flex items-center gap-1">
+                            <HeartPulse className="w-3 h-3 text-rose-500" />
+                            <span>Blood Group (Emergency Record)</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 rounded-xl bg-rose-50 text-rose-700 font-extrabold text-xs border border-rose-200 flex items-center gap-1">
+                              <HeartPulse className="w-3.5 h-3.5 text-rose-500" />
+                              <span>{profileData?.bloodGroup || 'Not Recorded'}</span>
+                            </span>
+                            <span className="text-[11px] text-slate-400">Campus First-Aid Registry</span>
+                          </div>
+                        </div>
+
+                        {/* Student Phone */}
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>Student Contact Phone</span>
+                            </span>
+                            <span className="text-sm font-semibold text-slate-900">
+                              {profileData?.phone || 'Not Recorded'}
+                            </span>
+                          </div>
+                          {profileData?.phone && (
+                            <a
+                              href={`tel:${profileData.phone}`}
+                              className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-indigo-600 transition-colors"
+                              title="Call Student"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+
+                        {/* Residential Address */}
+                        <div className="sm:col-span-2 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-slate-400" />
+                            <span>Permanent Residential Correspondence Address</span>
+                          </span>
+                          <span className="text-xs font-medium text-slate-800 leading-relaxed block">
+                            {profileData?.address || 'No permanent correspondence address currently registered on file.'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Group 3: Guardian & Emergency Contacts */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 p-6 shadow-xs space-y-4">
+                      <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`p-2 rounded-xl ${activeTheme.accentBg} ${activeTheme.accentText} border ${activeTheme.accentBorder}`}>
+                            <Users className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="text-sm font-bold text-slate-900">Parent & Guardian Information</h3>
+                            <p className="text-[11px] text-slate-500">Authorized primary emergency correspondence contacts</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all">
+                          <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1">
+                            Parent / Guardian Full Name
+                          </span>
+                          <span className="text-sm font-bold text-slate-900">
+                            {profileData?.guardianName || 'Not Recorded'}
+                          </span>
+                        </div>
+
+                        <div className="p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/70 hover:bg-white hover:border-slate-300 transition-all flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-500 block mb-1 flex items-center gap-1">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>Guardian Contact Phone</span>
+                            </span>
+                            <span className="text-sm font-semibold text-slate-900">
+                              {profileData?.guardianPhone || 'Not Recorded'}
+                            </span>
+                          </div>
+                          {profileData?.guardianPhone && (
+                            <a
+                              href={`tel:${profileData.guardianPhone}`}
+                              className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-emerald-600 transition-colors"
+                              title="Call Guardian"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-TAB 2: REQUEST PROFILE CHANGE */}
+                {profileSubTab === 'query' && (
+                  <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5 animate-fade-in">
+                    {/* Header */}
+                    <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                      <div className={`p-2.5 rounded-2xl bg-gradient-to-r ${activeTheme.primaryBtn} text-white shadow-md`}>
+                        <Send className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">Request Official Profile Correction</h3>
+                        <p className="text-xs text-slate-500">
+                          Submit a formal change ticket directly to college administration for review and approval
+                        </p>
+                      </div>
+                    </div>
+
+                    {queryError && (
+                      <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-start gap-3">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                        <span className="font-medium">{queryError}</span>
+                      </div>
+                    )}
+
+                    {querySuccess && (
+                      <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs sm:text-sm flex items-start gap-3">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" />
+                        <span className="font-medium">{querySuccess}</span>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleQuerySubmit} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Field to change */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>Field / Record to Modify</span>
+                            <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
+                          </label>
+                          <select
+                            value={queryForm.fieldToChange}
+                            onChange={(e) => setQueryForm({ ...queryForm, fieldToChange: e.target.value })}
+                            className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 ${activeTheme.ringColor} transition-all cursor-pointer`}
+                          >
+                            <option value="Contact Phone Number">Contact Phone Number</option>
+                            <option value="Residential Address">Residential Address</option>
+                            <option value="Date of Birth (DOB)">Date of Birth (DOB)</option>
+                            <option value="Full Name / Spelling">Full Name / Spelling Correction</option>
+                            <option value="Gender">Gender</option>
+                            <option value="Blood Group">Blood Group</option>
+                            <option value="Parent / Guardian Name">Parent / Guardian Name</option>
+                            <option value="Guardian Contact Phone">Guardian Contact Phone</option>
+                            <option value="Email Address">Official Email Address</option>
+                            <option value="Other Detail">Other Detail</option>
+                          </select>
+                        </div>
+
+                        {/* What to change */}
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>New Value / Requested Modification</span>
+                            <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder={getFieldPlaceholder(queryForm.fieldToChange)}
+                            value={queryForm.requestedChange}
+                            onChange={(e) => setQueryForm({ ...queryForm, requestedChange: e.target.value })}
+                            className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${activeTheme.ringColor} transition-all`}
+                          />
+                        </div>
+
+                        {/* Reason */}
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>Official Reason for Modification</span>
+                            <span className="text-[10px] text-rose-500 font-semibold">*Required</span>
+                          </label>
+                          <textarea
+                            rows={2}
+                            required
+                            placeholder="e.g., Updated to new contact number / Recent change of residential address / Clerical spelling correction"
+                            value={queryForm.reason}
+                            onChange={(e) => setQueryForm({ ...queryForm, reason: e.target.value })}
+                            className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${activeTheme.ringColor} transition-all resize-none`}
+                          />
+                        </div>
+
+                        {/* Additional Note */}
+                        <div className="sm:col-span-2">
+                          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>Additional Remarks / Supporting Notes</span>
+                            <span className="text-[10px] text-slate-400 font-semibold">Optional</span>
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="Any supplemental details or urgency notes for college authorities..."
+                            value={queryForm.message}
+                            onChange={(e) => setQueryForm({ ...queryForm, message: e.target.value })}
+                            className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 ${activeTheme.ringColor} transition-all resize-none`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end pt-2">
+                        <button
+                          type="submit"
+                          disabled={querySubmitting}
+                          className={`px-6 py-2.5 rounded-xl bg-gradient-to-r ${activeTheme.primaryBtn} text-white text-xs font-bold shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50`}
+                        >
+                          {querySubmitting ? (
+                            <>
+                              <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Transmitting Ticket to Admin...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Submit Change Ticket</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* SUB-TAB 3: MY QUERIES / RESOLUTION CENTER */}
+                {profileSubTab === 'history' && (
+                  <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-4 animate-fade-in">
+                    <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-slate-100 text-slate-700">
+                          <Clock className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-bold text-slate-900">Profile Query History</h3>
+                          <p className="text-xs text-slate-500">Track real-time status and administrative responses</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                          {studentQueries.length} {studentQueries.length === 1 ? 'Query' : 'Queries'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={fetchStudentQueries}
+                          disabled={queriesLoading}
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                          title="Refresh Queries"
+                        >
+                          <RefreshCw
+                            className={`w-3.5 h-3.5 ${queriesLoading ? 'animate-spin text-indigo-600' : ''}`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {queriesLoading ? (
+                      <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        <span>Checking ticket status...</span>
+                      </div>
+                    ) : studentQueries.length === 0 ? (
+                      <div className="p-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-slate-500 space-y-2">
+                        <MessageSquare className="w-8 h-8 text-slate-400 mx-auto mb-1" />
+                        <p className="text-xs font-bold text-slate-700">No Profile Queries Submitted</p>
+                        <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                          If you notice any discrepancies in your student record, submit a ticket under the "Request Change" tab.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3.5">
+                        {studentQueries.map((q) => {
+                          const isPending = q.status === 'Pending';
+                          const isReviewed = q.status === 'Reviewed';
+                          const isResolved = q.status === 'Resolved';
+
+                          return (
+                            <div
+                              key={q._id}
+                              className={`p-4 sm:p-5 rounded-2xl border transition-all text-xs space-y-3 ${
+                                isPending
+                                  ? 'bg-amber-50/40 border-amber-200/80'
+                                  : isReviewed
+                                  ? 'bg-indigo-50/40 border-indigo-200/80'
+                                  : 'bg-emerald-50/40 border-emerald-200/80'
+                              }`}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200/60">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-slate-900 text-sm">{q.fieldToChange}</span>
+                                  <span className="text-[10px] text-slate-400">•</span>
+                                  <span className="text-[11px] text-slate-500 font-mono">
+                                    {new Date(q.createdAt).toLocaleDateString('en-US', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </span>
+                                </div>
+
+                                {/* Status Pill */}
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border self-start sm:self-auto ${
+                                    isPending
+                                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                      : isReviewed
+                                      ? 'bg-indigo-100 text-indigo-800 border-indigo-300'
+                                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  }`}
+                                >
+                                  {isPending && <Clock className="w-3 h-3 text-amber-600" />}
+                                  {isReviewed && <Eye className="w-3 h-3 text-indigo-600" />}
+                                  {isResolved && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
+                                  <span>{q.status}</span>
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="bg-white p-3 rounded-xl border border-slate-200/80">
+                                  <span className="font-bold text-slate-700 block text-[11px] mb-1">
+                                    Requested Modification:
+                                  </span>
+                                  <p className="text-slate-900 font-semibold">{q.requestedChange}</p>
+                                </div>
+
+                                <div className="bg-white p-3 rounded-xl border border-slate-200/80">
+                                  <span className="font-bold text-slate-700 block text-[11px] mb-1">
+                                    Reason Submitted:
+                                  </span>
+                                  <p className="text-slate-800">{q.reason}</p>
+                                </div>
+                              </div>
+
+                              {q.message && (
+                                <div className="bg-white/80 p-2.5 rounded-xl border border-slate-200/60 text-slate-600 text-[11px]">
+                                  <span className="font-bold text-slate-700 mr-1">Your Note:</span>
+                                  <span>{q.message}</span>
+                                </div>
+                              )}
+
+                              {q.adminResponse && (
+                                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-200 text-emerald-950 text-xs">
+                                  <span className="font-bold block mb-0.5 flex items-center gap-1.5 text-emerald-800">
+                                    <BadgeCheck className="w-4 h-4 text-emerald-600" />
+                                    <span>Administrative Action / Response:</span>
+                                  </span>
+                                  <span className="font-medium">{q.adminResponse}</span>
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                                <span className="flex items-center gap-1">
+                                  <Lock className="w-3 h-3" />
+                                  <span>Stored in University Database</span>
+                                </span>
+                                <span>Ticket #{q._id?.slice(-8)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
