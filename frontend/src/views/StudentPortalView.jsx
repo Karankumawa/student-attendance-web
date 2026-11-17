@@ -20,7 +20,6 @@ import {
   Menu,
   X,
   Lock,
-  Mail,
   Phone,
   HeartPulse,
   Users,
@@ -32,87 +31,28 @@ import {
   BadgeCheck,
   Copy,
   Check,
-  Sparkles,
-  Palette,
   IdCard,
-  Download,
   GraduationCap,
   Building2,
   QrCode,
-  ShieldAlert,
-  ArrowRight,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 import SnitLogo from '../components/SnitLogo';
+import { printElementById } from '../utils/printUtils';
 
-// Theme Presets for Student Profile Card & Identity Showcase
-const PROFILE_THEMES = {
-  indigo: {
-    id: 'indigo',
-    name: 'Sapphire Academic',
-    tag: 'Classic University',
-    swatch: 'bg-indigo-600',
-    cardGradient: 'from-indigo-950 via-slate-900 to-slate-950',
-    accentText: 'text-indigo-600',
-    accentBg: 'bg-indigo-50',
-    accentBorder: 'border-indigo-200',
-    badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-    primaryBtn: 'from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-indigo-500/20',
-    ringColor: 'focus:ring-indigo-500/20 focus:border-indigo-600',
-  },
-  emerald: {
-    id: 'emerald',
-    name: 'Emerald Campus',
-    tag: 'Collegiate Green',
-    swatch: 'bg-emerald-600',
-    cardGradient: 'from-emerald-950 via-slate-900 to-slate-950',
-    accentText: 'text-emerald-600',
-    accentBg: 'bg-emerald-50',
-    accentBorder: 'border-emerald-200',
-    badgeBg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-    primaryBtn: 'from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-emerald-500/20',
-    ringColor: 'focus:ring-emerald-500/20 focus:border-emerald-600',
-  },
-  crimson: {
-    id: 'crimson',
-    name: 'Crimson Heritage',
-    tag: 'Engineering Crest',
-    swatch: 'bg-rose-600',
-    cardGradient: 'from-rose-950 via-slate-900 to-slate-950',
-    accentText: 'text-rose-600',
-    accentBg: 'bg-rose-50',
-    accentBorder: 'border-rose-200',
-    badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
-    primaryBtn: 'from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 shadow-rose-500/20',
-    ringColor: 'focus:ring-rose-500/20 focus:border-rose-600',
-  },
-  purple: {
-    id: 'purple',
-    name: 'Cyber Violet',
-    tag: 'Modern High-Tech',
-    swatch: 'bg-purple-600',
-    cardGradient: 'from-purple-950 via-slate-900 to-slate-950',
-    accentText: 'text-purple-600',
-    accentBg: 'bg-purple-50',
-    accentBorder: 'border-purple-200',
-    badgeBg: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
-    primaryBtn: 'from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 shadow-purple-500/20',
-    ringColor: 'focus:ring-purple-500/20 focus:border-purple-600',
-  },
-  midnight: {
-    id: 'midnight',
-    name: 'Midnight Gold',
-    tag: 'Executive Stealth',
-    swatch: 'bg-slate-900',
-    cardGradient: 'from-slate-950 via-zinc-950 to-slate-900',
-    accentText: 'text-amber-600',
-    accentBg: 'bg-amber-50',
-    accentBorder: 'border-amber-200',
-    badgeBg: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-    primaryBtn: 'from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 shadow-amber-500/20',
-    ringColor: 'focus:ring-amber-500/20 focus:border-amber-600',
-  },
+// Permanent Institutional Theme for Student Profile Card & Identity Showcase
+const PROFILE_THEME = {
+  id: 'indigo',
+  name: 'Sapphire Academic',
+  tag: 'Classic University',
+  cardGradient: 'from-indigo-950 via-slate-900 to-slate-950',
+  accentText: 'text-indigo-600',
+  accentBg: 'bg-indigo-50',
+  accentBorder: 'border-indigo-200',
+  badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+  primaryBtn: 'from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-indigo-500/20',
+  ringColor: 'focus:ring-indigo-500/20 focus:border-indigo-600',
 };
 
 const parseTimeToMinutes = (timeStr) => {
@@ -231,23 +171,12 @@ export const StudentPortalView = ({ showToast }) => {
   // Profile data (Read-only for student)
   const [profileData, setProfileData] = useState(null);
 
-  // Modern Theme & Sub-Tab states for Profile Section
-  const [profileTheme, setProfileTheme] = useState(() => {
-    return localStorage.getItem('student_profile_theme') || 'indigo';
-  });
+  // Sub-Tab state for Profile Section
   const [profileSubTab, setProfileSubTab] = useState('overview'); // 'overview' | 'query' | 'history'
   const [copiedField, setCopiedField] = useState(null);
 
-  const activeTheme = PROFILE_THEMES[profileTheme] || PROFILE_THEMES.indigo;
-
-  const handleThemeChange = (newTheme) => {
-    setProfileTheme(newTheme);
-    localStorage.setItem('student_profile_theme', newTheme);
-    showToast?.({
-      message: `Profile theme updated to ${PROFILE_THEMES[newTheme]?.name || newTheme}!`,
-      type: 'info',
-    });
-  };
+  // Permanent unified profile theme (Sapphire Academic)
+  const activeTheme = PROFILE_THEME;
 
   const handleCopy = (field, value) => {
     if (!value) return;
@@ -865,55 +794,6 @@ export const StudentPortalView = ({ showToast }) => {
         {/* ================= VIEW 2: STUDENT PROFILE ================= */}
         {activeTab === 'profile' && (
           <div className="space-y-6 animate-fade-in max-w-6xl mx-auto pb-12">
-            {/* Top Control Bar: Title & Dynamic Profile Theme Switcher */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 sm:p-6 bg-white rounded-3xl border border-slate-200/90 shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-2xl ${activeTheme.accentBg} ${activeTheme.accentText} border ${activeTheme.accentBorder} shadow-xs`}>
-                  <IdCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-                      Student Identity & Academic Dossier
-                    </h2>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${activeTheme.badgeBg}`}>
-                      {activeTheme.name}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 font-medium">
-                    Verified institutional records & digital campus pass • Shrinathji Institute of Technology
-                  </p>
-                </div>
-              </div>
-
-              {/* Theme Customizer Controls */}
-              <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl border border-slate-200/90 self-start sm:self-auto overflow-x-auto no-scrollbar">
-                <span className="text-[11px] font-bold text-slate-500 px-2 flex items-center gap-1">
-                  <Palette className="w-3.5 h-3.5 text-slate-400" />
-                  <span className="hidden md:inline">Theme:</span>
-                </span>
-                {Object.values(PROFILE_THEMES).map((th) => {
-                  const isSelected = profileTheme === th.id;
-                  return (
-                    <button
-                      key={th.id}
-                      type="button"
-                      onClick={() => handleThemeChange(th.id)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-white text-slate-900 shadow-xs border border-slate-300 ring-2 ring-indigo-500/20'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
-                      title={th.tag}
-                    >
-                      <span className={`w-3 h-3 rounded-full ${th.swatch} shrink-0`} />
-                      <span className="hidden sm:inline">{th.name.split(' ')[0]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Main Responsive 2-Column Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
               {/* ================= LEFT COLUMN: DIGITAL STUDENT ID SMART CARD (5 Cols) ================= */}
@@ -975,7 +855,7 @@ export const StudentPortalView = ({ showToast }) => {
                         <button
                           type="button"
                           onClick={() => handleCopy('Roll Number', student?.rollNumber)}
-                          className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                          className="no-print text-slate-400 hover:text-white transition-colors cursor-pointer"
                           title="Copy Roll Number"
                         >
                           {copiedField === 'Roll Number' ? (
@@ -997,7 +877,7 @@ export const StudentPortalView = ({ showToast }) => {
                               student?.registrationId || `STU-${student?.rollNumber}`
                             )
                           }
-                          className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                          className="no-print text-slate-400 hover:text-white transition-colors cursor-pointer"
                           title="Copy Registration ID"
                         >
                           {copiedField === 'Registration ID' ? (
@@ -1075,7 +955,7 @@ export const StudentPortalView = ({ showToast }) => {
                 <div className="flex items-center gap-2.5">
                   <button
                     type="button"
-                    onClick={() => window.print()}
+                    onClick={() => printElementById('digital-student-id-card', `${student?.name || 'Student'}_ID_Card`)}
                     className="flex-1 py-2.5 px-4 rounded-2xl bg-white border border-slate-200 hover:border-slate-300 text-slate-800 text-xs font-bold shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
                     <Printer className="w-4 h-4 text-slate-600" />

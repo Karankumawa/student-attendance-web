@@ -74,6 +74,8 @@
     background: #ffffff !important;
     color: #000000 !important;
     font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Expand main layout to full paper width without sidebar indentation */

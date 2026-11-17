@@ -18,8 +18,6 @@ import {
   Clock,
   Printer,
   Eye,
-  Palette,
-  Check,
   X,
   FileText,
   Award,
@@ -28,77 +26,27 @@ import {
 import axiosClient from '../api/axiosClient';
 import SnitLogo from '../components/SnitLogo';
 
-// Theme Configurations for Downloaded and Printable Reports
-const REPORT_THEMES = {
-  navy: {
-    id: 'navy',
-    name: 'Royal Navy',
-    subtitle: 'Classic Institutional',
-    primaryColor: '#1e3a8a',
-    accentColor: '#3b82f6',
-    headerBg: 'bg-slate-900',
-    bannerGradient: 'from-blue-900 via-slate-900 to-indigo-950',
-    badge: 'bg-blue-100 text-blue-900 border-blue-200',
-    accentText: 'text-blue-600',
-    cardBorder: 'border-blue-200',
-    cardBg: 'bg-blue-50/40',
-    btnGradient: 'from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800',
-    highlightBorder: 'border-blue-500',
-    swatch: 'bg-blue-800',
-  },
-  emerald: {
-    id: 'emerald',
-    name: 'Emerald Campus',
-    subtitle: 'Modern Collegiate',
-    primaryColor: '#065f46',
-    accentColor: '#10b981',
-    headerBg: 'bg-emerald-950',
-    bannerGradient: 'from-emerald-950 via-teal-950 to-slate-950',
-    badge: 'bg-emerald-100 text-emerald-900 border-emerald-200',
-    accentText: 'text-emerald-600',
-    cardBorder: 'border-emerald-200',
-    cardBg: 'bg-emerald-50/40',
-    btnGradient: 'from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800',
-    highlightBorder: 'border-emerald-500',
-    swatch: 'bg-emerald-700',
-  },
-  crimson: {
-    id: 'crimson',
-    name: 'Crimson Crest',
-    subtitle: 'Prestigious Academic',
-    primaryColor: '#881337',
-    accentColor: '#e11d48',
-    headerBg: 'bg-rose-950',
-    bannerGradient: 'from-rose-950 via-stone-900 to-slate-950',
-    badge: 'bg-rose-100 text-rose-900 border-rose-200',
-    accentText: 'text-rose-600',
-    cardBorder: 'border-rose-200',
-    cardBg: 'bg-rose-50/40',
-    btnGradient: 'from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800',
-    highlightBorder: 'border-rose-500',
-    swatch: 'bg-rose-800',
-  },
-  obsidian: {
-    id: 'obsidian',
-    name: 'Midnight Obsidian',
-    subtitle: 'Executive Contrast',
-    primaryColor: '#0f172a',
-    accentColor: '#6366f1',
-    headerBg: 'bg-slate-950',
-    bannerGradient: 'from-slate-950 via-slate-900 to-slate-950',
-    badge: 'bg-indigo-100 text-indigo-950 border-indigo-200',
-    accentText: 'text-indigo-600',
-    cardBorder: 'border-slate-300',
-    cardBg: 'bg-slate-100/60',
-    btnGradient: 'from-indigo-600 to-violet-700 hover:from-indigo-700 hover:to-violet-800',
-    highlightBorder: 'border-indigo-500',
-    swatch: 'bg-slate-900',
-  },
+// Permanent Institutional Theme Configuration for Attendance Reports & Audits
+const REPORT_THEME = {
+  id: 'navy',
+  name: 'Royal Navy',
+  subtitle: 'Classic Institutional',
+  primaryColor: '#1e3a8a',
+  accentColor: '#3b82f6',
+  headerBg: 'bg-slate-900',
+  bannerGradient: 'from-blue-900 via-slate-900 to-indigo-950',
+  badge: 'bg-blue-100 text-blue-900 border-blue-200',
+  accentText: 'text-blue-600',
+  cardBorder: 'border-blue-200',
+  cardBg: 'bg-blue-50/40',
+  btnGradient: 'from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800',
+  highlightBorder: 'border-blue-500',
+  swatch: 'bg-blue-800',
 };
 
 export const ReportsView = ({ showToast }) => {
-  // Theme state
-  const [selectedTheme, setSelectedTheme] = useState('navy');
+  // Permanent Theme
+  const currentTheme = REPORT_THEME;
 
   // Filter states
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -141,8 +89,6 @@ export const ReportsView = ({ showToast }) => {
 
   // Report Preview Modal state
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
-
-  const currentTheme = REPORT_THEMES[selectedTheme] || REPORT_THEMES.navy;
 
   const fetchFilterOptions = useCallback(async () => {
     try {
@@ -304,69 +250,23 @@ export const ReportsView = ({ showToast }) => {
   const [auditGeneratedDate] = useState(() => new Date().toLocaleDateString('en-IN'));
 
   // Generates standalone, themed HTML document string
-  const generateThemedHtmlContent = useCallback(
-    (themeKey = selectedTheme) => {
-      const theme = REPORT_THEMES[themeKey] || REPORT_THEMES.navy;
-      const genTimestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-      const reportId = `SNITN/ATT/${selectedYear || 'AUDIT'}/${Math.floor(1000 + Math.random() * 9000)}`;
+  const generateThemedHtmlContent = useCallback(() => {
+    const theme = REPORT_THEME;
+    const genTimestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const reportId = `SNITN/ATT/${selectedYear || 'AUDIT'}/${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // Palette CSS mapping
-      const themeStyles = {
-        navy: {
-          primary: '#1e3a8a',
-          primaryDark: '#0f172a',
-          accent: '#3b82f6',
-          bgHeader: '#0f172a',
-          bgLight: '#f8fafc',
-          border: '#cbd5e1',
-          pillEligible: '#dcfce7; color: #15803d; border-color: #86efac;',
-          pillWarning: '#fef3c7; color: #b45309; border-color: #fde68a;',
-          pillDefaulter: '#fee2e2; color: #b91c1c; border-color: #fca5a5;',
-        },
-        emerald: {
-          primary: '#065f46',
-          primaryDark: '#022c22',
-          accent: '#10b981',
-          bgHeader: '#064e3b',
-          bgLight: '#f0fdf4',
-          border: '#a7f3d0',
-          pillEligible: '#dcfce7; color: #047857; border-color: #6ee7b7;',
-          pillWarning: '#fef3c7; color: #b45309; border-color: #fde68a;',
-          pillDefaulter: '#fee2e2; color: #b91c1c; border-color: #fca5a5;',
-        },
-        crimson: {
-          primary: '#881337',
-          primaryDark: '#4c0519',
-          accent: '#e11d48',
-          bgHeader: '#4c0519',
-          bgLight: '#fff1f2',
-          border: '#fecdd3',
-          pillEligible: '#dcfce7; color: #15803d; border-color: #86efac;',
-          pillWarning: '#fef3c7; color: #b45309; border-color: #fde68a;',
-          pillDefaulter: '#ffe4e6; color: #9f1239; border-color: #fda4af;',
-        },
-        obsidian: {
-          primary: '#0f172a',
-          primaryDark: '#020617',
-          accent: '#6366f1',
-          bgHeader: '#090d16',
-          bgLight: '#f8fafc',
-          border: '#cbd5e1',
-          pillEligible: '#dcfce7; color: #166534; border-color: #86efac;',
-          pillWarning: '#fef3c7; color: #92400e; border-color: #fde68a;',
-          pillDefaulter: '#fee2e2; color: #991b1b; border-color: #fca5a5;',
-        },
-      }[themeKey] || {
-        primary: '#1e3a8a',
-        primaryDark: '#0f172a',
-        accent: '#3b82f6',
-        bgHeader: '#0f172a',
-        bgLight: '#f8fafc',
-        border: '#cbd5e1',
-        pillEligible: '#dcfce7; color: #15803d; border-color: #86efac;',
-        pillWarning: '#fef3c7; color: #b45309; border-color: #fde68a;',
-        pillDefaulter: '#fee2e2; color: #b91c1c; border-color: #fca5a5;',
-      };
+    // Institutional Navy Palette CSS mapping
+    const themeStyles = {
+      primary: '#1e3a8a',
+      primaryDark: '#0f172a',
+      accent: '#3b82f6',
+      bgHeader: '#0f172a',
+      bgLight: '#f8fafc',
+      border: '#cbd5e1',
+      pillEligible: '#dcfce7; color: #15803d; border-color: #86efac;',
+      pillWarning: '#fef3c7; color: #b45309; border-color: #fde68a;',
+      pillDefaulter: '#fee2e2; color: #b91c1c; border-color: #fca5a5;',
+    };
 
       const rowsHtml = filteredStudents
         .map((s, idx) => {
@@ -908,14 +808,14 @@ export const ReportsView = ({ showToast }) => {
 </body>
 </html>`;
     },
-    [filteredStudents, minAttendance, selectedDepartment, selectedSemester, selectedYear, selectedSubject, stats, selectedTheme]
+    [filteredStudents, minAttendance, selectedDepartment, selectedSemester, selectedYear, selectedSubject, stats]
   );
 
-  // Download Standalone Themed HTML Report
+  // Download Standalone Official HTML Report
   const handleDownloadHtml = () => {
     try {
-      const htmlContent = generateThemedHtmlContent(selectedTheme);
-      const filename = `Attendance_Report_${selectedTheme.toUpperCase()}_${selectedYear}_${selectedSemester.replace(
+      const htmlContent = generateThemedHtmlContent();
+      const filename = `Attendance_Report_${selectedYear}_${selectedSemester.replace(
         /\s+/g,
         '_'
       )}_${Date.now()}.html`;
@@ -931,7 +831,7 @@ export const ReportsView = ({ showToast }) => {
 
       if (showToast) {
         showToast({
-          message: `🎨 Downloaded themed HTML report "${filename}"! Open in any browser or print directly.`,
+          message: `📄 Downloaded official HTML report "${filename}"! Open in any browser or print directly.`,
           type: 'success',
         });
       }
@@ -949,7 +849,7 @@ export const ReportsView = ({ showToast }) => {
   // Open Direct Print Window
   const handlePrintReport = () => {
     try {
-      const htmlContent = generateThemedHtmlContent(selectedTheme);
+      const htmlContent = generateThemedHtmlContent();
       const printWindow = window.open('', '_blank', 'width=1100,height=850');
       if (printWindow) {
         printWindow.document.open();
@@ -1027,51 +927,6 @@ export const ReportsView = ({ showToast }) => {
         {/* Decorative background glows */}
         <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute left-1/3 -top-10 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      </div>
-
-      {/* Theme Selector Strip */}
-      <div className="bg-white rounded-3xl p-5 md:p-6 border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-slate-100 text-slate-800 border border-slate-200">
-            <Palette className="w-5 h-5 text-indigo-600" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-900">Report Theme & Presentation Style</h3>
-            <p className="text-xs text-slate-500">
-              Select a visual palette for your downloaded documents, printable audits, and tables.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {Object.values(REPORT_THEMES).map((th) => {
-            const isSelected = selectedTheme === th.id;
-            return (
-              <button
-                key={th.id}
-                onClick={() => {
-                  setSelectedTheme(th.id);
-                  if (showToast) {
-                    showToast({
-                      message: `Applied "${th.name}" theme for reports!`,
-                      type: 'info',
-                    });
-                  }
-                }}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
-                  isSelected
-                    ? `${th.badge} shadow-xs scale-102 ring-2 ring-indigo-500/30`
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200/80'
-                }`}
-              >
-                <span className={`w-3.5 h-3.5 rounded-full ${th.swatch} flex items-center justify-center shrink-0`}>
-                  {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
-                </span>
-                <span>{th.name}</span>
-              </button>
-            );
-          })}
-        </div>
       </div>
 
       {/* Filter Selection Panel */}
@@ -1506,29 +1361,8 @@ export const ReportsView = ({ showToast }) => {
                 <div>
                   <h3 className="text-sm font-extrabold text-white">Official Attendance Audit Report</h3>
                   <p className="text-xs text-slate-400">
-                    Live document preview styled with the <strong>{currentTheme.name}</strong> theme
+                    Verified institutional records & printable audit documentation
                   </p>
-                </div>
-              </div>
-
-              {/* Theme Selector within Modal */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 hidden sm:inline">Theme:</span>
-                <div className="flex items-center gap-1.5 bg-slate-800/80 p-1 rounded-xl border border-slate-700">
-                  {Object.values(REPORT_THEMES).map((th) => (
-                    <button
-                      key={th.id}
-                      onClick={() => setSelectedTheme(th.id)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        selectedTheme === th.id
-                          ? 'bg-white text-slate-950 shadow-xs'
-                          : 'text-slate-300 hover:text-white'
-                      }`}
-                    >
-                      <span className={`w-2.5 h-2.5 rounded-full ${th.swatch}`} />
-                      <span>{th.name.split(' ')[0]}</span>
-                    </button>
-                  ))}
                 </div>
               </div>
 
