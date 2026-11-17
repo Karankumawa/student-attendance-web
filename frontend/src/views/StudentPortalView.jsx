@@ -34,6 +34,8 @@ import {
   GraduationCap,
   Building2,
   QrCode,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
@@ -65,6 +67,42 @@ const parseTimeToMinutes = (timeStr) => {
   if (modifier === 'PM' && hours < 12) hours += 12;
   else if (modifier === 'AM' && hours === 12) hours = 0;
   return hours * 60 + minutes;
+};
+
+const DAY_SHORT_NAMES = {
+  Monday: 'Mon',
+  Tuesday: 'Tue',
+  Wednesday: 'Wed',
+  Thursday: 'Thu',
+  Friday: 'Fri',
+  Saturday: 'Sat',
+};
+
+const getSlotTimeStatus = (slot, isToday) => {
+  if (!isToday || !slot?.startTime || !slot?.endTime) return null;
+  const startMin = parseTimeToMinutes(slot.startTime);
+  const endMin = parseTimeToMinutes(slot.endTime);
+  const now = new Date();
+  const currentMin = now.getHours() * 60 + now.getMinutes();
+
+  if (currentMin >= startMin && currentMin <= endMin) {
+    return { status: 'live', label: 'Live Now' };
+  } else if (currentMin > endMin) {
+    return { status: 'completed', label: 'Completed' };
+  } else {
+    const diff = startMin - currentMin;
+    const label = diff <= 60 && diff > 0 ? `Starts in ${diff}m` : 'Upcoming';
+    return { status: 'upcoming', label };
+  }
+};
+
+const getSlotDuration = (startTime, endTime) => {
+  const start = parseTimeToMinutes(startTime);
+  const end = parseTimeToMinutes(endTime);
+  if (end > start) {
+    return `${end - start}m`;
+  }
+  return null;
 };
 
 const formatDobDisplay = (dobStr) => {
@@ -151,6 +189,7 @@ export const StudentPortalView = ({ showToast }) => {
       ? today
       : 'Monday';
   });
+  const [scheduleViewMode, setScheduleViewMode] = useState('day'); // 'day' | 'week'
 
   // Notes state
   const [notesSearch, setNotesSearch] = useState('');
@@ -1668,94 +1707,354 @@ export const StudentPortalView = ({ showToast }) => {
 
         {/* ================= VIEW 3: MY TIMETABLE ================= */}
         {activeTab === 'timetable' && (
-          <div className="space-y-6 animate-fade-in">
-            {/* Days Tabs */}
-            <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-xs">
-              {daysOfWeek.map((day) => {
-                const isSelected = selectedDay === day;
-                const isToday = day === todayName;
-                const count = timetableSlots.filter((s) => s.dayOfWeek === day).length;
-
-                return (
-                  <button
-                    key={day}
-                    onClick={() => setSelectedDay(day)}
-                    className={`flex-1 min-w-[120px] py-3 px-3 rounded-xl font-bold text-xs transition-all flex flex-col items-center justify-center gap-1.5 cursor-pointer ${
-                      isSelected
-                        ? 'bg-slate-950 text-white shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span>{day}</span>
-                      {isToday && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" title="Today" />}
-                    </div>
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full ${
-                        isSelected ? 'bg-white/20 text-white font-bold' : 'bg-slate-200/60 text-slate-500'
-                      }`}
-                    >
-                      {count} {count === 1 ? 'Period' : 'Periods'}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Schedule Cards for Selected Day */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
-              <div className="flex items-center justify-between pb-4 mb-6 border-b border-slate-100">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>{selectedDay} Lecture Schedule</span>
-                    {selectedDay === todayName && (
-                      <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                        Today
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Classes assigned to {student?.semester}
-                  </p>
+          <div className="space-y-4 sm:space-y-6 animate-fade-in">
+            {/* Timetable Header Card with View Mode Toggle */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 sm:p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center shrink-0">
+                    <CalendarClock className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
+                      Weekly Class Schedule
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                      Assigned to <span className="font-semibold text-slate-700">{student?.semester || 'Semester'}</span> • {timetableSlots.length} Total Periods
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {daySchedule.length === 0 ? (
-                <div className="py-20 text-center rounded-3xl bg-slate-50/70 border border-dashed border-slate-200">
-                  <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                  <h4 className="text-sm font-bold text-slate-700">No classes scheduled on {selectedDay}</h4>
-                  <p className="text-xs text-slate-400 mt-1">Enjoy your study time or review lecture notes.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                  {daySchedule.map((slot) => (
-                    <div
-                      key={slot._id}
-                      className="p-5 rounded-3xl border border-slate-200/90 bg-slate-50/40 hover:bg-white hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{slot.startTime} - {slot.endTime}</span>
-                          </span>
-                          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold bg-slate-200/70 text-slate-700">
-                            {slot.semester}
-                          </span>
+              {/* View Switcher: Day View vs Full Week */}
+              <div className="flex items-center p-1 bg-slate-100/90 rounded-xl border border-slate-200/70 self-stretch sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setScheduleViewMode('day')}
+                  className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    scheduleViewMode === 'day'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Day View</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleViewMode('week')}
+                  className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    scheduleViewMode === 'week'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Full Week</span>
+                </button>
+              </div>
+            </div>
+
+            {/* In Day View: 6-Day Responsive Selector Bar */}
+            {scheduleViewMode === 'day' && (
+              <div className="space-y-4">
+                {/* 6-Day Selector (Mon to Sat) - Perfect 6-col grid on all mobile & desktop screens */}
+                <div className="grid grid-cols-6 gap-1 sm:gap-2 p-1.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/90 shadow-xs">
+                  {daysOfWeek.map((day) => {
+                    const isSelected = selectedDay === day;
+                    const isToday = day === todayName;
+                    const count = timetableSlots.filter((s) => s.dayOfWeek === day).length;
+
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => setSelectedDay(day)}
+                        className={`py-2 sm:py-3 px-1 sm:px-3 rounded-xl font-bold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer select-none ${
+                          isSelected
+                            ? 'bg-slate-950 text-white shadow-md shadow-slate-950/20'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                        }`}
+                      >
+                        {/* Day Name */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs sm:hidden">{DAY_SHORT_NAMES[day] || day.slice(0, 3)}</span>
+                          <span className="text-xs hidden sm:inline">{day}</span>
+                          {isToday && (
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30"
+                              title="Today"
+                            />
+                          )}
                         </div>
 
-                        <h4 className="text-base font-bold text-slate-900 leading-snug">{slot.subject}</h4>
+                        {/* Period Count Pill */}
+                        <span
+                          className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-medium ${
+                            isSelected
+                              ? 'bg-white/20 text-white font-semibold'
+                              : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          <span className="sm:hidden">{count}</span>
+                          <span className="hidden sm:inline">{count} {count === 1 ? 'Period' : 'Periods'}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-                        <div className="flex items-center gap-1.5 mt-2.5 text-xs text-slate-500 font-medium">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{slot.roomNumber || 'Room 101'}</span>
+                {/* Jump to Today notice if viewing another day */}
+                {selectedDay !== todayName && daysOfWeek.includes(todayName) && (
+                  <div className="flex items-center justify-between px-3.5 py-2.5 bg-indigo-50/70 border border-indigo-200/60 rounded-2xl gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-ping" />
+                      <p className="text-xs text-indigo-950 font-medium truncate">
+                        Viewing <span className="font-bold">{selectedDay}</span>. Today is <span className="font-bold text-indigo-700">{todayName}</span>.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDay(todayName)}
+                      className="px-2.5 py-1 bg-white hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg border border-indigo-200 transition-colors shadow-2xs cursor-pointer flex items-center gap-1 shrink-0"
+                    >
+                      <span>Jump to Today</span>
+                      <ArrowRight className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Schedule Container for Selected Day */}
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 p-4 sm:p-6 shadow-xs">
+                  <div className="flex items-center justify-between pb-3 sm:pb-4 mb-4 sm:mb-6 border-b border-slate-100">
+                    <div>
+                      <h4 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                        <span>{selectedDay} Lectures</span>
+                        {selectedDay === todayName && (
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] sm:text-[11px] font-bold">
+                            Today
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                        {daySchedule.length === 0
+                          ? 'No lectures scheduled'
+                          : `${daySchedule.length} ${daySchedule.length === 1 ? 'period' : 'periods'} scheduled on this day`}
+                      </p>
+                    </div>
+                    {daySchedule.length > 0 && (
+                      <span className="text-[11px] font-semibold text-slate-400 hidden sm:inline">
+                        Ordered chronologically
+                      </span>
+                    )}
+                  </div>
+
+                  {daySchedule.length === 0 ? (
+                    <div className="py-12 sm:py-16 text-center rounded-2xl sm:rounded-3xl bg-slate-50/70 border border-dashed border-slate-200 px-4">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3 text-slate-400">
+                        <Calendar className="w-6 h-6" />
+                      </div>
+                      <h5 className="text-sm font-bold text-slate-700">No classes scheduled on {selectedDay}</h5>
+                      <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                        Enjoy your self-study time or catch up on lecture notes.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 sm:space-y-0 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                      {daySchedule.map((slot, index) => {
+                        const isToday = selectedDay === todayName;
+                        const timeStatus = getSlotTimeStatus(slot, isToday);
+                        const duration = getSlotDuration(slot.startTime, slot.endTime);
+
+                        return (
+                          <div
+                            key={slot._id || index}
+                            className={`p-4 sm:p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${
+                              timeStatus?.status === 'live'
+                                ? 'bg-indigo-50/40 border-indigo-300 ring-2 ring-indigo-500/20 shadow-sm'
+                                : 'bg-slate-50/50 hover:bg-white border-slate-200/90 hover:shadow-md'
+                            }`}
+                          >
+                            <div>
+                              {/* Top status bar: LEC index + Time Status Badge */}
+                              <div className="flex items-center justify-between gap-2 mb-2.5">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/70 text-slate-700 text-[10px] font-extrabold uppercase tracking-wide">
+                                  Lec {index + 1}
+                                </span>
+
+                                {timeStatus?.status === 'live' && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold shadow-xs animate-pulse">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                                    <span>Live Now</span>
+                                  </span>
+                                )}
+                                {timeStatus?.status === 'completed' && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-semibold border border-slate-200">
+                                    <CheckCircle2 className="w-3 h-3 text-slate-400" />
+                                    <span>Done</span>
+                                  </span>
+                                )}
+                                {timeStatus?.status === 'upcoming' && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold border border-amber-200">
+                                    <Clock className="w-3 h-3" />
+                                    <span>{timeStatus.label}</span>
+                                  </span>
+                                )}
+                                {!timeStatus && (
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600">
+                                    {slot.semester}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Subject title */}
+                              <h5 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">
+                                {slot.subject}
+                              </h5>
+
+                              {/* Time & Duration badge */}
+                              <div className="mt-2.5 flex items-center flex-wrap gap-1.5">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[11px] sm:text-xs font-bold border border-indigo-100">
+                                  <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-indigo-500" />
+                                  <span>{slot.startTime} - {slot.endTime}</span>
+                                </span>
+                                {duration && (
+                                  <span className="text-[10px] font-bold text-slate-400 px-1.5 py-0.5 bg-slate-100 rounded-md">
+                                    {duration}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Room Info Footer */}
+                            <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                              <div className="flex items-center gap-1.5 font-medium">
+                                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                <span className="font-semibold text-slate-700">
+                                  {slot.roomNumber || 'Room 101'}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-400 font-medium">
+                                {slot.semester}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* In Full Week View: Mobile-friendly Vertical Stack of all 6 days */}
+            {scheduleViewMode === 'week' && (
+              <div className="space-y-3 sm:space-y-4">
+                {daysOfWeek.map((day) => {
+                  const daySlots = [...timetableSlots.filter((s) => s.dayOfWeek === day)].sort(
+                    (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)
+                  );
+                  const isToday = day === todayName;
+
+                  return (
+                    <div
+                      key={day}
+                      className={`bg-white rounded-2xl sm:rounded-3xl border p-4 sm:p-5 transition-all shadow-xs ${
+                        isToday ? 'border-indigo-300 ring-2 ring-indigo-500/10' : 'border-slate-200/90'
+                      }`}
+                    >
+                      {/* Day Header */}
+                      <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+                              isToday
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-slate-100 text-slate-700'
+                            }`}
+                          >
+                            {DAY_SHORT_NAMES[day] || day.slice(0, 3)}
+                          </span>
+                          <h4 className="text-sm sm:text-base font-bold text-slate-900">
+                            {day}
+                          </h4>
+                          {isToday && (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
+                              Today
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-slate-500">
+                            {daySlots.length} {daySlots.length === 1 ? 'Period' : 'Periods'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDay(day);
+                              setScheduleViewMode('day');
+                            }}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 transition-colors cursor-pointer"
+                          >
+                            Open Day
+                          </button>
                         </div>
                       </div>
+
+                      {/* Day Slots List */}
+                      {daySlots.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic py-1.5">No lectures scheduled</p>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+                          {daySlots.map((slot, sIdx) => {
+                            const timeStatus = getSlotTimeStatus(slot, isToday);
+
+                            return (
+                              <div
+                                key={slot._id || sIdx}
+                                className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
+                                  timeStatus?.status === 'live'
+                                    ? 'bg-indigo-50/50 border-indigo-200 ring-1 ring-indigo-400'
+                                    : 'bg-slate-50/70 border-slate-200/70'
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    <span className="text-[10px] font-extrabold text-slate-400 uppercase">
+                                      #{sIdx + 1}
+                                    </span>
+                                    <h5 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                                      {slot.subject}
+                                    </h5>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                                    <span className="font-semibold text-indigo-700 flex items-center gap-1">
+                                      <Clock className="w-3 h-3" />
+                                      {slot.startTime} - {slot.endTime}
+                                    </span>
+                                    <span>•</span>
+                                    <span className="flex items-center gap-1 text-slate-600">
+                                      <MapPin className="w-3 h-3 text-slate-400" />
+                                      {slot.roomNumber || 'Room 101'}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {timeStatus?.status === 'live' && (
+                                  <span className="px-2 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold shrink-0 animate-pulse">
+                                    Live
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
