@@ -63,8 +63,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Root API Welcome & Health Route (Prevents "API Route not found: GET /")
+// Optional: Check if frontend static build exists for all-in-one service
+const distPath = path.join(__dirname, '../frontend/dist');
+const hasStaticBuild = fs.existsSync(distPath);
+
+if (hasStaticBuild) {
+  console.log('[Static] Serving frontend static assets from ../frontend/dist');
+  app.use(express.static(distPath));
+}
+
+// Root API Welcome & Health Route (Serves frontend SPA if HTML requested and dist exists, otherwise JSON)
 app.get('/', (req, res) => {
+  if (hasStaticBuild && req.headers.accept && req.headers.accept.includes('text/html')) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
   res.status(200).json({
     success: true,
     message: '🎓 Shrinathji Institute of Technology & Engineering (SNITN) API is live and connected!',
@@ -119,11 +131,8 @@ app.use('/subjects', subjectRoutes);
 app.use('/api/student-queries', studentQueryRoutes);
 app.use('/student-queries', studentQueryRoutes);
 
-// Optional: Serve frontend static build if deployed as all-in-one service
-const distPath = path.join(__dirname, '../frontend/dist');
-if (fs.existsSync(distPath)) {
-  console.log('[Static] Serving frontend static assets from ../frontend/dist');
-  app.use(express.static(distPath));
+// SPA Client-side routing fallback if static build is present
+if (hasStaticBuild) {
   app.use((req, res, next) => {
     if (req.method === 'GET' && !req.url.startsWith('/api')) {
       return res.sendFile(path.join(distPath, 'index.html'));

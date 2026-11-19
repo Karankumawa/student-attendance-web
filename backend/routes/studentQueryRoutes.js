@@ -124,9 +124,9 @@ router.get('/my-queries', requireStudent, async (req, res) => {
         { rollNumber: student.rollNumber },
         { userId: req.user._id },
       ],
-    }).sort({
-      createdAt: -1,
-    });
+    })
+      .sort({ createdAt: -1 })
+      .lean();
 
     return res.status(200).json({
       success: true,

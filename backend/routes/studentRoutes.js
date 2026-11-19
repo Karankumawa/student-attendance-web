@@ -2,6 +2,7 @@ const express = require('express');
 const Student = require('../models/Student');
 const User = require('../models/User');
 const Attendance = require('../models/Attendance');
+const StudentQuery = require('../models/StudentQuery');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 const { escapeRegex } = require('../utils/regexHelper');
 
@@ -278,6 +279,7 @@ router.put('/:id', async (req, res) => {
           });
         }
         student.rollNumber = trimmedRoll;
+        student.registrationId = `STU-${trimmedRoll.replace(/[^A-Za-z0-9]/g, '')}`;
       }
     }
 
@@ -414,6 +416,14 @@ router.delete('/:id', async (req, res) => {
         { studentId: student._id },
         ...(student.userId ? [{ _id: student.userId }] : []),
         ...(student.email ? [{ email: student.email }] : []),
+      ],
+    });
+
+    // Delete associated student profile queries/messages
+    await StudentQuery.deleteMany({
+      $or: [
+        { studentId: student._id },
+        { rollNumber: student.rollNumber },
       ],
     });
 

@@ -34,11 +34,11 @@ const buildReportFilter = (query) => {
     attendanceQuery.subject = subject;
   }
 
-  // Handle custom date range or year filter
+  // Handle custom date range or year filter (using standard ISO range for index acceleration)
   if (startDate && endDate) {
     attendanceQuery.date = { $gte: startDate, $lte: endDate };
   } else if (year && year !== 'All') {
-    attendanceQuery.date = { $regex: `^${year}` };
+    attendanceQuery.date = { $gte: `${year}-01-01`, $lte: `${year}-12-31` };
   }
 
   return { studentQuery, attendanceQuery };
@@ -638,8 +638,9 @@ router.get('/export-excel', async (req, res) => {
 
       sessions.forEach((sess, i) => {
         let present = 0;
-        let total = sess.records.length;
-        sess.records.forEach((r) => {
+        const recList = sess.records || [];
+        let total = recList.length;
+        recList.forEach((r) => {
           if (r.status === 'Present') present++;
         });
         const sessPct = total > 0 ? Number(((present / total) * 100).toFixed(1)) : 0;

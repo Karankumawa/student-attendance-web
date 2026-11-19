@@ -148,6 +148,11 @@ router.get('/summary', async (req, res) => {
     if (semester && semester !== 'All') studentQuery.semester = semester;
     if (department && department !== 'All') studentQuery.department = department;
 
+    // Filter attendance sessions
+    const attendanceQuery = {};
+    if (semester && semester !== 'All') attendanceQuery.semester = semester;
+    if (subject && subject !== 'All') attendanceQuery.subject = subject;
+
     const [students, sessions] = await Promise.all([
       Student.find(studentQuery).sort({ rollNumber: 1 }).lean(),
       Attendance.find(attendanceQuery).lean(),
@@ -262,14 +267,25 @@ router.get('/dashboard-stats', async (req, res) => {
       Timetable.find({ dayOfWeek: currentDay }).lean(),
       Attendance.find({ date: todayDateString }).lean(),
       Attendance.aggregate([
-        { $unwind: '$records' },
+        {
+          $project: {
+            totalRecords: { $size: { $ifNull: ['$records', []] } },
+            totalPresent: {
+              $size: {
+                $filter: {
+                  input: { $ifNull: ['$records', []] },
+                  as: 'rec',
+                  cond: { $eq: ['$$rec.status', 'Present'] },
+                },
+              },
+            },
+          },
+        },
         {
           $group: {
             _id: null,
-            totalRecords: { $sum: 1 },
-            totalPresent: {
-              $sum: { $cond: [{ $eq: ['$records.status', 'Present'] }, 1, 0] },
-            },
+            totalRecords: { $sum: '$totalRecords' },
+            totalPresent: { $sum: '$totalPresent' },
           },
         },
       ]),

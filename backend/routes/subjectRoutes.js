@@ -156,15 +156,19 @@ router.put('/:id', requireAdmin, async (req, res) => {
       });
     }
 
-    if (name && name.trim() !== '') {
-      const trimmedName = name.trim();
-      const targetSemester = semester ? semester.trim() : subject.semester;
-      const targetDept = department ? department.trim() : subject.department;
+    const targetName = name !== undefined && name.trim() !== '' ? name.trim() : subject.name;
+    const targetSemester = semester !== undefined ? semester.trim() : subject.semester;
+    const targetDept = department !== undefined ? department.trim() : subject.department;
 
+    if (
+      targetName !== subject.name ||
+      targetSemester !== subject.semester ||
+      targetDept !== subject.department
+    ) {
       // Duplicate check (excluding itself)
       const duplicate = await Subject.findOne({
         _id: { $ne: subject._id },
-        name: new RegExp(`^${escapeRegex(trimmedName)}$`, 'i'),
+        name: new RegExp(`^${escapeRegex(targetName)}$`, 'i'),
         semester: targetSemester,
         department: targetDept,
       });
@@ -172,16 +176,16 @@ router.put('/:id', requireAdmin, async (req, res) => {
       if (duplicate) {
         return res.status(400).json({
           success: false,
-          message: `Another course with name "${trimmedName}" already exists in ${targetSemester}`,
+          message: `Another course with name "${targetName}" already exists in ${targetSemester} (${targetDept})`,
         });
       }
-
-      subject.name = trimmedName;
     }
 
+    subject.name = targetName;
+    subject.semester = targetSemester;
+    subject.department = targetDept;
+
     if (code !== undefined) subject.code = code ? code.trim().toUpperCase() : '';
-    if (department !== undefined) subject.department = department.trim();
-    if (semester !== undefined) subject.semester = semester.trim();
     if (academicYear !== undefined) subject.academicYear = academicYear.trim();
     if (credits !== undefined) subject.credits = Number(credits);
     if (description !== undefined) subject.description = description.trim();

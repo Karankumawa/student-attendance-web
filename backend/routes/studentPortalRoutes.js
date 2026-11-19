@@ -201,7 +201,7 @@ router.get('/attendance', async (req, res) => {
         student.semester &&
         session.semester.trim().toLowerCase() === student.semester.trim().toLowerCase();
 
-      const myRecord = session.records.find(
+      const myRecord = (session.records || []).find(
         (rec) =>
           (rec.studentId && rec.studentId.toString() === student._id.toString()) ||
           (rec.rollNumber && rec.rollNumber.toUpperCase() === student.rollNumber.toUpperCase())

@@ -1,7 +1,7 @@
 const express = require('express');
 const Timetable = require('../models/Timetable');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
-const { sortSlotsByTime } = require('../utils/timeHelper');
+const { sortSlotsByTime, parseTimeToMinutes } = require('../utils/timeHelper');
 
 const router = express.Router();
 
@@ -69,27 +69,60 @@ router.post('/', requireAdmin, async (req, res) => {
 
     const targetSemester = semester ? semester.trim() : 'Semester 1';
     const cleanStartTime = startTime.trim();
+    const cleanEndTime = endTime.trim();
+    const cleanRoom = roomNumber ? roomNumber.trim() : 'Room 101';
 
-    // Check for duplicate/overlapping slot for same semester at same day & start time
-    const existingSlot = await Timetable.findOne({
-      dayOfWeek,
-      semester: targetSemester,
-      startTime: cleanStartTime,
-    });
-    if (existingSlot) {
+    const startMin = parseTimeToMinutes(cleanStartTime);
+    const endMin = parseTimeToMinutes(cleanEndTime);
+
+    if (endMin <= startMin) {
       return res.status(400).json({
         success: false,
-        message: `Conflict: A class for "${existingSlot.subject}" is already scheduled at ${cleanStartTime} on ${dayOfWeek} for ${targetSemester}`,
+        message: `Invalid period duration: End time ("${cleanEndTime}") must be later than start time ("${cleanStartTime}")`,
       });
+    }
+
+    // Check for semester time overlap
+    const semesterSlots = await Timetable.find({
+      dayOfWeek,
+      semester: targetSemester,
+    }).lean();
+
+    for (const s of semesterSlots) {
+      const sStart = parseTimeToMinutes(s.startTime);
+      const sEnd = parseTimeToMinutes(s.endTime);
+      if (startMin < sEnd && endMin > sStart) {
+        return res.status(400).json({
+          success: false,
+          message: `Schedule Conflict: A class for "${s.subject}" is already scheduled (${s.startTime} - ${s.endTime}) on ${dayOfWeek} for ${targetSemester}`,
+        });
+      }
+    }
+
+    // Check for room conflict (prevent double booking of same lecture hall/lab)
+    const roomSlots = await Timetable.find({
+      dayOfWeek,
+      roomNumber: cleanRoom,
+    }).lean();
+
+    for (const s of roomSlots) {
+      const sStart = parseTimeToMinutes(s.startTime);
+      const sEnd = parseTimeToMinutes(s.endTime);
+      if (startMin < sEnd && endMin > sStart) {
+        return res.status(400).json({
+          success: false,
+          message: `Lecture Hall Conflict: "${cleanRoom}" is already booked for "${s.subject}" (${s.semester}) from ${s.startTime} to ${s.endTime} on ${dayOfWeek}`,
+        });
+      }
     }
 
     const newSlot = new Timetable({
       dayOfWeek,
       startTime: cleanStartTime,
-      endTime: endTime.trim(),
+      endTime: cleanEndTime,
       subject: subject.trim(),
       semester: targetSemester,
-      roomNumber: roomNumber ? roomNumber.trim() : 'Room 101',
+      roomNumber: cleanRoom,
     });
 
     await newSlot.save();
@@ -129,19 +162,53 @@ router.put('/:id', requireAdmin, async (req, res) => {
     const checkDay = dayOfWeek || slot.dayOfWeek;
     const checkSem = semester ? semester.trim() : slot.semester;
     const checkStart = startTime ? startTime.trim() : slot.startTime;
+    const checkEnd = endTime ? endTime.trim() : slot.endTime;
+    const checkRoom = roomNumber !== undefined ? (roomNumber ? String(roomNumber).trim() : 'Room 101') : slot.roomNumber;
 
-    // Check for conflict excluding current slot
-    const existingConflict = await Timetable.findOne({
+    const startMin = parseTimeToMinutes(checkStart);
+    const endMin = parseTimeToMinutes(checkEnd);
+
+    if (endMin <= startMin) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid period duration: End time ("${checkEnd}") must be later than start time ("${checkStart}")`,
+      });
+    }
+
+    // Check for semester conflict excluding current slot
+    const semesterSlots = await Timetable.find({
       _id: { $ne: slot._id },
       dayOfWeek: checkDay,
       semester: checkSem,
-      startTime: checkStart,
-    });
-    if (existingConflict) {
-      return res.status(400).json({
-        success: false,
-        message: `Conflict: A class for "${existingConflict.subject}" is already scheduled at ${checkStart} on ${checkDay} for ${checkSem}`,
-      });
+    }).lean();
+
+    for (const s of semesterSlots) {
+      const sStart = parseTimeToMinutes(s.startTime);
+      const sEnd = parseTimeToMinutes(s.endTime);
+      if (startMin < sEnd && endMin > sStart) {
+        return res.status(400).json({
+          success: false,
+          message: `Schedule Conflict: A class for "${s.subject}" is already scheduled (${s.startTime} - ${s.endTime}) on ${checkDay} for ${checkSem}`,
+        });
+      }
+    }
+
+    // Check for room conflict excluding current slot
+    const roomSlots = await Timetable.find({
+      _id: { $ne: slot._id },
+      dayOfWeek: checkDay,
+      roomNumber: checkRoom,
+    }).lean();
+
+    for (const s of roomSlots) {
+      const sStart = parseTimeToMinutes(s.startTime);
+      const sEnd = parseTimeToMinutes(s.endTime);
+      if (startMin < sEnd && endMin > sStart) {
+        return res.status(400).json({
+          success: false,
+          message: `Lecture Hall Conflict: "${checkRoom}" is already booked for "${s.subject}" (${s.semester}) from ${s.startTime} to ${s.endTime} on ${checkDay}`,
+        });
+      }
     }
 
     if (dayOfWeek) {

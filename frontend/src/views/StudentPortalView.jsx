@@ -2160,7 +2160,7 @@ export const StudentPortalView = ({ showToast }) => {
                   {student?.dob && (
                     <>
                       <span>•</span>
-                      <span>DOB: {student.dob.split('-').length === 3 ? `${student.dob.split('-')[2]}/${student.dob.split('-')[1]}/${student.dob.split('-')[0]}` : student.dob}</span>
+                      <span>DOB: {formatDobDisplay(student.dob)}</span>
                     </>
                   )}
                 </div>

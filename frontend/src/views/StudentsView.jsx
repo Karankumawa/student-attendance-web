@@ -85,12 +85,11 @@ export const StudentsView = ({ showToast }) => {
       s.guardianPhone || '',
       s.bloodGroup || '',
     ]);
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = downloadUrl;
     link.setAttribute(
       'download',
       `student_roster_${selectedSemester.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
@@ -98,6 +97,7 @@ export const StudentsView = ({ showToast }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
     showToast?.({ message: 'Student roster exported as CSV successfully!', type: 'success' });
   };
 
@@ -288,7 +288,9 @@ export const StudentsView = ({ showToast }) => {
       const payload = {
         ...formData,
         name: fullName,
-        password: formData.password.trim() || defaultPass,
+        password: editingStudent
+          ? (formData.password.trim() || undefined)
+          : (formData.password.trim() || defaultPass),
       };
 
       if (editingStudent) {

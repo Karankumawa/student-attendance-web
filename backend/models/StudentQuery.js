@@ -82,5 +82,6 @@ const studentQuerySchema = new mongoose.Schema(
 studentQuerySchema.index({ studentId: 1, createdAt: -1 });
 studentQuerySchema.index({ status: 1, createdAt: -1 });
 studentQuerySchema.index({ rollNumber: 1 });
+studentQuerySchema.index({ userId: 1 });
 
 module.exports = mongoose.model('StudentQuery', studentQuerySchema);

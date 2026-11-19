@@ -64,5 +64,8 @@ const attendanceSchema = new mongoose.Schema(
 attendanceSchema.index({ date: 1, subject: 1, semester: 1 }, { unique: true });
 attendanceSchema.index({ date: -1 });
 attendanceSchema.index({ semester: 1 });
+attendanceSchema.index({ semester: 1, subject: 1, date: -1 });
+attendanceSchema.index({ 'records.studentId': 1 });
+attendanceSchema.index({ 'records.rollNumber': 1 });
 
 module.exports = mongoose.model('Attendance', attendanceSchema);

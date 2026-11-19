@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   CalendarClock,
   Plus,
@@ -209,9 +209,11 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   };
 
   // Group slots by day and sort chronologically
-  const daySlots = [...slots.filter((s) => s.dayOfWeek === selectedDay)].sort(
-    (a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime)
-  );
+  const daySlots = useMemo(() => {
+    return slots
+      .filter((s) => s.dayOfWeek === selectedDay)
+      .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
+  }, [slots, selectedDay]);
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">

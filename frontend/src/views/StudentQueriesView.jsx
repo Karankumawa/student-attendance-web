@@ -365,12 +365,11 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
       `"${(q.adminResponse || '').replace(/"/g, '""')}"`,
       new Date(q.createdAt).toISOString(),
     ]);
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.href = downloadUrl;
     link.setAttribute(
       'download',
       `student_queries_${new Date().toISOString().split('T')[0]}.csv`
@@ -378,6 +377,7 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl);
     showToast?.({ message: 'Student queries exported to CSV successfully!', type: 'success' });
   };
 

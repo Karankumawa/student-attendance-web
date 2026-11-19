@@ -101,6 +101,7 @@ studentSchema.pre('validate', function () {
 studentSchema.index({ semester: 1, department: 1 });
 studentSchema.index({ registrationId: 1 });
 studentSchema.index({ userId: 1 });
+studentSchema.index({ email: 1 });
 studentSchema.index({ firstName: 1, lastName: 1 });
 
 module.exports = mongoose.model('Student', studentSchema);

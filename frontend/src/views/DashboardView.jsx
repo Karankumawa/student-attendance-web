@@ -71,24 +71,43 @@ const getLocalDateString = (d = new Date()) => {
   return `${year}-${month}-${day}`;
 };
 
+const LiveClock = React.memo(() => {
+  const [time, setTime] = useState(() =>
+    new Date().toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    })
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTime(
+        new Date().toLocaleTimeString('en-IN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true,
+        })
+      );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/25 backdrop-blur-md text-indigo-200 text-xs font-semibold border border-indigo-400/30 font-mono shadow-xs">
+      <Clock className="w-3.5 h-3.5 text-indigo-300" />
+      <span>{time}</span>
+    </div>
+  );
+});
+
 export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) => {
   const [stats, setStats] = useState(null);
   const [defaulters, setDefaulters] = useState([]);
   const [recentNotes, setRecentNotes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentTime, setCurrentTime] = useState(() =>
-    new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
-  );
-
-  // Live second-by-second clock for lecture routine
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(
-        new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
-      );
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const fetchDashboardData = useCallback(async () => {
     try {
@@ -200,10 +219,7 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                 <span>Academic Year 2026-2027</span>
               </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/25 backdrop-blur-md text-indigo-200 text-xs font-semibold border border-indigo-400/30 font-mono shadow-xs">
-                <Clock className="w-3.5 h-3.5 text-indigo-300" />
-                <span>{currentTime}</span>
-              </div>
+              <LiveClock />
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-white leading-tight">
               Welcome back, Professor!
