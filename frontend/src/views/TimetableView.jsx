@@ -57,6 +57,27 @@ const SEMESTERS = [
   'Semester 8',
 ];
 
+const DEFAULT_SUBJECT_SUGGESTIONS = [
+  'Data Structures & Algorithms',
+  'Operating Systems',
+  'Database Management Systems',
+  'Computer Networks',
+  'Computer Networks Lab',
+  'Software Engineering',
+  'Object Oriented Programming',
+  'Programming in C',
+  'Programming in Python',
+  'Web Technologies',
+  'Artificial Intelligence & Machine Learning',
+  'Cloud Computing & DevOps',
+  'Cyber Security',
+  'Theory of Computation',
+  'Computer Architecture & Organization',
+  'Mobile Application Development',
+  'Digital Logic & Design',
+  'Seminar & Project Mentorship',
+];
+
 export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceSession }) => {
   const [todayName] = useState(() =>
     new Date().toLocaleDateString('en-US', { weekday: 'long' })
@@ -70,6 +91,17 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   const [slots, setSlots] = useState([]);
   const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Curated and dynamic subject suggestions
+  const subjectSuggestions = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...DEFAULT_SUBJECT_SUGGESTIONS,
+        ...dbSubjects,
+        ...(slots ? slots.map((s) => s.subject) : []),
+      ])
+    ).filter(Boolean);
+  }, [dbSubjects, slots]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -595,9 +627,8 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
-                  <span>Subject / Course Name *</span>
-                  <span className="text-[10px] text-indigo-600 font-semibold">Active Database Courses</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Subject / Course Name *
                 </label>
                 <input
                   type="text"
@@ -609,10 +640,29 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
                 <datalist id="db-subject-list">
-                  {dbSubjects.map((s, i) => (
+                  {subjectSuggestions.map((s, i) => (
                     <option key={i} value={s} />
                   ))}
                 </datalist>
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[11px] font-semibold text-slate-400">Suggestions:</span>
+                  {[
+                    'Data Structures & Algorithms',
+                    'Database Management Systems',
+                    'Operating Systems',
+                    'Computer Networks',
+                    'Software Engineering',
+                  ].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, subject: s })}
+                      className="px-2 py-0.5 text-[11px] font-medium rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 border border-slate-200/80 transition cursor-pointer"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
