@@ -7,11 +7,9 @@ const Note = require('../models/Note');
 const StudentQuery = require('../models/StudentQuery');
 const { protect, requireStudent } = require('../middleware/authMiddleware');
 const { sortSlotsByTime } = require('../utils/timeHelper');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
-
-// Safe RegExp escape helper
-const escapeRegex = (str) => (str ? str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '');
 
 // Strict protection: Only authenticated students can access these routes
 router.use(protect);

@@ -48,10 +48,19 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
   const [queries, setQueries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('All'); // 'All' | 'Pending' | 'Reviewed' | 'Resolved'
   const [selectedDepartment, setSelectedDepartment] = useState('All');
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [stats, setStats] = useState({ total: 0, pending: 0, reviewed: 0, resolved: 0 });
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Admin reply drafts state (queryId -> reply text)
   const [replyDrafts, setReplyDrafts] = useState({});
@@ -101,8 +110,8 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
       if (selectedSemester !== 'All') {
         params.semester = selectedSemester;
       }
-      if (search.trim()) {
-        params.search = search.trim();
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
       }
 
       const res = await axiosClient.get('/student-queries', { params });
@@ -118,13 +127,10 @@ export const StudentQueriesView = ({ showToast, setActiveView }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedStatus, selectedDepartment, selectedSemester, search, showToast]);
+  }, [selectedStatus, selectedDepartment, selectedSemester, debouncedSearch, showToast]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchQueries();
-    }, 250);
-    return () => clearTimeout(timer);
+    fetchQueries();
   }, [fetchQueries]);
 
   // Update query status

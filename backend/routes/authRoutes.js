@@ -3,11 +3,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Student = require('../models/Student');
 const { protect } = require('../middleware/authMiddleware');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
-
-// Safe RegExp escape helper to prevent regex injection crashes
-const escapeRegex = (str) => (str ? str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : '');
 
 // Helper to generate JWT
 const generateToken = (id) => {

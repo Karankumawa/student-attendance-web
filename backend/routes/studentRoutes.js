@@ -169,12 +169,15 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 2. Check if email already exists in User accounts
-    const existingUser = await User.findOne({ email: studentEmail });
-    if (existingUser) {
+    // 2. Check if email already exists in Student profiles or User accounts
+    const [existingStudentEmail, existingUser] = await Promise.all([
+      Student.findOne({ email: studentEmail }),
+      User.findOne({ email: studentEmail }),
+    ]);
+    if (existingStudentEmail || existingUser) {
       return res.status(400).json({
         success: false,
-        message: `An account with email "${studentEmail}" already exists. Please choose a different email.`,
+        message: `An account or student profile with email "${studentEmail}" already exists. Please choose a different email.`,
       });
     }
 
@@ -316,11 +319,17 @@ router.put('/:id', async (req, res) => {
     if (email) {
       const newEmail = email.trim().toLowerCase();
       if (newEmail !== student.email) {
-        const duplicateEmail = await User.findOne({ email: newEmail });
-        if (duplicateEmail && duplicateEmail.studentId?.toString() !== student._id.toString()) {
+        const [duplicateStudent, duplicateUser] = await Promise.all([
+          Student.findOne({ _id: { $ne: student._id }, email: newEmail }),
+          User.findOne({ email: newEmail }),
+        ]);
+        if (
+          duplicateStudent ||
+          (duplicateUser && duplicateUser.studentId?.toString() !== student._id.toString())
+        ) {
           return res.status(400).json({
             success: false,
-            message: `Email "${newEmail}" is already in use by another user`,
+            message: `Email "${newEmail}" is already in use by another student or user`,
           });
         }
         student.email = newEmail;
@@ -346,6 +355,21 @@ router.put('/:id', async (req, res) => {
         },
       },
       { arrayFilters: [{ 'elem.studentId': student._id }] }
+    );
+
+    // Synchronize student's updated details across their submitted queries
+    await StudentQuery.updateMany(
+      { studentId: student._id },
+      {
+        $set: {
+          studentName: student.name,
+          rollNumber: student.rollNumber,
+          department: student.department,
+          semester: student.semester,
+          email: student.email,
+          phone: student.phone,
+        },
+      }
     );
 
     // Update associated User account if exists

@@ -83,7 +83,7 @@ router.post('/', async (req, res) => {
 
     // Fetch student info to guarantee valid rollNumber and name
     const studentIds = records.map((r) => r.studentId).filter(Boolean);
-    const studentDocs = await Student.find({ _id: { $in: studentIds } });
+    const studentDocs = await Student.find({ _id: { $in: studentIds } }).lean();
     const studentMap = new Map(studentDocs.map((s) => [s._id.toString(), s]));
 
     // Format and clean records - default to Absent unless explicitly marked Present
@@ -371,7 +371,7 @@ router.put('/:id', async (req, res) => {
     }
 
     const studentIds = records.map((r) => r.studentId).filter(Boolean);
-    const studentDocs = await Student.find({ _id: { $in: studentIds } });
+    const studentDocs = await Student.find({ _id: { $in: studentIds } }).lean();
     const studentMap = new Map(studentDocs.map((s) => [s._id.toString(), s]));
 
     const cleanedRecords = records.map((rec) => {

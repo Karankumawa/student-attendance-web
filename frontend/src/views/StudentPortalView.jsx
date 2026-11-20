@@ -105,18 +105,42 @@ const getSlotDuration = (startTime, endTime) => {
   return null;
 };
 
+const parseDobDate = (dobStr) => {
+  if (!dobStr) return null;
+  const clean = String(dobStr).trim();
+  const sep = clean.includes('-') ? '-' : clean.includes('/') ? '/' : null;
+  if (!sep) return null;
+  const parts = clean.split(sep);
+  if (parts.length !== 3) return null;
+
+  let year, month, day;
+  if (parts[0].length === 4) {
+    // YYYY-MM-DD
+    year = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10) - 1;
+    day = parseInt(parts[2], 10);
+  } else if (parts[2].length === 4) {
+    // DD-MM-YYYY or DD/MM/YYYY
+    day = parseInt(parts[0], 10);
+    month = parseInt(parts[1], 10) - 1;
+    year = parseInt(parts[2], 10);
+  } else {
+    return null;
+  }
+
+  const d = new Date(year, month, day);
+  return isNaN(d.getTime()) ? null : { date: d, day, month: month + 1, year };
+};
+
 const formatDobDisplay = (dobStr) => {
   if (!dobStr) return 'Not Provided';
   try {
-    const parts = String(dobStr).split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      const day = parseInt(parts[2], 10);
-      const d = new Date(year, month, day);
-      if (!isNaN(d.getTime())) {
-        return `${parts[2]}/${parts[1]}/${parts[0]} (${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })})`;
-      }
+    const parsed = parseDobDate(dobStr);
+    if (parsed) {
+      const dd = String(parsed.day).padStart(2, '0');
+      const mm = String(parsed.month).padStart(2, '0');
+      const formatted = parsed.date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      return `${dd}/${mm}/${parsed.year} (${formatted})`;
     }
   } catch {}
   return dobStr;
@@ -125,15 +149,12 @@ const formatDobDisplay = (dobStr) => {
 const computeAge = (dobStr) => {
   if (!dobStr) return null;
   try {
-    const parts = String(dobStr).split('-');
-    if (parts.length === 3) {
-      const birthYear = parseInt(parts[0], 10);
-      const birthMonth = parseInt(parts[1], 10) - 1;
-      const birthDay = parseInt(parts[2], 10);
+    const parsed = parseDobDate(dobStr);
+    if (parsed) {
       const today = new Date();
-      let age = today.getFullYear() - birthYear;
-      const m = today.getMonth() - birthMonth;
-      if (m < 0 || (m === 0 && today.getDate() < birthDay)) {
+      let age = today.getFullYear() - parsed.year;
+      const m = today.getMonth() - (parsed.month - 1);
+      if (m < 0 || (m === 0 && today.getDate() < parsed.day)) {
         age--;
       }
       return age > 0 ? `${age} Years` : null;
