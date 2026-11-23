@@ -22,6 +22,7 @@ import {
   FileText,
   Award,
   Stamp,
+  CalendarDays,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import SnitLogo from '../components/SnitLogo';
@@ -44,11 +45,29 @@ const REPORT_THEME = {
   swatch: 'bg-blue-800',
 };
 
+const MONTH_OPTIONS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+];
+
 export const ReportsView = ({ showToast }) => {
-  // Permanent Theme
   const currentTheme = REPORT_THEME;
 
   // Filter states
+  const [reportPeriod, setReportPeriod] = useState('all'); // 'all' (Full Session) | 'month' | 'day'
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedMonth, setSelectedMonth] = useState(() => String(new Date().getMonth() + 1).padStart(2, '0'));
+
   const [selectedYear, setSelectedYear] = useState('2026');
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
@@ -84,6 +103,8 @@ export const ReportsView = ({ showToast }) => {
     overallAvg: 0,
     defaultersCount: 0,
     eligibleCount: 0,
+    dayPresentCount: 0,
+    dayAbsentCount: 0,
   });
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -120,6 +141,9 @@ export const ReportsView = ({ showToast }) => {
           subject: selectedSubject,
           reportType: reportType,
           minAttendance: minAttendance,
+          reportPeriod: reportPeriod,
+          date: reportPeriod === 'day' ? selectedDate : undefined,
+          month: reportPeriod === 'month' ? selectedMonth : undefined,
         },
       });
 
@@ -133,6 +157,8 @@ export const ReportsView = ({ showToast }) => {
             overallAvg: 0,
             defaultersCount: 0,
             eligibleCount: 0,
+            dayPresentCount: 0,
+            dayAbsentCount: 0,
           }
         );
       }
@@ -147,7 +173,18 @@ export const ReportsView = ({ showToast }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedYear, selectedSemester, selectedDepartment, selectedSubject, reportType, minAttendance, showToast]);
+  }, [
+    selectedYear,
+    selectedSemester,
+    selectedDepartment,
+    selectedSubject,
+    reportType,
+    minAttendance,
+    reportPeriod,
+    selectedDate,
+    selectedMonth,
+    showToast,
+  ]);
 
   useEffect(() => {
     fetchFilterOptions();
@@ -157,7 +194,7 @@ export const ReportsView = ({ showToast }) => {
     fetchReportPreview();
   }, [fetchReportPreview]);
 
-  // 1-Click Excel Download with newly styled layout & auto-filters
+  // 1-Click Excel Download with Day-wise, Month-wise, and Cumulative support
   const handleDownloadExcel = async () => {
     setDownloading(true);
     try {
@@ -169,6 +206,9 @@ export const ReportsView = ({ showToast }) => {
           subject: selectedSubject,
           reportType: reportType,
           minAttendance: minAttendance,
+          reportPeriod: reportPeriod,
+          date: reportPeriod === 'day' ? selectedDate : undefined,
+          month: reportPeriod === 'month' ? selectedMonth : undefined,
         },
         responseType: 'blob',
       });
@@ -179,7 +219,13 @@ export const ReportsView = ({ showToast }) => {
         throw new Error(json.message || 'Excel export failed on server');
       }
 
-      let filename = `Attendance_Report_${selectedYear}_${selectedSemester}.xlsx`;
+      let filename =
+        reportPeriod === 'day'
+          ? `Attendance_Report_DayWise_${selectedDate}_${selectedSemester}.xlsx`
+          : reportPeriod === 'month'
+          ? `Attendance_Report_MonthWise_${selectedYear}_${selectedMonth}_${selectedSemester}.xlsx`
+          : `Attendance_Report_${selectedYear}_${selectedSemester}.xlsx`;
+
       const disposition = response.headers['content-disposition'];
       if (disposition && disposition.indexOf('filename=') !== -1) {
         const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
@@ -243,19 +289,26 @@ export const ReportsView = ({ showToast }) => {
 
   // Stable audit code & generation date for preview rendering
   const auditReportCode = useMemo(() => {
-    const seed = stats.matchedStudents + stats.totalSessions + (selectedYear !== 'All' ? parseInt(selectedYear) || 2026 : 2026);
-    return `SNITN/ATT/${selectedYear}/AUDIT-${1000 + (seed % 9000)}`;
-  }, [selectedYear, stats.matchedStudents, stats.totalSessions]);
+    const seed =
+      stats.matchedStudents +
+      stats.totalSessions +
+      (selectedYear !== 'All' ? parseInt(selectedYear, 10) || 2026 : 2026);
+    const scopeTag = reportPeriod === 'day' ? 'DAY' : reportPeriod === 'month' ? 'MTH' : 'SES';
+    return `SNITN/ATT/${selectedYear}/${scopeTag}-${1000 + (seed % 9000)}`;
+  }, [selectedYear, stats.matchedStudents, stats.totalSessions, reportPeriod]);
 
   const [auditGeneratedDate] = useState(() => new Date().toLocaleDateString('en-IN'));
 
-  // Generates standalone, themed HTML document string
+  const monthLabel = useMemo(() => {
+    return MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || `Month ${selectedMonth}`;
+  }, [selectedMonth]);
+
+  // Generates standalone, themed HTML document string (supporting Day-wise, Month-wise, and Cumulative)
   const generateThemedHtmlContent = useCallback(() => {
     const theme = REPORT_THEME;
     const genTimestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     const reportId = `SNITN/ATT/${selectedYear || 'AUDIT'}/${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Institutional Navy Palette CSS mapping
     const themeStyles = {
       primary: '#1e3a8a',
       primaryDark: '#0f172a',
@@ -268,14 +321,43 @@ export const ReportsView = ({ showToast }) => {
       pillDefaulter: '#fee2e2; color: #b91c1c; border-color: #fca5a5;',
     };
 
-      const rowsHtml = filteredStudents
-        .map((s, idx) => {
-          const hasClasses = s.totalClasses > 0;
+    const periodHeading =
+      reportPeriod === 'day'
+        ? `Daily Attendance Audit Report • Date: ${selectedDate}`
+        : reportPeriod === 'month'
+        ? `Monthly Attendance Audit Report • ${monthLabel} ${selectedYear}`
+        : `Official Institutional Attendance Audit Report - ${selectedYear}`;
+
+    const scopeBadge =
+      reportPeriod === 'day'
+        ? `Day-wise Audit [${selectedDate}]`
+        : reportPeriod === 'month'
+        ? `Month-wise Audit [${monthLabel} ${selectedYear}]`
+        : `Academic Session [${selectedYear}]`;
+
+    const rowsHtml = filteredStudents
+      .map((s, idx) => {
+        const hasClasses = s.totalClasses > 0;
+        let pillStyle = themeStyles.pillDefaulter;
+        let statusText = s.status || 'Defaulter';
+
+        if (reportPeriod === 'day') {
+          if (!hasClasses) {
+            pillStyle = 'background: #f1f5f9; color: #64748b; border-color: #cbd5e1;';
+            statusText = 'No Classes';
+          } else if (s.dayStatus === 'Present') {
+            pillStyle = `background: ${themeStyles.pillEligible}`;
+            statusText = 'Present';
+          } else if (s.dayStatus === 'Partial') {
+            pillStyle = `background: ${themeStyles.pillWarning}`;
+            statusText = s.status;
+          } else {
+            pillStyle = `background: ${themeStyles.pillDefaulter}`;
+            statusText = 'Absent';
+          }
+        } else {
           const isEligible = hasClasses && s.percentage >= minAttendance;
           const isWarning = hasClasses && s.percentage >= 60 && s.percentage < minAttendance;
-
-          let pillStyle = themeStyles.pillDefaulter;
-          let statusText = 'Defaulter';
 
           if (!hasClasses) {
             pillStyle = 'background: #f1f5f9; color: #64748b; border-color: #cbd5e1;';
@@ -290,43 +372,54 @@ export const ReportsView = ({ showToast }) => {
             pillStyle = `background: ${themeStyles.pillDefaulter}`;
             statusText = 'Defaulter';
           }
+        }
 
-          const progressColor = isEligible ? '#10b981' : isWarning ? '#f59e0b' : '#ef4444';
+        const progressColor =
+          s.percentage >= minAttendance ? '#10b981' : s.percentage >= 60 ? '#f59e0b' : '#ef4444';
 
-          return `
-          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
-            <td style="padding: 8px 10px; color: #64748b; font-weight: 500;">${idx + 1}</td>
-            <td style="padding: 8px 10px; font-family: monospace; font-weight: 700; color: #0f172a;">${s.rollNumber}</td>
-            <td style="padding: 8px 10px; font-family: monospace; font-weight: 600; color: ${themeStyles.primary};">${s.registrationId}</td>
-            <td style="padding: 8px 10px; font-weight: 700; color: #0f172a;">${s.name}</td>
-            <td style="padding: 8px 10px; color: #475569;">${s.department}</td>
-            <td style="padding: 8px 10px; color: #475569;">${s.semester}</td>
-            <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${s.totalClasses}</td>
-            <td style="padding: 8px 10px; text-align: center; font-weight: 700; color: #047857;">${s.attendedClasses}</td>
-            <td style="padding: 8px 10px; text-align: center; font-weight: 600; color: #b91c1c;">${s.absentClasses}</td>
-            <td style="padding: 8px 10px; text-align: center;">
-              <div style="font-weight: 800; font-size: 11px; margin-bottom: 3px;">${hasClasses ? `${s.percentage}%` : 'N/A'}</div>
-              <div style="background: #e2e8f0; height: 4px; border-radius: 999px; overflow: hidden; width: 60px; margin: 0 auto;">
-                <div style="background: ${progressColor}; height: 100%; width: ${Math.min(s.percentage, 100)}%;"></div>
-              </div>
-            </td>
-            <td style="padding: 8px 10px; text-align: center;">
-              <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; border: 1px solid; ${pillStyle}">
-                ${statusText}
-              </span>
-            </td>
-            <td style="padding: 8px 10px; font-size: 10px; color: ${s.classesNeededFor75 > 0 ? '#b91c1c' : '#047857'}; font-weight: 600;">
-              ${!hasClasses ? 'No sessions' : s.classesNeededFor75 > 0 ? `Shortfall: ${s.classesNeededFor75} lectures` : 'Compliant'}
-            </td>
-          </tr>`;
-        })
-        .join('');
+        let remarks = 'Compliant';
+        if (!hasClasses) {
+          remarks = 'No sessions held';
+        } else if (reportPeriod === 'day') {
+          remarks = s.dayStatus === 'Present' ? 'Full Day Present' : s.dayStatus === 'Absent' ? 'Absent all lectures' : `Partial (${s.attendedClasses}/${s.totalClasses})`;
+        } else if (s.classesNeededFor75 > 0) {
+          remarks = `Shortfall: ${s.classesNeededFor75} lectures`;
+        }
 
-      return `<!DOCTYPE html>
+        return `
+        <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+          <td style="padding: 8px 10px; color: #64748b; font-weight: 500;">${idx + 1}</td>
+          <td style="padding: 8px 10px; font-family: monospace; font-weight: 700; color: #0f172a;">${s.rollNumber}</td>
+          <td style="padding: 8px 10px; font-family: monospace; font-weight: 600; color: ${themeStyles.primary};">${s.registrationId}</td>
+          <td style="padding: 8px 10px; font-weight: 700; color: #0f172a;">${s.name}</td>
+          <td style="padding: 8px 10px; color: #475569;">${s.department}</td>
+          <td style="padding: 8px 10px; color: #475569;">${s.semester}</td>
+          <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${s.totalClasses}</td>
+          <td style="padding: 8px 10px; text-align: center; font-weight: 700; color: #047857;">${s.attendedClasses}</td>
+          <td style="padding: 8px 10px; text-align: center; font-weight: 600; color: #b91c1c;">${s.absentClasses}</td>
+          <td style="padding: 8px 10px; text-align: center;">
+            <div style="font-weight: 800; font-size: 11px; margin-bottom: 3px;">${hasClasses ? `${s.percentage}%` : 'N/A'}</div>
+            <div style="background: #e2e8f0; height: 4px; border-radius: 999px; overflow: hidden; width: 60px; margin: 0 auto;">
+              <div style="background: ${progressColor}; height: 100%; width: ${Math.min(s.percentage, 100)}%;"></div>
+            </div>
+          </td>
+          <td style="padding: 8px 10px; text-align: center;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; border: 1px solid; ${pillStyle}">
+              ${statusText}
+            </span>
+          </td>
+          <td style="padding: 8px 10px; font-size: 10px; color: ${s.isDefaulter || s.dayStatus === 'Absent' ? '#b91c1c' : '#047857'}; font-weight: 600;">
+            ${remarks}
+          </td>
+        </tr>`;
+      })
+      .join('');
+
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shrinathji Institute of Technology & Engineering (SNITN) - Official Attendance Audit Report - ${selectedYear} - ${selectedSemester}</title>
+  <title>Shrinathji Institute of Technology & Engineering (SNITN) - ${periodHeading}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
@@ -352,7 +445,6 @@ export const ReportsView = ({ showToast }) => {
       position: relative;
     }
 
-    /* Print-Only Controls bar */
     .controls-bar {
       max-width: 1050px;
       margin: 0 auto 16px auto;
@@ -382,7 +474,6 @@ export const ReportsView = ({ showToast }) => {
     .btn-print { background: ${themeStyles.accent}; color: white; }
     .btn-print:hover { opacity: 0.9; transform: translateY(-1px); }
 
-    /* College Official Header */
     .header-band {
       background: ${themeStyles.bgHeader};
       color: white;
@@ -401,37 +492,35 @@ export const ReportsView = ({ showToast }) => {
     .college-brand {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: 16px;
     }
 
     .crest {
-      width: 60px;
-      height: 60px;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.25);
+      width: 54px;
+      height: 54px;
+      background: ${themeStyles.accent};
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
       font-weight: 900;
-      color: #38bdf8;
-      letter-spacing: 1px;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
     }
 
     .college-title h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 800;
-      letter-spacing: -0.02em;
+      letter-spacing: -0.5px;
       text-transform: uppercase;
       line-height: 1.2;
     }
 
     .college-title p {
-      font-size: 12px;
+      font-size: 11px;
       color: #94a3b8;
       margin-top: 4px;
-      font-weight: 500;
     }
 
     .report-badge {
@@ -441,43 +530,41 @@ export const ReportsView = ({ showToast }) => {
     .report-tag {
       display: inline-block;
       padding: 4px 12px;
-      background: rgba(255,255,255,0.15);
-      border: 1px solid rgba(255,255,255,0.25);
       border-radius: 999px;
+      background: rgba(255,255,255,0.12);
       font-size: 11px;
       font-weight: 700;
-      letter-spacing: 0.05em;
       text-transform: uppercase;
-      color: #38bdf8;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fcd34d;
     }
 
     .report-id {
-      font-family: 'JetBrains Mono', monospace;
+      font-family: monospace;
       font-size: 11px;
       color: #cbd5e1;
       margin-top: 6px;
     }
 
-    /* Metadata strip */
     .metadata-strip {
       background: ${themeStyles.bgLight};
-      border-bottom: 1px solid ${themeStyles.border};
-      padding: 14px 32px;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 32px;
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      font-size: 12px;
+      gap: 12px;
+      font-size: 11px;
     }
 
     .meta-item strong {
-      color: ${themeStyles.primary};
-      font-weight: 700;
-      text-transform: uppercase;
-      font-size: 10px;
-      letter-spacing: 0.05em;
       display: block;
-      margin-bottom: 2px;
+      color: #64748b;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
     .meta-item span {
@@ -485,44 +572,41 @@ export const ReportsView = ({ showToast }) => {
       color: #0f172a;
     }
 
-    /* KPI Summary Cards */
     .kpi-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-      padding: 24px 32px 14px 32px;
+      gap: 16px;
+      padding: 24px 32px 16px 32px;
     }
 
     .kpi-card {
+      background: #f8fafc;
       border: 1px solid #e2e8f0;
-      background: #ffffff;
       border-radius: 12px;
       padding: 14px 16px;
-      border-left: 4px solid ${themeStyles.primary};
     }
-
-    .kpi-card.kpi-emerald { border-left-color: #10b981; }
-    .kpi-card.kpi-rose { border-left-color: #ef4444; }
-    .kpi-card.kpi-blue { border-left-color: ${themeStyles.accent}; }
 
     .kpi-label {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
       color: #64748b;
+      letter-spacing: 0.5px;
     }
 
     .kpi-val {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 800;
       color: #0f172a;
       margin-top: 4px;
     }
 
-    /* Table styling */
+    .kpi-blue { border-left: 4px solid ${themeStyles.accent}; }
+    .kpi-emerald { border-left: 4px solid #10b981; }
+    .kpi-rose { border-left: 4px solid #ef4444; }
+
     .table-container {
-      padding: 14px 32px 24px 32px;
+      padding: 8px 32px 24px 32px;
       overflow-x: auto;
     }
 
@@ -532,69 +616,52 @@ export const ReportsView = ({ showToast }) => {
       text-align: left;
     }
 
-    thead th {
-      background: #f8fafc;
-      color: #475569;
+    th {
+      background: #f1f5f9;
+      padding: 10px 10px;
       font-size: 10px;
       font-weight: 800;
+      color: #475569;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 10px 10px;
+      letter-spacing: 0.5px;
       border-bottom: 2px solid #cbd5e1;
     }
 
-    tbody tr:nth-child(even) {
-      background: #f8fafc;
-    }
-
-    /* Regulatory Notice Box */
     .regulation-box {
-      margin: 10px 32px 24px 32px;
+      margin: 0 32px 24px 32px;
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-radius: 12px;
       padding: 14px 18px;
-      border-radius: 10px;
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      font-size: 11px;
-      color: #92400e;
       display: flex;
       align-items: flex-start;
       gap: 12px;
+      font-size: 11px;
+      color: #854d0e;
     }
 
-    .regulation-box strong {
-      font-weight: 800;
-      display: block;
-      margin-bottom: 2px;
-      text-transform: uppercase;
-      font-size: 10px;
-      letter-spacing: 0.05em;
-    }
-
-    /* Signatures Section */
     .signatures-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 24px;
-      padding: 30px 32px 34px 32px;
+      padding: 24px 32px;
       border-top: 1px solid #e2e8f0;
-      margin-top: 12px;
-    }
-
-    .sig-col {
+      background: #fafafa;
       text-align: center;
     }
 
-    .sig-line {
-      height: 48px;
-      border-bottom: 1px dashed #94a3b8;
-      margin-bottom: 8px;
+    .sig-col {
       display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      padding-bottom: 4px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      color: #94a3b8;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .sig-line {
+      width: 140px;
+      border-top: 1px dashed #94a3b8;
+      margin-bottom: 6px;
+      padding-top: 4px;
     }
 
     .sig-title {
@@ -608,7 +675,6 @@ export const ReportsView = ({ showToast }) => {
       color: #64748b;
     }
 
-    /* Seal stamp graphic */
     .seal-stamp {
       width: 78px;
       height: 78px;
@@ -627,7 +693,6 @@ export const ReportsView = ({ showToast }) => {
       opacity: 0.75;
     }
 
-    /* Watermark */
     .watermark {
       position: absolute;
       top: 50%;
@@ -643,7 +708,6 @@ export const ReportsView = ({ showToast }) => {
       z-index: 0;
     }
 
-    /* Print media query */
     @media print {
       body {
         background: white;
@@ -669,7 +733,6 @@ export const ReportsView = ({ showToast }) => {
 </head>
 <body>
 
-  <!-- Screen Top Control Bar (Hidden on print) -->
   <div class="controls-bar">
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 12px; font-weight: 700;">Theme: <strong>${theme.name}</strong></span>
@@ -684,7 +747,6 @@ export const ReportsView = ({ showToast }) => {
   <div class="report-sheet">
     <div class="watermark">SNITN NATHDWARA</div>
 
-    <!-- Official College Banner -->
     <div class="header-band">
       <div class="header-grid">
         <div class="college-brand">
@@ -695,14 +757,17 @@ export const ReportsView = ({ showToast }) => {
           </div>
         </div>
         <div class="report-badge">
-          <span class="report-tag">Institutional Compliance</span>
+          <span class="report-tag">${scopeBadge}</span>
           <div class="report-id">${reportId}</div>
         </div>
       </div>
     </div>
 
-    <!-- Metadata Strip -->
     <div class="metadata-strip">
+      <div class="meta-item">
+        <strong>Report Scope</strong>
+        <span>${reportPeriod === 'day' ? `Day (${selectedDate})` : reportPeriod === 'month' ? `Month (${monthLabel})` : 'Full Session'}</span>
+      </div>
       <div class="meta-item">
         <strong>Academic Year</strong>
         <span>Year ${selectedYear}</span>
@@ -720,36 +785,30 @@ export const ReportsView = ({ showToast }) => {
         <span>${selectedSubject}</span>
       </div>
       <div class="meta-item">
-        <strong>Statutory Min.</strong>
-        <span>${minAttendance}% Required</span>
-      </div>
-      <div class="meta-item">
         <strong>Audit Date</strong>
         <span>${genTimestamp}</span>
       </div>
     </div>
 
-    <!-- KPI Summary Grid -->
     <div class="kpi-grid">
       <div class="kpi-card kpi-blue">
         <div class="kpi-label">Total Enrolled</div>
         <div class="kpi-val">${stats.matchedStudents}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Sessions Conducted</div>
+        <div class="kpi-label">${reportPeriod === 'day' ? 'Lectures Held Today' : reportPeriod === 'month' ? 'Month Lectures' : 'Sessions Conducted'}</div>
         <div class="kpi-val">${stats.totalSessions}</div>
       </div>
       <div class="kpi-card kpi-emerald">
-        <div class="kpi-label">Institutional Avg.</div>
+        <div class="kpi-label">${reportPeriod === 'day' ? 'Day Turnout %' : reportPeriod === 'month' ? 'Monthly Average' : 'Institutional Avg.'}</div>
         <div class="kpi-val">${stats.overallAvg}%</div>
       </div>
       <div class="kpi-card kpi-rose">
-        <div class="kpi-label">Defaulters (&lt;${minAttendance}%)</div>
-        <div class="kpi-val">${stats.defaultersCount}</div>
+        <div class="kpi-label">${reportPeriod === 'day' ? 'Absent Students Today' : `Defaulters (&lt;${minAttendance}%)`}</div>
+        <div class="kpi-val">${reportPeriod === 'day' ? (stats.dayAbsentCount || 0) : stats.defaultersCount}</div>
       </div>
     </div>
 
-    <!-- Student Attendance Roster Table -->
     <div class="table-container">
       <table>
         <thead>
@@ -760,12 +819,12 @@ export const ReportsView = ({ showToast }) => {
             <th>Student Name</th>
             <th>Department</th>
             <th>Sem</th>
-            <th style="text-align: center;">Held</th>
+            <th style="text-align: center;">${reportPeriod === 'day' ? 'Today Held' : 'Held'}</th>
             <th style="text-align: center;">Attended</th>
             <th style="text-align: center;">Absent</th>
-            <th style="text-align: center;">Attendance %</th>
-            <th style="text-align: center;">Compliance</th>
-            <th>Academic Note</th>
+            <th style="text-align: center;">${reportPeriod === 'day' ? 'Daily %' : 'Attendance %'}</th>
+            <th style="text-align: center;">${reportPeriod === 'day' ? 'Day Status' : 'Compliance'}</th>
+            <th>${reportPeriod === 'day' ? 'Daily Note' : 'Academic Note'}</th>
           </tr>
         </thead>
         <tbody>
@@ -774,7 +833,6 @@ export const ReportsView = ({ showToast }) => {
       </table>
     </div>
 
-    <!-- Statutory Notice Box -->
     <div class="regulation-box">
       <div style="font-size: 16px;">⚠️</div>
       <div>
@@ -783,7 +841,6 @@ export const ReportsView = ({ showToast }) => {
       </div>
     </div>
 
-    <!-- Signatures & Official College Stamp -->
     <div class="signatures-grid">
       <div class="sig-col">
         <div class="sig-line">Prepared & Verified</div>
@@ -807,15 +864,31 @@ export const ReportsView = ({ showToast }) => {
 
 </body>
 </html>`;
-    },
-    [filteredStudents, minAttendance, selectedDepartment, selectedSemester, selectedYear, selectedSubject, stats]
-  );
+  }, [
+    filteredStudents,
+    minAttendance,
+    selectedDepartment,
+    selectedSemester,
+    selectedYear,
+    selectedSubject,
+    selectedDate,
+    selectedMonth,
+    monthLabel,
+    reportPeriod,
+    stats,
+  ]);
 
   // Download Standalone Official HTML Report
   const handleDownloadHtml = () => {
     try {
       const htmlContent = generateThemedHtmlContent();
-      const filename = `Attendance_Report_${selectedYear}_${selectedSemester.replace(
+      const scopePart =
+        reportPeriod === 'day'
+          ? `Day_${selectedDate}`
+          : reportPeriod === 'month'
+          ? `Month_${selectedYear}_${selectedMonth}`
+          : `Cumulative_${selectedYear}`;
+      const filename = `Attendance_Report_${scopePart}_${selectedSemester.replace(
         /\s+/g,
         '_'
       )}_${Date.now()}.html`;
@@ -870,7 +943,7 @@ export const ReportsView = ({ showToast }) => {
 
   return (
     <div className="space-y-6 pb-12 animate-fade-in">
-      {/* Top Banner / Hero with Theme Accent */}
+      {/* Top Banner / Hero */}
       <div
         className={`relative overflow-hidden rounded-3xl bg-gradient-to-r ${currentTheme.bannerGradient} border border-slate-800 p-7 md:p-8 text-white shadow-xl`}
       >
@@ -880,14 +953,16 @@ export const ReportsView = ({ showToast }) => {
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Institutional Audit & Export Hub</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-              <span className="text-[11px] font-semibold text-slate-300">Theme: {currentTheme.name}</span>
+              <span className="text-[11px] font-semibold text-slate-300">
+                Scope: {reportPeriod === 'day' ? 'Day-wise' : reportPeriod === 'month' ? 'Month-wise' : 'Full Session'}
+              </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
               Attendance Reports & Downloads
             </h1>
             <p className="text-sm md:text-base text-slate-300 leading-relaxed">
-              Export past and current attendance records in modern visual themes. Download Excel spreadsheets with
-              auto-filters and KPI dashboards, or generate official institutional PDF documents.
+              Generate and download day-wise, month-wise, or session-wide attendance records. Export auto-filtered Excel
+              workbooks with executive KPIs, or generate official institutional documents for print and PDF archiving.
             </p>
           </div>
 
@@ -939,16 +1014,154 @@ export const ReportsView = ({ showToast }) => {
             <div>
               <h2 className="text-base font-bold text-slate-900">Report Parameters & Filter Criteria</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Choose past academic years, semesters, or departments to customize your report
+                Customize report scope (Day-wise, Month-wise, Full Session), semesters, and subjects
               </p>
             </div>
           </div>
 
           <span className="hidden sm:inline-flex text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200/60">
-            Total Sessions in DB: {stats.totalSessions}
+            {reportPeriod === 'day'
+              ? `Lectures on Date: ${stats.totalSessions}`
+              : reportPeriod === 'month'
+              ? `Sessions in Month: ${stats.totalSessions}`
+              : `Total Sessions: ${stats.totalSessions}`}
           </span>
         </div>
 
+        {/* 1. REPORT PERIOD & SCOPE SELECTOR (Day-wise, Month-wise, Full Session) */}
+        <div className="bg-slate-50/90 p-4 sm:p-5 rounded-2xl border border-slate-200/90 space-y-3.5">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-indigo-600" />
+                Report Frequency & Download Scope
+              </span>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Choose Day-wise for daily turnout, Month-wise for monthly compliance, or Full Session for annual records
+              </p>
+            </div>
+
+            <div className="inline-flex p-1 bg-white rounded-xl border border-slate-200 shadow-2xs self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => setReportPeriod('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  reportPeriod === 'all'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Full Session</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReportPeriod('month')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  reportPeriod === 'month'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Month-wise</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setReportPeriod('day')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  reportPeriod === 'day'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Day-wise</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Conditional Day-wise Date Picker */}
+          {reportPeriod === 'day' && (
+            <div className="pt-3 border-t border-slate-200/70 flex flex-wrap items-center gap-3 animate-fade-in">
+              <div className="flex-1 min-w-[200px] max-w-xs">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Select Specific Attendance Date
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 self-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
+                  className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-indigo-700 transition-all cursor-pointer shadow-2xs"
+                >
+                  Today
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    setSelectedDate(yesterday.toISOString().slice(0, 10));
+                  }}
+                  className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 transition-all cursor-pointer shadow-2xs"
+                >
+                  Yesterday
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-600 font-medium self-end py-1.5 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>
+                  Filtering Day Attendance on: <strong className="text-indigo-900">{selectedDate}</strong>
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Conditional Month-wise Selector */}
+          {reportPeriod === 'month' && (
+            <div className="pt-3 border-t border-slate-200/70 flex flex-wrap items-center gap-3 animate-fade-in">
+              <div className="flex-1 min-w-[180px] max-w-xs">
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Select Month
+                </label>
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                >
+                  {MONTH_OPTIONS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label} ({m.value})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="text-xs text-slate-600 font-medium self-end py-1.5 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span>
+                  Aggregating Monthly Compliance for:{' '}
+                  <strong className="text-indigo-900">
+                    {monthLabel} {selectedYear}
+                  </strong>
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 2. PARAMETERS GRID (Year, Semester, Department, Subject) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Year Selector */}
           <div>
@@ -1031,7 +1244,7 @@ export const ReportsView = ({ showToast }) => {
           </div>
         </div>
 
-        {/* Report Type & Threshold Selection Bar */}
+        {/* 3. ROSTER FILTER & THRESHOLD */}
         <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider mr-1">Roster Filter:</span>
@@ -1054,7 +1267,9 @@ export const ReportsView = ({ showToast }) => {
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Below 75% ({stats.defaultersCount})</span>
+              <span>
+                {reportPeriod === 'day' ? `Absent Today (${stats.dayAbsentCount || 0})` : `Below ${minAttendance}% (${stats.defaultersCount})`}
+              </span>
             </button>
             <button
               onClick={() => setReportType('eligible')}
@@ -1065,7 +1280,9 @@ export const ReportsView = ({ showToast }) => {
               }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Above 75% ({stats.eligibleCount})</span>
+              <span>
+                {reportPeriod === 'day' ? `Present Today (${stats.dayPresentCount || 0})` : `Above ${minAttendance}% (${stats.eligibleCount})`}
+              </span>
             </button>
           </div>
 
@@ -1104,31 +1321,45 @@ export const ReportsView = ({ showToast }) => {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {selectedSemester === 'All' ? 'Total Sessions' : 'Semester Classes'}
+              {reportPeriod === 'day'
+                ? 'Classes Today'
+                : reportPeriod === 'month'
+                ? `Month Classes (${monthLabel.slice(0, 3)})`
+                : selectedSemester === 'All'
+                ? 'Total Sessions'
+                : 'Semester Classes'}
             </p>
             <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.totalSessions}</h3>
           </div>
         </div>
 
-        {/* Overall Average */}
+        {/* Attendance Rate */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Average Attendance</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {reportPeriod === 'day' ? 'Day Turnout Rate' : reportPeriod === 'month' ? 'Monthly Avg. Rate' : 'Average Attendance'}
+            </p>
             <h3 className="text-2xl font-black text-emerald-600 mt-0.5">{stats.overallAvg}%</h3>
           </div>
         </div>
 
-        {/* Defaulters Count */}
+        {/* Shortfall / Defaulters / Day Absences */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Students Below {minAttendance}%</p>
-            <h3 className="text-2xl font-black text-rose-600 mt-0.5">{stats.defaultersCount}</h3>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {reportPeriod === 'day'
+                ? 'Absent Today'
+                : `Students Below ${minAttendance}%`}
+            </p>
+            <h3 className="text-2xl font-black text-rose-600 mt-0.5">
+              {reportPeriod === 'day' ? (stats.dayAbsentCount || 0) : stats.defaultersCount}
+            </h3>
           </div>
         </div>
       </div>
@@ -1140,12 +1371,19 @@ export const ReportsView = ({ showToast }) => {
             <div className="flex items-center gap-2">
               <h3 className="text-base font-bold text-slate-900">Attendance Records Preview</h3>
               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${currentTheme.badge}`}>
-                {currentTheme.name}
+                {reportPeriod === 'day'
+                  ? `Day: ${selectedDate}`
+                  : reportPeriod === 'month'
+                  ? `Month: ${monthLabel} ${selectedYear}`
+                  : `Year: ${selectedYear}`}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Showing preview for Academic Year {selectedYear} ({selectedSemester}) • Click any export button to
-              download in your chosen theme
+              {reportPeriod === 'day'
+                ? `Showing day-wise attendance for ${selectedDate} (${selectedSemester}) • Click export to download day report`
+                : reportPeriod === 'month'
+                ? `Showing monthly attendance for ${monthLabel} ${selectedYear} (${selectedSemester}) • Click export to download`
+                : `Showing cumulative attendance for Academic Year ${selectedYear} (${selectedSemester}) • Click export to download`}
             </p>
           </div>
 
@@ -1190,7 +1428,15 @@ export const ReportsView = ({ showToast }) => {
               title="Download Excel Spreadsheet with auto-filters & KPI dashboard"
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>{downloading ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
+              <span>
+                {downloading
+                  ? 'Exporting...'
+                  : reportPeriod === 'day'
+                  ? 'Export Day Excel'
+                  : reportPeriod === 'month'
+                  ? 'Export Month Excel'
+                  : 'Export Excel (.xlsx)'}
+              </span>
               <Download className="w-3.5 h-3.5 text-white/90" />
             </button>
           </div>
@@ -1208,8 +1454,7 @@ export const ReportsView = ({ showToast }) => {
               <FileSpreadsheet className="w-12 h-12 text-slate-300 mx-auto" />
               <h4 className="text-base font-bold text-slate-700">No Student Records Found</h4>
               <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                No students or attendance records match the selected filter parameters. Try choosing "All Years" or a
-                different semester.
+                No students or attendance records match the selected {reportPeriod === 'day' ? 'date' : reportPeriod === 'month' ? 'month' : 'parameters'}. Try selecting another filter option.
               </p>
             </div>
           ) : (
@@ -1222,12 +1467,18 @@ export const ReportsView = ({ showToast }) => {
                   <th className="py-3.5 px-4">Student Name</th>
                   <th className="py-3.5 px-4">Department</th>
                   <th className="py-3.5 px-4">Semester</th>
-                  <th className="py-3.5 px-4 text-center">Classes</th>
+                  <th className="py-3.5 px-4 text-center">
+                    {reportPeriod === 'day' ? 'Today Held' : reportPeriod === 'month' ? 'Month Held' : 'Classes'}
+                  </th>
                   <th className="py-3.5 px-4 text-center">Present</th>
                   <th className="py-3.5 px-4 text-center">Absent</th>
-                  <th className="py-3.5 px-4 text-center">Attendance %</th>
+                  <th className="py-3.5 px-4 text-center">
+                    {reportPeriod === 'day' ? 'Day Turnout' : 'Attendance %'}
+                  </th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">Academic Note</th>
+                  <th className="py-3.5 px-4 text-right">
+                    {reportPeriod === 'day' ? 'Daily Note' : 'Academic Note'}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -1260,7 +1511,13 @@ export const ReportsView = ({ showToast }) => {
                           <div className="flex flex-col items-center">
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-xs ${
-                                isEligible
+                                reportPeriod === 'day'
+                                  ? s.dayStatus === 'Present'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : s.dayStatus === 'Partial'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                  : isEligible
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : isWarning
                                   ? 'bg-amber-50 text-amber-700 border border-amber-200'
@@ -1272,7 +1529,11 @@ export const ReportsView = ({ showToast }) => {
                             <div className="w-14 h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
                               <div
                                 className={`h-full rounded-full ${
-                                  isEligible ? 'bg-emerald-500' : isWarning ? 'bg-amber-500' : 'bg-rose-500'
+                                  s.percentage >= minAttendance
+                                    ? 'bg-emerald-500'
+                                    : s.percentage >= 60
+                                    ? 'bg-amber-500'
+                                    : 'bg-rose-500'
                                 }`}
                                 style={{ width: `${Math.min(s.percentage, 100)}%` }}
                               />
@@ -1286,6 +1547,23 @@ export const ReportsView = ({ showToast }) => {
                             <Clock className="w-3.5 h-3.5 text-slate-400" />
                             <span>No Classes</span>
                           </span>
+                        ) : reportPeriod === 'day' ? (
+                          s.dayStatus === 'Present' ? (
+                            <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Present</span>
+                            </span>
+                          ) : s.dayStatus === 'Partial' ? (
+                            <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              <span>{s.status}</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-rose-700 font-bold">
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              <span>Absent</span>
+                            </span>
+                          )
                         ) : isEligible ? (
                           <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1306,6 +1584,14 @@ export const ReportsView = ({ showToast }) => {
                       <td className="py-3.5 px-4 text-right font-medium text-slate-500">
                         {!hasHeldClasses ? (
                           <span className="text-slate-400 text-[11px] font-medium">No sessions</span>
+                        ) : reportPeriod === 'day' ? (
+                          s.dayStatus === 'Present' ? (
+                            <span className="text-emerald-600 text-[11px] font-semibold">Full Turnout</span>
+                          ) : s.dayStatus === 'Absent' ? (
+                            <span className="text-rose-600 text-[11px] font-semibold">Absent All Sessions</span>
+                          ) : (
+                            <span className="text-amber-600 text-[11px] font-semibold">Attended {s.attendedClasses} of {s.totalClasses}</span>
+                          )
                         ) : s.classesNeededFor75 > 0 ? (
                           <span className="text-rose-600 text-[11px] font-semibold">
                             Needs {s.classesNeededFor75} classes for {minAttendance}%
@@ -1327,22 +1613,25 @@ export const ReportsView = ({ showToast }) => {
           <div>
             Showing <span className="font-bold text-slate-700">{filteredStudents.length}</span> students across{' '}
             <span className="font-bold text-slate-700">{stats.totalSessions}</span> sessions{' '}
-            {selectedSemester === 'All' && (
-              <span className="text-slate-400 font-normal">(classes calculated per student's semester)</span>
+            {reportPeriod === 'day' && <span className="text-indigo-600 font-semibold">(Day-wise: {selectedDate})</span>}
+            {reportPeriod === 'month' && (
+              <span className="text-indigo-600 font-semibold">
+                (Month-wise: {monthLabel} {selectedYear})
+              </span>
             )}
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              Eligible (≥{minAttendance}%)
+              {reportPeriod === 'day' ? 'Present' : `Eligible (≥${minAttendance}%)`}
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-amber-700">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              Warning (60-{minAttendance - 1}%)
+              {reportPeriod === 'day' ? 'Partial' : `Warning (60-${minAttendance - 1}%)`}
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-rose-700">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-              Defaulter (&lt;60%)
+              {reportPeriod === 'day' ? 'Absent' : 'Defaulter (<60%)'}
             </span>
           </div>
         </div>
@@ -1361,7 +1650,11 @@ export const ReportsView = ({ showToast }) => {
                 <div>
                   <h3 className="text-sm font-extrabold text-white">Official Attendance Audit Report</h3>
                   <p className="text-xs text-slate-400">
-                    Verified institutional records & printable audit documentation
+                    {reportPeriod === 'day'
+                      ? `Day-wise Records for ${selectedDate}`
+                      : reportPeriod === 'month'
+                      ? `Monthly Audit for ${monthLabel} ${selectedYear}`
+                      : 'Verified institutional records & printable audit documentation'}
                   </p>
                 </div>
               </div>
@@ -1416,20 +1709,30 @@ export const ReportsView = ({ showToast }) => {
 
                     <div className="sm:text-right">
                       <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[11px] font-bold uppercase tracking-wider border border-white/20">
-                        Official Academic Audit
+                        {reportPeriod === 'day'
+                          ? 'Daily Attendance Audit'
+                          : reportPeriod === 'month'
+                          ? 'Monthly Attendance Audit'
+                          : 'Official Academic Audit'}
                       </span>
-                      <p className="text-[11px] font-mono text-slate-300 mt-1">
-                        {auditReportCode}
-                      </p>
+                      <p className="text-[11px] font-mono text-slate-300 mt-1">{auditReportCode}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Metadata Strip */}
-                <div className={`p-4 sm:px-8 border-b ${currentTheme.cardBorder} ${currentTheme.cardBg} flex flex-wrap items-center justify-between gap-3 text-xs`}>
+                <div
+                  className={`p-4 sm:px-8 border-b ${currentTheme.cardBorder} ${currentTheme.cardBg} flex flex-wrap items-center justify-between gap-3 text-xs`}
+                >
                   <div>
-                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Academic Session</span>
-                    <span className="font-bold text-slate-900">Year {selectedYear}</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 block">Report Scope</span>
+                    <span className="font-bold text-slate-900">
+                      {reportPeriod === 'day'
+                        ? `Day (${selectedDate})`
+                        : reportPeriod === 'month'
+                        ? `Month (${monthLabel} ${selectedYear})`
+                        : `Session (Year ${selectedYear})`}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-500 block">Semester</span>
@@ -1460,16 +1763,24 @@ export const ReportsView = ({ showToast }) => {
                     <p className="text-xl font-black text-slate-900">{stats.matchedStudents}</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500">Total Lectures</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">
+                      {reportPeriod === 'day' ? 'Lectures Today' : 'Total Lectures'}
+                    </span>
                     <p className="text-xl font-black text-slate-900">{stats.totalSessions}</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500">Institute Avg.</span>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">
+                      {reportPeriod === 'day' ? 'Day Turnout' : 'Institute Avg.'}
+                    </span>
                     <p className="text-xl font-black text-emerald-600">{stats.overallAvg}%</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500">Defaulters</span>
-                    <p className="text-xl font-black text-rose-600">{stats.defaultersCount}</p>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">
+                      {reportPeriod === 'day' ? 'Absent Today' : 'Defaulters'}
+                    </span>
+                    <p className="text-xl font-black text-rose-600">
+                      {reportPeriod === 'day' ? (stats.dayAbsentCount || 0) : stats.defaultersCount}
+                    </p>
                   </div>
                 </div>
 
@@ -1483,8 +1794,12 @@ export const ReportsView = ({ showToast }) => {
                         <th className="py-2.5 px-3">Reg ID</th>
                         <th className="py-2.5 px-3">Student Name</th>
                         <th className="py-2.5 px-3">Sem</th>
-                        <th className="py-2.5 px-3 text-center">Attended / Held</th>
-                        <th className="py-2.5 px-3 text-center">Attendance %</th>
+                        <th className="py-2.5 px-3 text-center">
+                          {reportPeriod === 'day' ? 'Attended Today' : 'Attended / Held'}
+                        </th>
+                        <th className="py-2.5 px-3 text-center">
+                          {reportPeriod === 'day' ? 'Day Rate' : 'Attendance %'}
+                        </th>
                         <th className="py-2.5 px-3">Status</th>
                         <th className="py-2.5 px-3 text-right">Remarks</th>
                       </tr>
@@ -1513,6 +1828,12 @@ export const ReportsView = ({ showToast }) => {
                                 className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                   !hasHeldClasses
                                     ? 'bg-slate-100 text-slate-600'
+                                    : reportPeriod === 'day'
+                                    ? s.dayStatus === 'Present'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : s.dayStatus === 'Partial'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-rose-100 text-rose-800'
                                     : isEligible
                                     ? 'bg-emerald-100 text-emerald-800'
                                     : isWarning
@@ -1520,11 +1841,27 @@ export const ReportsView = ({ showToast }) => {
                                     : 'bg-rose-100 text-rose-800'
                                 }`}
                               >
-                                {!hasHeldClasses ? 'No Classes' : isEligible ? 'Eligible' : isWarning ? 'Warning' : 'Defaulter'}
+                                {!hasHeldClasses
+                                  ? 'No Classes'
+                                  : reportPeriod === 'day'
+                                  ? s.dayStatus
+                                  : isEligible
+                                  ? 'Eligible'
+                                  : isWarning
+                                  ? 'Warning'
+                                  : 'Defaulter'}
                               </span>
                             </td>
                             <td className="py-2 px-3 text-right text-[11px] font-semibold text-slate-500">
-                              {s.classesNeededFor75 > 0 ? (
+                              {reportPeriod === 'day' ? (
+                                s.dayStatus === 'Present' ? (
+                                  <span className="text-emerald-700">Present</span>
+                                ) : s.dayStatus === 'Absent' ? (
+                                  <span className="text-rose-600">Absent</span>
+                                ) : (
+                                  <span className="text-amber-700">Partial</span>
+                                )
+                              ) : s.classesNeededFor75 > 0 ? (
                                 <span className="text-rose-600">Needs {s.classesNeededFor75} classes</span>
                               ) : (
                                 <span className="text-emerald-700">Clear</span>

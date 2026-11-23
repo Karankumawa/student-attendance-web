@@ -13,6 +13,7 @@ import {
   Printer,
   LayoutGrid,
   List,
+  BookOpen,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -89,19 +90,9 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   const [selectedSemester, setSelectedSemester] = useState('All');
   const [viewMode, setViewMode] = useState('day'); // 'day' or 'matrix'
   const [slots, setSlots] = useState([]);
+  const [availableSubjects, setAvailableSubjects] = useState([]); // Full Subject model objects
   const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Curated and dynamic subject suggestions
-  const subjectSuggestions = useMemo(() => {
-    return Array.from(
-      new Set([
-        ...DEFAULT_SUBJECT_SUGGESTIONS,
-        ...dbSubjects,
-        ...(slots ? slots.map((s) => s.subject) : []),
-      ])
-    ).filter(Boolean);
-  }, [dbSubjects, slots]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -117,6 +108,26 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // Fast Subject Code mapping
+  const subjectCodeMap = useMemo(() => {
+    const map = {};
+    availableSubjects.forEach((s) => {
+      if (s.name && s.code) {
+        map[s.name.toLowerCase()] = s.code;
+      }
+    });
+    return map;
+  }, [availableSubjects]);
+
+  // Subjects filtered strictly for the semester selected in modal
+  const semesterSubjects = useMemo(() => {
+    if (!formData.semester) return availableSubjects;
+    const filtered = availableSubjects.filter(
+      (s) => (s.semester || '').toLowerCase() === (formData.semester || '').toLowerCase()
+    );
+    return filtered;
+  }, [availableSubjects, formData.semester]);
+
   // Delete Target State
   const [deleteTarget, setDeleteTarget] = useState(null);
 
@@ -124,6 +135,7 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
     try {
       const res = await axiosClient.get('/subjects');
       if (res.data.success && res.data.data) {
+        setAvailableSubjects(res.data.data);
         setDbSubjects(res.data.data.map((s) => s.name));
       }
     } catch (err) {
@@ -154,12 +166,16 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
 
   const openAddModal = (day) => {
     setEditingSlot(null);
+    const targetSem = selectedSemester !== 'All' ? selectedSemester : 'Semester 1';
+    const matching = availableSubjects.filter(
+      (s) => (s.semester || '').toLowerCase() === targetSem.toLowerCase()
+    );
     setFormData({
       dayOfWeek: day || selectedDay,
       startTime: '09:00 AM',
       endTime: '10:00 AM',
-      subject: '',
-      semester: selectedSemester !== 'All' ? selectedSemester : 'Semester 1',
+      subject: matching.length > 0 ? matching[0].name : '',
+      semester: targetSem,
       roomNumber: 'Room 101',
     });
     setFormError('');
@@ -429,8 +445,13 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                         </span>
                       </div>
 
-                      <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
-                        {slot.subject}
+                      <h4 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug flex items-center gap-1.5 flex-wrap">
+                        {subjectCodeMap[(slot.subject || '').toLowerCase()] && (
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200/80">
+                            {subjectCodeMap[(slot.subject || '').toLowerCase()]}
+                          </span>
+                        )}
+                        <span>{slot.subject}</span>
                       </h4>
 
                       <div className="flex items-center gap-1.5 mt-2.5 text-xs text-slate-500 font-medium">
@@ -530,8 +551,13 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                             <div className="text-[10px] font-bold text-indigo-600 font-mono mb-1">
                               {slot.startTime} - {slot.endTime}
                             </div>
-                            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
-                              {slot.subject}
+                            <div className="text-xs font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1 flex items-center gap-1">
+                              {subjectCodeMap[(slot.subject || '').toLowerCase()] && (
+                                <span className="font-mono text-[9px] font-bold px-1 rounded bg-indigo-50 text-indigo-700 shrink-0">
+                                  {subjectCodeMap[(slot.subject || '').toLowerCase()]}
+                                </span>
+                              )}
+                              <span className="truncate">{slot.subject}</span>
                             </div>
                             <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100 text-[10px] text-slate-500 font-medium">
                               <span>{slot.roomNumber}</span>
@@ -609,60 +635,156 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
             )}
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Day of the Week *
-                </label>
-                <select
-                  value={formData.dayOfWeek}
-                  onChange={(e) => setFormData({ ...formData, dayOfWeek: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
-                >
-                  {DAYS_OF_WEEK.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Day of the Week *
+                  </label>
+                  <select
+                    value={formData.dayOfWeek}
+                    onChange={(e) => setFormData({ ...formData, dayOfWeek: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
+                  >
+                    {DAYS_OF_WEEK.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                    Target Semester *
+                  </label>
+                  <select
+                    value={formData.semester}
+                    onChange={(e) => {
+                      const newSem = e.target.value;
+                      const matching = availableSubjects.filter(
+                        (s) => (s.semester || '').toLowerCase() === newSem.toLowerCase()
+                      );
+                      setFormData({
+                        ...formData,
+                        semester: newSem,
+                        subject: matching.length > 0 ? matching[0].name : '',
+                      });
+                    }}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
+                  >
+                    {SEMESTERS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
+              {/* Subject Selection - Strictly Connected to Subject & Course Management */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                  Subject / Course Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  list="db-subject-list"
-                  placeholder="Select or enter subject (e.g. Operating Systems)"
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                />
-                <datalist id="db-subject-list">
-                  {subjectSuggestions.map((s, i) => (
-                    <option key={i} value={s} />
-                  ))}
-                </datalist>
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <span className="text-[11px] font-semibold text-slate-400">Suggestions:</span>
-                  {[
-                    'Data Structures & Algorithms',
-                    'Database Management Systems',
-                    'Operating Systems',
-                    'Computer Networks',
-                    'Software Engineering',
-                  ].map((s) => (
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Subject / Course * <span className="text-[10px] text-indigo-600 font-normal lowercase">(from Course Management)</span>
+                  </label>
+                  {setActiveView && (
                     <button
-                      key={s}
                       type="button"
-                      onClick={() => setFormData({ ...formData, subject: s })}
-                      className="px-2 py-0.5 text-[11px] font-medium rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 border border-slate-200/80 transition cursor-pointer"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setActiveView('subjects');
+                      }}
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Manage subjects in Subject & Course Management"
                     >
-                      {s}
+                      <BookOpen className="w-3 h-3" />
+                      <span>Manage Subjects</span>
                     </button>
-                  ))}
+                  )}
                 </div>
+
+                {availableSubjects.length === 0 ? (
+                  <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs space-y-2">
+                    <div className="flex items-center gap-2 font-bold">
+                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>No Registered Subjects Found in Course Management</span>
+                    </div>
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      Only registered subjects can be scheduled into the timetable. Please add courses in Subject & Course Management first.
+                    </p>
+                    {setActiveView && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsModalOpen(false);
+                          setActiveView('subjects');
+                        }}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs shadow-xs cursor-pointer"
+                      >
+                        Go to Subject Management
+                      </button>
+                    )}
+                  </div>
+                ) : semesterSubjects.length === 0 ? (
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                      <p className="font-semibold text-slate-800 mb-1">
+                        No subjects specifically found for {formData.semester} in database.
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Select a course from all registered subjects below, or add subjects for this semester in Subject Management.
+                      </p>
+                    </div>
+                    <select
+                      required
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
+                    >
+                      <option value="">-- Select from All Registered Subjects --</option>
+                      {availableSubjects.map((s) => (
+                        <option key={s._id || s.name} value={s.name}>
+                          {s.code ? `${s.code} - ` : ''}{s.name} ({s.semester})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <select
+                      required
+                      value={formData.subject}
+                      onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
+                    >
+                      <option value="">-- Choose Subject for {formData.semester} --</option>
+                      {semesterSubjects.map((s) => (
+                        <option key={s._id || s.name} value={s.name}>
+                          {s.code ? `${s.code} : ` : ''}{s.name} ({s.credits || 3} Credits)
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Quick selection pills for the semester */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[11px] font-semibold text-slate-400">Available:</span>
+                      {semesterSubjects.slice(0, 5).map((s) => (
+                        <button
+                          key={s._id || s.name}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, subject: s.name })}
+                          className={`px-2 py-0.5 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer ${
+                            formData.subject === s.name
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs'
+                              : 'bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border-slate-200/80'
+                          }`}
+                        >
+                          {s.code ? `${s.code} ` : ''}{s.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -694,35 +816,17 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Semester
-                  </label>
-                  <select
-                    value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer"
-                  >
-                    {SEMESTERS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                    Room / Lab
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Lab 301 / Hall 2"
-                    value={formData.roomNumber}
-                    onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Room / Lab
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Lab 301 / Hall 2"
+                  value={formData.roomNumber}
+                  onChange={(e) => setFormData({ ...formData, roomNumber: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                />
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-3">

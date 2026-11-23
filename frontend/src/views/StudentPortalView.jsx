@@ -1013,8 +1013,20 @@ export const StudentPortalView = ({ showToast }) => {
                     </div>
                   </div>
 
+                  {/* Barcode Strip */}
+                  <div className="mt-3.5 pt-3 border-t border-white/10 text-center relative z-10">
+                    <div className="h-6 w-48 mx-auto flex items-stretch justify-center gap-0.5 opacity-90">
+                      {[1, 2, 1, 3, 1, 2, 3, 1, 1, 2, 3, 2, 1, 2, 1, 3, 2, 1, 2, 3, 1, 2, 1, 1, 3, 2].map((w, idx) => (
+                        <div key={idx} className="bg-white" style={{ width: `${w * 1.4}px` }} />
+                      ))}
+                    </div>
+                    <span className="font-mono text-[9px] tracking-widest text-slate-300 block mt-1">
+                      *{student?.registrationId || student?.rollNumber}*
+                    </span>
+                  </div>
+
                   {/* Card Footer: QR Badge & Verification Bar */}
-                  <div className="pt-4 mt-4 border-t border-white/10 flex items-center justify-between relative z-10">
+                  <div className="pt-3 mt-3 border-t border-white/10 flex items-center justify-between relative z-10">
                     <div className="flex items-center gap-2">
                       <div className="p-1 rounded-lg bg-white/10 border border-white/20">
                         <QrCode className="w-7 h-7 text-white" />
@@ -1030,6 +1042,11 @@ export const StudentPortalView = ({ showToast }) => {
                         <span>Active Scholar</span>
                       </span>
                     </div>
+                  </div>
+
+                  {/* Bottom Verification Accent */}
+                  <div className="mt-3 -mx-6 -mb-6 sm:-mx-7 sm:-mb-7 bg-indigo-950/80 border-t border-white/10 py-1.5 px-3 text-center text-[9px] text-indigo-200 font-medium tracking-wide">
+                    Official Campus Identity • Non-Transferable
                   </div>
 
                   {/* Decorative ambient lights */}

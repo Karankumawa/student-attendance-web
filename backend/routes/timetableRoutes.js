@@ -1,7 +1,9 @@
 const express = require('express');
 const Timetable = require('../models/Timetable');
+const Subject = require('../models/Subject');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 const { sortSlotsByTime, parseTimeToMinutes } = require('../utils/timeHelper');
+const { escapeRegex } = require('../utils/regexHelper');
 
 const router = express.Router();
 
@@ -116,6 +118,21 @@ router.post('/', requireAdmin, async (req, res) => {
       }
     }
 
+    // Verify that the subject exists in Subject & Course Management
+    const cleanSubject = subject.trim();
+    const totalSubjectsInDb = await Subject.countDocuments();
+    if (totalSubjectsInDb > 0) {
+      const subjectDoc = await Subject.findOne({
+        name: new RegExp(`^${escapeRegex(cleanSubject)}$`, 'i'),
+      });
+      if (!subjectDoc) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot schedule class: "${cleanSubject}" is not registered in Subject & Course Management. Please add this subject first in Subject Management.`,
+        });
+      }
+    }
+
     const newSlot = new Timetable({
       dayOfWeek,
       startTime: cleanStartTime,
@@ -224,7 +241,22 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
     if (startTime) slot.startTime = startTime.trim();
     if (endTime) slot.endTime = endTime.trim();
-    if (subject) slot.subject = subject.trim();
+    if (subject) {
+      const cleanSubject = subject.trim();
+      const totalSubjectsInDb = await Subject.countDocuments();
+      if (totalSubjectsInDb > 0) {
+        const subjectDoc = await Subject.findOne({
+          name: new RegExp(`^${escapeRegex(cleanSubject)}$`, 'i'),
+        });
+        if (!subjectDoc) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot schedule class: "${cleanSubject}" is not registered in Subject & Course Management. Please add this subject first in Subject Management.`,
+          });
+        }
+      }
+      slot.subject = cleanSubject;
+    }
     if (semester) slot.semester = semester.trim();
     if (roomNumber !== undefined) slot.roomNumber = roomNumber ? String(roomNumber).trim() : 'Room 101';
 

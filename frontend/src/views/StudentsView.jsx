@@ -17,9 +17,13 @@ import {
   Download,
   Printer,
   Contact,
+  BadgeCheck,
+  QrCode,
+  HeartPulse,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
+import SnitLogo from '../components/SnitLogo';
 import { printElementById } from '../utils/printUtils';
 
 const SEMESTERS = [
@@ -832,95 +836,148 @@ export const StudentsView = ({ showToast }) => {
             </div>
 
             {/* Printable ID Card Container */}
-            <div className="p-6 bg-slate-100 flex justify-center">
+            <div className="p-6 bg-slate-900/60 flex justify-center">
               <div
                 id="admin-student-id-card"
-                className="w-full max-w-sm rounded-2xl bg-white shadow-xl border-2 border-indigo-900 overflow-hidden relative"
+                className="w-full max-w-sm rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border border-white/10 text-white p-6 shadow-2xl relative overflow-hidden"
               >
-                {/* ID Card Top Header */}
-                <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white p-4 text-center border-b-2 border-amber-400">
-                  <div className="text-[10px] uppercase tracking-widest text-amber-300 font-extrabold">
-                    Shrinathji Institute of Technology & Engineering
+                {/* Institutional Top Header */}
+                <div className="flex items-center justify-between gap-3 pb-4 border-b border-white/10 relative z-10">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1 rounded-xl bg-white/10 border border-white/20 backdrop-blur-md">
+                      <SnitLogo size={30} className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h3 className="font-extrabold text-[11px] tracking-tight text-white leading-tight uppercase">
+                        Shrinathji Institute of Technology
+                      </h3>
+                      <p className="text-[9px] text-slate-300 tracking-wider">
+                        Nathdwara, Raj. • AICTE Approved & RTU Affiliated
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-[9px] text-slate-300 tracking-wider">
-                    Affiliated to RTU, Kota • AICTE Approved
-                  </div>
-                  <div className="mt-1 text-xs font-black text-white uppercase tracking-wider">
-                    Student Identity Card
+                  {/* Holographic RFID Chip Graphic */}
+                  <div className="shrink-0">
+                    <div className="w-9 h-6 rounded-md bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 shadow-inner border border-amber-200/60 p-0.5 flex flex-col justify-between">
+                      <div className="flex justify-between h-0.5 border-b border-amber-600/30" />
+                      <div className="text-[6px] font-mono font-black text-amber-950 text-center tracking-widest">
+                        RFID
+                      </div>
+                      <div className="flex justify-between h-0.5 border-t border-amber-600/30" />
+                    </div>
                   </div>
                 </div>
 
-                {/* Card Body */}
-                <div className="p-5">
-                  <div className="flex items-start gap-4">
-                    {/* Avatar */}
-                    <div className="w-20 h-24 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-800 text-white font-extrabold text-3xl flex items-center justify-center border-2 border-indigo-200 shadow-md shrink-0">
+                {/* Student Portrait & Primary Info */}
+                <div className="py-4 relative z-10 flex items-center gap-3.5">
+                  <div className="relative shrink-0">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white font-black text-2xl flex items-center justify-center shadow-lg border-2 border-white/30">
                       {idCardStudent.name ? idCardStudent.name.charAt(0).toUpperCase() : '?'}
                     </div>
-
-                    {/* Basic details */}
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-black text-slate-900 leading-tight">
-                        {idCardStudent.name}
-                      </h4>
-                      <div className="text-[11px] font-mono font-bold text-indigo-700 mt-1">
-                        Roll: {idCardStudent.rollNumber}
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500">
-                        Reg ID: {idCardStudent.registrationId || `STU-${idCardStudent.rollNumber}`}
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-700 mt-1">
-                        {idCardStudent.semester}
-                      </div>
-                      <div className="text-[10px] text-slate-600 truncate">
-                        {idCardStudent.department}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Metadata Grid */}
-                  <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200 text-[10px]">
-                    <div>
-                      <span className="text-slate-400 font-bold block">DATE OF BIRTH</span>
-                      <span className="font-bold text-slate-800">
-                        {idCardStudent.dob ? formatDOB(idCardStudent.dob) : '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-bold block">BLOOD GROUP</span>
-                      <span className="font-bold text-rose-600">
-                        {idCardStudent.bloodGroup || 'O+'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-bold block">STUDENT PHONE</span>
-                      <span className="font-bold text-slate-800">
-                        {idCardStudent.phone || '—'}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-bold block">VALID TILL</span>
-                      <span className="font-bold text-emerald-700">June 2027</span>
-                    </div>
-                  </div>
-
-                  {/* Barcode Strip */}
-                  <div className="mt-4 pt-3 border-t border-dashed border-slate-200 text-center">
-                    <div className="h-7 w-48 mx-auto flex items-stretch justify-center gap-0.5 opacity-80">
-                      {[1, 2, 1, 3, 1, 2, 3, 1, 1, 2, 3, 2, 1, 2, 1, 3, 2, 1, 2, 3, 1, 2, 1, 1, 3, 2].map((w, idx) => (
-                        <div key={idx} className="bg-slate-900" style={{ width: `${w * 1.5}px` }} />
-                      ))}
-                    </div>
-                    <span className="font-mono text-[9px] tracking-widest text-slate-500 block mt-1">
-                      *{idCardStudent.registrationId || idCardStudent.rollNumber}*
+                    <span className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white shadow-md">
+                      <BadgeCheck className="w-3.5 h-3.5" />
                     </span>
                   </div>
+                  <div className="space-y-1 min-w-0">
+                    <h3 className="text-base font-black text-white tracking-tight truncate">
+                      {idCardStudent.name}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-slate-300">
+                        Roll: {idCardStudent.rollNumber}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="px-2 py-0.5 rounded-md bg-white/10 text-indigo-200 font-mono text-[10px] font-semibold border border-white/10">
+                        {idCardStudent.registrationId || `STU-${idCardStudent.rollNumber}`}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* ID Bottom Accent Bar */}
-                <div className="bg-indigo-900 text-white py-1 px-3 text-center text-[9px] font-bold tracking-wide">
-                  Official Campus Identity • Non-Transferable
+                {/* Academic Coordinates Matrix */}
+                <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md relative z-10 text-[10px]">
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Department
+                    </span>
+                    <span className="font-semibold text-slate-200 line-clamp-1">
+                      {idCardStudent.department}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Semester
+                    </span>
+                    <span className="font-semibold text-slate-200">
+                      {idCardStudent.semester}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Blood Group
+                    </span>
+                    <span className="font-bold text-rose-300 inline-flex items-center gap-1">
+                      <HeartPulse className="w-2.5 h-2.5 text-rose-400" />
+                      <span>{idCardStudent.bloodGroup || 'O+'}</span>
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Date of Birth
+                    </span>
+                    <span className="font-semibold text-slate-200">
+                      {idCardStudent.dob ? formatDOB(idCardStudent.dob) : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Student Phone
+                    </span>
+                    <span className="font-semibold text-slate-200">
+                      {idCardStudent.phone || '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider">
+                      Valid Till
+                    </span>
+                    <span className="font-bold text-emerald-400">June 2027</span>
+                  </div>
                 </div>
+
+                {/* Barcode & Security strip */}
+                <div className="mt-3 pt-2.5 border-t border-white/10 text-center relative z-10">
+                  <div className="h-6 w-44 mx-auto flex items-stretch justify-center gap-0.5 opacity-90">
+                    {[1, 2, 1, 3, 1, 2, 3, 1, 1, 2, 3, 2, 1, 2, 1, 3, 2, 1, 2, 3, 1, 2, 1, 1, 3, 2].map((w, idx) => (
+                      <div key={idx} className="bg-white" style={{ width: `${w * 1.3}px` }} />
+                    ))}
+                  </div>
+                  <span className="font-mono text-[8px] tracking-widest text-slate-300 block mt-1">
+                    *{idCardStudent.registrationId || idCardStudent.rollNumber}*
+                  </span>
+                </div>
+
+                {/* Card Footer: Verification Badge */}
+                <div className="pt-2.5 mt-2.5 border-t border-white/10 flex items-center justify-between relative z-10 text-[9px]">
+                  <div className="flex items-center gap-1.5">
+                    <div className="p-0.5 rounded bg-white/10 border border-white/20">
+                      <QrCode className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-slate-300 font-mono leading-tight text-[8px]">
+                      <span className="font-bold text-white block">CAMPUS DIGITAL ID</span>
+                      <span>SECURE-AUTH-2026</span>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">
+                    <BadgeCheck className="w-2.5 h-2.5" />
+                    <span>Official ID</span>
+                  </span>
+                </div>
+
+                {/* Decorative ambient glow */}
+                <div className="absolute -top-12 -right-12 w-36 h-36 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
               </div>
             </div>
 

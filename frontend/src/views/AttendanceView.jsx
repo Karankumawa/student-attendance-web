@@ -19,6 +19,10 @@ import {
   Printer,
   RefreshCw,
   Download,
+  AlertTriangle,
+  TrendingUp,
+  Calendar,
+  ShieldCheck,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
@@ -70,6 +74,9 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   const [summaryData, setSummaryData] = useState([]);
   const [summarySemester, setSummarySemester] = useState('All');
   const [summarySearch, setSummarySearch] = useState('');
+  const [summaryCategory, setSummaryCategory] = useState('all'); // 'all' | 'eligible' | 'warning' | 'defaulter'
+  const [analyticsSubView, setAnalyticsSubView] = useState('both'); // 'both' | 'students' | 'sessions'
+  const [historySearch, setHistorySearch] = useState('');
   const [loadingSummary, setLoadingSummary] = useState(false);
 
   // Past Sessions History & Delete Confirmation
@@ -413,16 +420,45 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
     );
   });
 
-  // Filtered Summary for search
+  // Filtered Summary for search and category
   const filteredSummary = summaryData.filter((st) => {
+    // Category filter
+    if (summaryCategory === 'eligible' && (st.percentage < 75 || st.totalClasses === 0)) return false;
+    if (summaryCategory === 'warning' && (st.percentage < 60 || st.percentage >= 75 || st.totalClasses === 0)) return false;
+    if (summaryCategory === 'defaulter' && (st.percentage >= 60 || st.totalClasses === 0)) return false;
+
     if (!summarySearch.trim()) return true;
     const term = summarySearch.toLowerCase();
     return (
-      st.name.toLowerCase().includes(term) ||
-      st.rollNumber.toLowerCase().includes(term) ||
-      st.department.toLowerCase().includes(term)
+      (st.name && st.name.toLowerCase().includes(term)) ||
+      (st.rollNumber && st.rollNumber.toLowerCase().includes(term)) ||
+      (st.department && st.department.toLowerCase().includes(term))
     );
   });
+
+  // Filtered Sessions History for search
+  const filteredSessionsHistory = sessionsHistory.filter((sess) => {
+    if (!historySearch.trim()) return true;
+    const term = historySearch.toLowerCase();
+    return (
+      (sess.subject && sess.subject.toLowerCase().includes(term)) ||
+      (sess.date && sess.date.toLowerCase().includes(term)) ||
+      (sess.semester && sess.semester.toLowerCase().includes(term))
+    );
+  });
+
+  // KPI Analytics Metrics for the Summary Section
+  const summaryTotalStudents = summaryData.length;
+  const summaryEligibleCount = summaryData.filter((s) => s.totalClasses > 0 && s.percentage >= 75).length;
+  const summaryWarningCount = summaryData.filter((s) => s.totalClasses > 0 && s.percentage >= 60 && s.percentage < 75).length;
+  const summaryDefaulterCount = summaryData.filter((s) => s.totalClasses > 0 && s.percentage < 60).length;
+  const summaryTotalSessions = sessionsHistory.length;
+  const summaryAveragePercentage =
+    summaryTotalStudents > 0
+      ? Math.round(
+          summaryData.reduce((acc, curr) => acc + (curr.percentage || 0), 0) / summaryTotalStudents
+        )
+      : 0;
 
   const exportSummaryCSV = () => {
     if (filteredSummary.length === 0) {
@@ -884,231 +920,488 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
         </div>
       ) : (
         /* Secondary Tab: Attendance History & Percentage Analytics */
-        <div className="space-y-6">
-          {/* Summary Filters */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Semester Filter */}
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-slate-400" />
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">
-                  Semester:
-                </span>
-                <select
-                  value={summarySemester}
-                  onChange={(e) => setSummarySemester(e.target.value)}
-                  className="px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="All">All Semesters</option>
-                  {SEMESTERS.map((sem) => (
-                    <option key={sem} value={sem}>
-                      {sem}
-                    </option>
-                  ))}
-                </select>
+        <div className="space-y-6 animate-fade-in">
+          {/* Executive KPI Metrics Ribbon */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            {/* 1. Overall Avg */}
+            <div className="bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white rounded-2xl p-4 shadow-sm border border-indigo-900/40 relative overflow-hidden flex flex-col justify-between">
+              <div className="flex items-center justify-between text-indigo-200 text-xs font-semibold">
+                <span>Inst. Average</span>
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
               </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black tracking-tight text-white">
+                  {summaryAveragePercentage}%
+                </div>
+                <div className="text-[10px] text-indigo-200/80 mt-0.5">Across all courses</div>
+              </div>
+              <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-indigo-500/10 rounded-full blur-xl pointer-events-none" />
+            </div>
 
-              {/* Threshold Legend */}
-              <div className="hidden lg:flex items-center gap-3 pl-4 border-l border-slate-200 text-xs">
-                <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> &ge; 75% Eligible
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-700 font-semibold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 60-74% Warning
-                </span>
-                <span className="flex items-center gap-1.5 text-rose-700 font-semibold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> &lt; 60% Defaulter
-                </span>
+            {/* 2. Total Evaluated */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+                <span>Students</span>
+                <Users className="w-4 h-4 text-slate-400" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-slate-900">{summaryTotalStudents}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">In chosen semester</div>
               </div>
             </div>
 
-            {/* Right: Search Input & Export CSV */}
-            <div className="flex items-center gap-2.5 w-full md:w-auto">
+            {/* 3. Eligible */}
+            <div className="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-emerald-800 text-xs font-semibold">
+                <span>Eligible (≥75%)</span>
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-emerald-700">{summaryEligibleCount}</div>
+                <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                  {summaryTotalStudents > 0 ? Math.round((summaryEligibleCount / summaryTotalStudents) * 100) : 0}% of students
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Warning */}
+            <div className="bg-amber-50/60 rounded-2xl p-4 border border-amber-200/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-amber-800 text-xs font-semibold">
+                <span>Warning (60-74%)</span>
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-amber-700">{summaryWarningCount}</div>
+                <div className="text-[10px] text-amber-600 font-medium mt-0.5">Need attention</div>
+              </div>
+            </div>
+
+            {/* 5. Defaulters */}
+            <div className="bg-rose-50/60 rounded-2xl p-4 border border-rose-200/80 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-rose-800 text-xs font-semibold">
+                <span>Defaulters (&lt;60%)</span>
+                <XCircle className="w-4 h-4 text-rose-600" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-rose-700">{summaryDefaulterCount}</div>
+                <div className="text-[10px] text-rose-600 font-medium mt-0.5">Debarment risk</div>
+              </div>
+            </div>
+
+            {/* 6. Sessions Logged */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-2xs flex flex-col justify-between">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
+                <span>Sessions</span>
+                <Calendar className="w-4 h-4 text-indigo-500" />
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-slate-900">{summaryTotalSessions}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Lectures recorded</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Primary Controls & Section Filter Bar */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 p-5 shadow-xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Left: View Mode Switcher */}
+              <div className="inline-flex rounded-2xl p-1 bg-slate-100/90 border border-slate-200/70 self-start">
+                <button
+                  type="button"
+                  onClick={() => setAnalyticsSubView('both')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    analyticsSubView === 'both'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All Insights
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnalyticsSubView('students')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    analyticsSubView === 'students'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Student Compliance Matrix ({filteredSummary.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAnalyticsSubView('sessions')}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    analyticsSubView === 'sessions'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Sessions History ({filteredSessionsHistory.length})
+                </button>
+              </div>
+
+              {/* Right: Quick Actions */}
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    fetchSummary();
+                    fetchSessionsHistory();
+                    showToast?.({ message: 'Analytics and session records refreshed', type: 'info' });
+                  }}
+                  className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-xl transition-all cursor-pointer"
+                  title="Refresh Data"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={exportSummaryCSV}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-950 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Export this summary as CSV"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Secondary Filter Line */}
+            <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Semester Selector */}
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="text-xs font-bold text-slate-600">Semester:</span>
+                  <select
+                    value={summarySemester}
+                    onChange={(e) => setSummarySemester(e.target.value)}
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                  >
+                    <option value="All">All Semesters</option>
+                    {SEMESTERS.map((sem) => (
+                      <option key={sem} value={sem}>
+                        {sem}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Category Pill Filters */}
+                <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200/80">
+                  <button
+                    type="button"
+                    onClick={() => setSummaryCategory('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      summaryCategory === 'all'
+                        ? 'bg-indigo-600 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSummaryCategory('eligible')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      summaryCategory === 'eligible'
+                        ? 'bg-emerald-600 text-white shadow-2xs'
+                        : 'text-emerald-700 hover:bg-emerald-50'
+                    }`}
+                  >
+                    ≥ 75% Eligible
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSummaryCategory('warning')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      summaryCategory === 'warning'
+                        ? 'bg-amber-600 text-white shadow-2xs'
+                        : 'text-amber-700 hover:bg-amber-50'
+                    }`}
+                  >
+                    60-74% Warning
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSummaryCategory('defaulter')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      summaryCategory === 'defaulter'
+                        ? 'bg-rose-600 text-white shadow-2xs'
+                        : 'text-rose-700 hover:bg-rose-50'
+                    }`}
+                  >
+                    &lt; 60% Defaulter
+                  </button>
+                </div>
+              </div>
+
+              {/* Search Bar with Clear Icon */}
               <div className="relative w-full md:w-64">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search student or roll #..."
                   value={summarySearch}
                   onChange={(e) => setSummarySearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="w-full pl-9 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:bg-white"
                 />
+                {summarySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setSummarySearch('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={exportSummaryCSV}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all border border-indigo-200/80 cursor-pointer shadow-2xs shrink-0 active:scale-95"
-                title="Export this summary as CSV"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Export CSV</span>
-              </button>
             </div>
           </div>
 
-          {/* Student Compliance Summary Table */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">
-                  Cumulative Student Attendance Compliance
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Total classes attended across all recorded lectures and sessions
-                </p>
+          {/* Section 1: Cumulative Student Attendance Compliance Table */}
+          {(analyticsSubView === 'both' || analyticsSubView === 'students') && (
+            <div className="bg-white rounded-3xl border border-slate-200/90 overflow-hidden shadow-xs">
+              <div className="px-6 py-4.5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-gradient-to-r from-slate-50/50 via-white to-indigo-50/30">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-indigo-600" />
+                    <span>Cumulative Student Attendance Compliance</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Continuous cumulative attendance across all recorded lectures and sessions
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+                    {filteredSummary.length} of {summaryTotalStudents} Students Showing
+                  </span>
+                </div>
               </div>
-              <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
-                {filteredSummary.length} Students Evaluated
-              </span>
+
+              {loadingSummary ? (
+                <div className="py-20 text-center">
+                  <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-slate-500">Calculating attendance summary...</p>
+                </div>
+              ) : filteredSummary.length === 0 ? (
+                <div className="py-20 text-center">
+                  <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm font-semibold text-slate-700">No attendance data found</p>
+                  <p className="text-xs text-slate-500 mt-1">Take class attendance to populate statistics.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
+                        <th className="py-3.5 px-6 w-14">#</th>
+                        <th className="py-3.5 px-6">Roll Number</th>
+                        <th className="py-3.5 px-6">Student Name</th>
+                        <th className="py-3.5 px-6">Department & Semester</th>
+                        <th className="py-3.5 px-6 text-center">Attended / Total</th>
+                        <th className="py-3.5 px-6">Attendance Rate (%)</th>
+                        <th className="py-3.5 px-6 text-right">Academic Standing</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-sm">
+                      {filteredSummary.map((item, index) => {
+                        let colorClass = 'bg-emerald-500';
+                        let badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+                        let dotColor = 'bg-emerald-500';
+                        let statusText = 'Eligible (Good)';
+
+                        if (item.totalClasses === 0) {
+                          colorClass = 'bg-slate-300';
+                          badgeBg = 'bg-slate-50 text-slate-600 border-slate-200';
+                          dotColor = 'bg-slate-400';
+                          statusText = 'No Classes Yet';
+                        } else if (item.percentage < 60) {
+                          colorClass = 'bg-rose-500';
+                          badgeBg = 'bg-rose-50 text-rose-800 border-rose-200';
+                          dotColor = 'bg-rose-500';
+                          statusText = 'Ineligible (Defaulter)';
+                        } else if (item.percentage < 75) {
+                          colorClass = 'bg-amber-500';
+                          badgeBg = 'bg-amber-50 text-amber-800 border-amber-200';
+                          dotColor = 'bg-amber-500';
+                          statusText = 'Warning Zone';
+                        }
+
+                        const initial = item.name ? item.name.charAt(0).toUpperCase() : '?';
+
+                        return (
+                          <tr key={item._id} className="hover:bg-indigo-50/20 transition-colors">
+                            <td className="py-3.5 px-6 text-xs text-slate-400 font-semibold">
+                              {index + 1}
+                            </td>
+                            <td className="py-3.5 px-6 font-mono font-bold text-xs text-slate-900">
+                              {item.rollNumber}
+                            </td>
+                            <td className="py-3.5 px-6">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 text-indigo-700 font-bold text-xs flex items-center justify-center shrink-0">
+                                  {initial}
+                                </div>
+                                <div className="font-bold text-slate-900">{item.name}</div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-6 text-xs text-slate-600">
+                              <div className="font-medium text-slate-800">{item.department || 'Computer Science'}</div>
+                              <div className="text-[11px] text-slate-400 mt-0.5">{item.semester}</div>
+                            </td>
+                            <td className="py-3.5 px-6 text-center">
+                              <span className="font-mono text-xs font-bold text-slate-800 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/60">
+                                {item.attendedClasses} / {item.totalClasses}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-6">
+                              <div className="w-full max-w-[170px]">
+                                <div className="flex items-center justify-between text-xs font-bold mb-1">
+                                  <span className="text-slate-900 font-mono">{item.percentage}%</span>
+                                  <span className="text-[10px] text-slate-400 font-medium">
+                                    {item.totalClasses - item.attendedClasses} missed
+                                  </span>
+                                </div>
+                                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
+                                    style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-3.5 px-6 text-right">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${badgeBg}`}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+                                <span>{statusText}</span>
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
+          )}
 
-            {loadingSummary ? (
-              <div className="py-20 text-center">
-                <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                <p className="text-xs font-semibold text-slate-500">Calculating attendance summary...</p>
+          {/* Section 2: Recorded Lecture Sessions Log */}
+          {(analyticsSubView === 'both' || analyticsSubView === 'sessions') && (
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-indigo-600" />
+                    <span>Recent Attendance Sessions History</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Chronological lecture sessions log. Click "Load Session" to view or modify records.
+                  </p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Filter sessions by subject or date..."
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  />
+                </div>
               </div>
-            ) : filteredSummary.length === 0 ? (
-              <div className="py-20 text-center">
-                <BarChart3 className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700">No attendance data found</p>
-                <p className="text-xs text-slate-500 mt-1">Take class attendance to populate statistics.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/80 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100">
-                      <th className="py-3.5 px-6">Roll Number</th>
-                      <th className="py-3.5 px-6">Student Name</th>
-                      <th className="py-3.5 px-6">Semester</th>
-                      <th className="py-3.5 px-6 text-center">Attended / Total</th>
-                      <th className="py-3.5 px-6">Percentage</th>
-                      <th className="py-3.5 px-6 text-right">Academic Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-sm">
-                    {filteredSummary.map((item) => {
-                      let colorClass = 'bg-emerald-500';
-                      let badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-200';
-                      let statusText = 'Eligible (Good)';
 
-                      if (item.totalClasses > 0 && item.percentage < 60) {
-                        colorClass = 'bg-rose-500';
-                        badgeBg = 'bg-rose-50 text-rose-800 border-rose-200';
-                        statusText = 'Ineligible (Defaulter)';
-                      } else if (item.totalClasses > 0 && item.percentage < 75) {
-                        colorClass = 'bg-amber-500';
-                        badgeBg = 'bg-amber-50 text-amber-800 border-amber-200';
-                        statusText = 'Warning Zone';
-                      }
+              {filteredSessionsHistory.length === 0 ? (
+                <div className="py-12 text-center bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+                  <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-xs font-semibold text-slate-500">No matching past sessions found.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredSessionsHistory.map((sess) => {
+                    const present = sess.records.filter((r) => r.status === 'Present').length;
+                    const total = sess.records.length;
+                    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                    const absent = total - present;
 
-                      return (
-                        <tr key={item._id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="py-3.5 px-6 font-mono font-bold text-xs text-slate-900">
-                            {item.rollNumber}
-                          </td>
-                          <td className="py-3.5 px-6 font-bold text-slate-800">
-                            {item.name}
-                          </td>
-                          <td className="py-3.5 px-6 text-xs text-slate-500 font-medium">
-                            {item.semester}
-                          </td>
-                          <td className="py-3.5 px-6 text-center font-mono text-xs font-bold text-slate-700">
-                            {item.attendedClasses} / {item.totalClasses}
-                          </td>
-                          <td className="py-3.5 px-6">
-                            <div className="w-full max-w-[160px]">
-                              <div className="flex items-center justify-between text-xs font-bold mb-1">
-                                <span className="text-slate-800">{item.percentage}%</span>
-                              </div>
-                              <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all duration-500 ${colorClass}`}
-                                  style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-3.5 px-6 text-right">
-                            <span
-                              className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${badgeBg}`}
-                            >
-                              {statusText}
+                    return (
+                      <div
+                        key={sess._id}
+                        className="p-5 rounded-2xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/40 hover:to-indigo-50/20 hover:shadow-md transition-all flex flex-col justify-between group"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2.5">
+                            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/80">
+                              <Calendar className="w-3 h-3 text-indigo-500" />
+                              <span>{sess.date}</span>
                             </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+                            <span className="text-[11px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60">
+                              {sess.semester}
+                            </span>
+                          </div>
 
-          {/* Past Attendance Sessions Log */}
-          <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs">
-            <h3 className="font-bold text-slate-900 text-base mb-1">
-              Recent Attendance Sessions Log
-            </h3>
-            <p className="text-xs text-slate-500 mb-5">
-              Recorded sessions history. Click "Load Session" to inspect or edit records.
-            </p>
+                          <h4 className="text-sm font-bold text-slate-900 line-clamp-1 group-hover:text-indigo-600 transition-colors">
+                            {sess.subject}
+                          </h4>
 
-            {sessionsHistory.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center">No past sessions recorded yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sessionsHistory.map((sess) => {
-                  const present = sess.records.filter((r) => r.status === 'Present').length;
-                  const total = sess.records.length;
-                  const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+                          {/* Mini Progress Bar */}
+                          <div className="mt-3">
+                            <div className="flex items-center justify-between text-xs font-bold mb-1">
+                              <span className="text-slate-600">Turnout Rate</span>
+                              <span className="text-indigo-700 font-mono">{rate}%</span>
+                            </div>
+                            <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  rate >= 75 ? 'bg-emerald-500' : rate >= 60 ? 'bg-amber-500' : 'bg-rose-500'
+                                }`}
+                                style={{ width: `${rate}%` }}
+                              />
+                            </div>
+                          </div>
 
-                  return (
-                    <div
-                      key={sess._id}
-                      className="p-5 rounded-2xl border border-slate-200/90 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-mono text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/70">
-                            {sess.date}
-                          </span>
-                          <span className="text-[11px] font-bold text-slate-600 bg-slate-200/60 px-2 py-0.5 rounded-md">
-                            {sess.semester}
-                          </span>
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100">
+                            <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span>Present: {present}</span>
+                            </span>
+                            <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                              <span>Absent: {absent}</span>
+                            </span>
+                            <span className="text-slate-400">Total: {total}</span>
+                          </div>
                         </div>
-                        <h4 className="text-sm font-bold text-slate-900 line-clamp-1 mt-1">
-                          {sess.subject}
-                        </h4>
-                        <div className="text-xs text-slate-500 mt-2">
-                          Present: <span className="font-bold text-emerald-600">{present}</span> / {total} students ({rate}%)
+
+                        <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => openSessionDetails(sess)}
+                            className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50/90 hover:bg-indigo-100 border border-indigo-200/80 px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all active:scale-95"
+                            title="Open session details & edit attendance records"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Load Session</span>
+                          </button>
+                          <button
+                            onClick={() => setSessionToDelete(sess)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
+                            title="Delete Session"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-
-                      <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => openSessionDetails(sess)}
-                          className="text-xs font-bold text-indigo-700 hover:text-indigo-900 bg-indigo-50/90 hover:bg-indigo-100 border border-indigo-200/80 px-3 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all active:scale-95"
-                          title="Open session details & edit attendance records"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Load Session</span>
-                        </button>
-                        <button
-                          onClick={() => setSessionToDelete(sess)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Delete Session"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
