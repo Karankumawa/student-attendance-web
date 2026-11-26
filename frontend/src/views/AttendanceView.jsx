@@ -26,14 +26,7 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
-
-const getLocalDateString = (d = new Date()) => {
-  const dateObj = typeof d === 'string' ? new Date(d) : d;
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
+import { getLocalDateString } from '../utils/dateUtils';
 
 const SEMESTERS = [
   'Semester 1',
@@ -187,6 +180,8 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
             }
             return currentSubject;
           });
+        } else if (!(initialSession && initialSession.semester === semester && initialSession.subject)) {
+          setSubject('');
         }
       }
     } catch (err) {

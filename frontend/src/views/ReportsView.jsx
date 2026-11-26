@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import SnitLogo from '../components/SnitLogo';
+import { getLocalDateString, escapeHtml } from '../utils/dateUtils';
 
 // Permanent Institutional Theme Configuration for Attendance Reports & Audits
 const REPORT_THEME = {
@@ -65,7 +66,7 @@ export const ReportsView = ({ showToast }) => {
 
   // Filter states
   const [reportPeriod, setReportPeriod] = useState('all'); // 'all' (Full Session) | 'month' | 'day'
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
   const [selectedMonth, setSelectedMonth] = useState(() => String(new Date().getMonth() + 1).padStart(2, '0'));
 
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -389,11 +390,11 @@ export const ReportsView = ({ showToast }) => {
         return `
         <tr style="border-bottom: 1px solid #e2e8f0; font-size: 11px;">
           <td style="padding: 8px 10px; color: #64748b; font-weight: 500;">${idx + 1}</td>
-          <td style="padding: 8px 10px; font-family: monospace; font-weight: 700; color: #0f172a;">${s.rollNumber}</td>
-          <td style="padding: 8px 10px; font-family: monospace; font-weight: 600; color: ${themeStyles.primary};">${s.registrationId}</td>
-          <td style="padding: 8px 10px; font-weight: 700; color: #0f172a;">${s.name}</td>
-          <td style="padding: 8px 10px; color: #475569;">${s.department}</td>
-          <td style="padding: 8px 10px; color: #475569;">${s.semester}</td>
+          <td style="padding: 8px 10px; font-family: monospace; font-weight: 700; color: #0f172a;">${escapeHtml(s.rollNumber)}</td>
+          <td style="padding: 8px 10px; font-family: monospace; font-weight: 600; color: ${themeStyles.primary};">${escapeHtml(s.registrationId)}</td>
+          <td style="padding: 8px 10px; font-weight: 700; color: #0f172a;">${escapeHtml(s.name)}</td>
+          <td style="padding: 8px 10px; color: #475569;">${escapeHtml(s.department)}</td>
+          <td style="padding: 8px 10px; color: #475569;">${escapeHtml(s.semester)}</td>
           <td style="padding: 8px 10px; text-align: center; font-weight: 600;">${s.totalClasses}</td>
           <td style="padding: 8px 10px; text-align: center; font-weight: 700; color: #047857;">${s.attendedClasses}</td>
           <td style="padding: 8px 10px; text-align: center; font-weight: 600; color: #b91c1c;">${s.absentClasses}</td>
@@ -405,11 +406,11 @@ export const ReportsView = ({ showToast }) => {
           </td>
           <td style="padding: 8px 10px; text-align: center;">
             <span style="display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; border: 1px solid; ${pillStyle}">
-              ${statusText}
+              ${escapeHtml(statusText)}
             </span>
           </td>
           <td style="padding: 8px 10px; font-size: 10px; color: ${s.isDefaulter || s.dayStatus === 'Absent' ? '#b91c1c' : '#047857'}; font-weight: 600;">
-            ${remarks}
+            ${escapeHtml(remarks)}
           </td>
         </tr>`;
       })
@@ -872,7 +873,6 @@ export const ReportsView = ({ showToast }) => {
     selectedYear,
     selectedSubject,
     selectedDate,
-    selectedMonth,
     monthLabel,
     reportPeriod,
     stats,

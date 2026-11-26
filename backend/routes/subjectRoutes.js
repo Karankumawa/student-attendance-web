@@ -2,6 +2,7 @@ const express = require('express');
 const Subject = require('../models/Subject');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 const { escapeRegex } = require('../utils/regexHelper');
+const { isValidObjectId } = require('../utils/validationHelper');
 
 const router = express.Router();
 
@@ -56,6 +57,13 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid subject ID',
+      });
+    }
+
     const subject = await Subject.findById(req.params.id).lean();
     if (!subject) {
       return res.status(404).json({
@@ -112,13 +120,21 @@ router.post('/', requireAdmin, async (req, res) => {
       });
     }
 
+    const parsedCredits = credits !== undefined ? Number(credits) : 3;
+    if (!Number.isFinite(parsedCredits) || parsedCredits < 1 || parsedCredits > 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Credits must be a number between 1 and 10',
+      });
+    }
+
     const newSubject = new Subject({
       name: trimmedName,
       code: code ? code.trim().toUpperCase() : '',
       department: targetDept,
       semester: targetSemester,
       academicYear: academicYear ? academicYear.trim() : new Date().getFullYear().toString(),
-      credits: credits ? Number(credits) : 3,
+      credits: parsedCredits,
       description: description ? description.trim() : '',
     });
 
@@ -146,6 +162,13 @@ router.post('/', requireAdmin, async (req, res) => {
  */
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid subject ID',
+      });
+    }
+
     const { name, code, department, semester, academicYear, credits, description } = req.body;
     const subject = await Subject.findById(req.params.id);
 
@@ -187,7 +210,16 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
     if (code !== undefined) subject.code = code ? code.trim().toUpperCase() : '';
     if (academicYear !== undefined) subject.academicYear = academicYear.trim();
-    if (credits !== undefined) subject.credits = Number(credits);
+    if (credits !== undefined) {
+      const parsedCredits = Number(credits);
+      if (!Number.isFinite(parsedCredits) || parsedCredits < 1 || parsedCredits > 10) {
+        return res.status(400).json({
+          success: false,
+          message: 'Credits must be a number between 1 and 10',
+        });
+      }
+      subject.credits = parsedCredits;
+    }
     if (description !== undefined) subject.description = description.trim();
 
     await subject.save();
@@ -214,6 +246,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
  */
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid subject ID',
+      });
+    }
+
     const subject = await Subject.findById(req.params.id);
 
     if (!subject) {

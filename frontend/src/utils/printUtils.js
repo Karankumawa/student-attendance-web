@@ -1,3 +1,5 @@
+import { escapeHtml } from './dateUtils';
+
 /**
  * Utility for isolated element printing (e.g. Student ID Cards).
  * By rendering the target element inside a temporary hidden iframe and copying all
@@ -73,7 +75,7 @@ export const printElementById = (elementId, documentTitle = 'Student_ID_Card') =
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${documentTitle}</title>
+        <title>${escapeHtml(documentTitle)}</title>
         ${headLinks}
         <style>
           ${combinedStyles}

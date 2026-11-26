@@ -6,7 +6,8 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
-const { connectDB } = require('./config/db');
+const mongoose = require('mongoose');
+const { connectDB, disconnectDB } = require('./config/db');
 const { seedInitialData } = require('./config/seed');
 
 const authRoutes = require('./routes/authRoutes');
@@ -96,8 +97,10 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  const dbReady = mongoose.connection.readyState === 1;
   res.status(200).json({
     status: 'healthy',
+    database: dbReady ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
     service: 'Shrinathji Institute of Technology Nathdwara (SNITN) API',
   });
@@ -152,7 +155,10 @@ app.use((req, res) => {
 // Centralized Global Error Handler
 app.use((err, req, res, next) => {
   console.error('[Unhandled Server Error]:', err);
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  let statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  if (err.name === 'CastError' || err.name === 'ValidationError') {
+    statusCode = 400;
+  }
   res.status(statusCode).json({
     success: false,
     message: err.message || 'Internal Server Error',
@@ -166,13 +172,24 @@ const startServer = async () => {
     await connectDB();
     await seedInitialData();
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`=======================================================`);
       console.log(`🎓 College Portal Server is running on port ${PORT}`);
       console.log(`🔗 Local API: http://localhost:${PORT}/api/health`);
       console.log(`👤 Admin: ${process.env.ADMIN_EMAIL || 'admin@gmail.com'}`);
       console.log(`=======================================================`);
     });
+
+    const shutdown = async (signal) => {
+      console.log(`\n[Server] Received ${signal}. Shutting down gracefully...`);
+      server.close(async () => {
+        await disconnectDB();
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

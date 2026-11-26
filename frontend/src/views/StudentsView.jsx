@@ -25,6 +25,7 @@ import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
 import SnitLogo from '../components/SnitLogo';
 import { printElementById } from '../utils/printUtils';
+import { getLocalDateString } from '../utils/dateUtils';
 
 const SEMESTERS = [
   'Semester 1',
@@ -96,7 +97,7 @@ export const StudentsView = ({ showToast }) => {
     link.href = downloadUrl;
     link.setAttribute(
       'download',
-      `student_roster_${selectedSemester.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+      `student_roster_${selectedSemester.replace(/\s+/g, '_')}_${getLocalDateString()}.csv`
     );
     document.body.appendChild(link);
     link.click();

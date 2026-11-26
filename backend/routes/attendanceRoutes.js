@@ -4,7 +4,8 @@ const Student = require('../models/Student');
 const Timetable = require('../models/Timetable');
 const Note = require('../models/Note');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
-const { getLocalDateString, sortSlotsByTime } = require('../utils/timeHelper');
+const { getLocalDateString, sortSlotsByTime, isValidDateFormat } = require('../utils/timeHelper');
+const { isValidObjectId } = require('../utils/validationHelper');
 
 const router = express.Router();
 
@@ -21,10 +22,10 @@ router.get('/', async (req, res) => {
   try {
     const { date, subject, semester } = req.query;
 
-    if (!date) {
+    if (!date || !isValidDateFormat(date)) {
       return res.status(400).json({
         success: false,
-        message: 'Query parameter "date" (YYYY-MM-DD) is required',
+        message: 'Query parameter "date" in YYYY-MM-DD format is required',
       });
     }
 
@@ -75,6 +76,13 @@ router.post('/', async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Date, subject, and records array are required',
+      });
+    }
+
+    if (!isValidDateFormat(date)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date must be a valid calendar date in YYYY-MM-DD format',
       });
     }
 
@@ -298,7 +306,7 @@ router.get('/dashboard-stats', async (req, res) => {
     const averageAttendance =
       totalRecordsCount > 0
         ? Number(((totalPresentCount / totalRecordsCount) * 100).toFixed(1))
-        : 85.0;
+        : 0;
 
     return res.status(200).json({
       success: true,
@@ -354,6 +362,13 @@ router.get('/history', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid attendance session ID',
+      });
+    }
+
     const { records } = req.body;
     if (!Array.isArray(records)) {
       return res.status(400).json({
@@ -410,6 +425,13 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid attendance session ID',
+      });
+    }
+
     const session = await Attendance.findById(req.params.id);
     if (!session) {
       return res.status(404).json({

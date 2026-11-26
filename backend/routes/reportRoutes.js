@@ -5,6 +5,7 @@ const Student = require('../models/Student');
 const Timetable = require('../models/Timetable');
 const Subject = require('../models/Subject');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
+const { getLocalDateString } = require('../utils/timeHelper');
 
 const router = express.Router();
 
@@ -50,15 +51,18 @@ const buildReportFilter = (query) => {
 
   if (period === 'day') {
     if (!resolvedDate) {
-      resolvedDate = new Date().toISOString().slice(0, 10);
+      resolvedDate = getLocalDateString();
     }
     attendanceQuery.date = resolvedDate;
     periodLabel = `Day-wise: ${resolvedDate}`;
   } else if (period === 'month') {
     const yyyy = year && year !== 'All' ? String(year) : String(new Date().getFullYear());
-    const mm = resolvedMonth ? String(resolvedMonth).padStart(2, '0') : String(new Date().getMonth() + 1).padStart(2, '0');
+    const rawMonthNum = resolvedMonth ? parseInt(resolvedMonth, 10) : new Date().getMonth() + 1;
+    const monthNum = Number.isInteger(rawMonthNum) && rawMonthNum >= 1 && rawMonthNum <= 12
+      ? rawMonthNum
+      : new Date().getMonth() + 1;
+    const mm = String(monthNum).padStart(2, '0');
     resolvedMonth = mm;
-    const monthNum = parseInt(mm, 10);
     const lastDay = new Date(parseInt(yyyy, 10), monthNum, 0).getDate();
     const startDateOfMonth = `${yyyy}-${mm}-01`;
     const endDateOfMonth = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;

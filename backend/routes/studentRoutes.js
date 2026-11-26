@@ -5,6 +5,7 @@ const Attendance = require('../models/Attendance');
 const StudentQuery = require('../models/StudentQuery');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 const { escapeRegex } = require('../utils/regexHelper');
+const { isValidObjectId } = require('../utils/validationHelper');
 
 const router = express.Router();
 
@@ -66,6 +67,13 @@ router.get('/', async (req, res) => {
  */
 router.get('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid student ID',
+      });
+    }
+
     const student = await Student.findById(req.params.id).lean();
     if (!student) {
       return res.status(404).json({
@@ -245,6 +253,13 @@ router.post('/', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid student ID',
+      });
+    }
+
     const {
       firstName,
       lastName,
@@ -423,6 +438,13 @@ router.put('/:id', async (req, res) => {
  */
 router.delete('/:id', async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid student ID',
+      });
+    }
+
     const student = await Student.findById(req.params.id);
     if (!student) {
       return res.status(404).json({

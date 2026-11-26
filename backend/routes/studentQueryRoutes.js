@@ -4,6 +4,7 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const { protect, requireAdmin, requireStudent } = require('../middleware/authMiddleware');
 const { escapeRegex } = require('../utils/regexHelper');
+const { isValidObjectId } = require('../utils/validationHelper');
 
 const router = express.Router();
 
@@ -246,6 +247,13 @@ router.get('/', requireAdmin, async (req, res) => {
  */
 router.patch('/:id/status', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid query ID',
+      });
+    }
+
     const { status, adminResponse } = req.body;
     const query = await StudentQuery.findById(req.params.id);
 
@@ -294,6 +302,13 @@ router.patch('/:id/status', requireAdmin, async (req, res) => {
  */
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid query ID',
+      });
+    }
+
     const query = await StudentQuery.findById(req.params.id);
 
     if (!query) {

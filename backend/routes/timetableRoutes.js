@@ -2,8 +2,9 @@ const express = require('express');
 const Timetable = require('../models/Timetable');
 const Subject = require('../models/Subject');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
-const { sortSlotsByTime, parseTimeToMinutes } = require('../utils/timeHelper');
+const { sortSlotsByTime, parseTimeToMinutes, isValidTimeFormat } = require('../utils/timeHelper');
 const { escapeRegex } = require('../utils/regexHelper');
+const { isValidObjectId } = require('../utils/validationHelper');
 
 const router = express.Router();
 
@@ -73,6 +74,13 @@ router.post('/', requireAdmin, async (req, res) => {
     const cleanStartTime = startTime.trim();
     const cleanEndTime = endTime.trim();
     const cleanRoom = roomNumber ? roomNumber.trim() : 'Room 101';
+
+    if (!isValidTimeFormat(cleanStartTime) || !isValidTimeFormat(cleanEndTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time format. Use standard format like "09:00 AM" or "14:30".',
+      });
+    }
 
     const startMin = parseTimeToMinutes(cleanStartTime);
     const endMin = parseTimeToMinutes(cleanEndTime);
@@ -166,6 +174,13 @@ router.post('/', requireAdmin, async (req, res) => {
  */
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid timetable slot ID',
+      });
+    }
+
     const slot = await Timetable.findById(req.params.id);
     if (!slot) {
       return res.status(404).json({
@@ -181,6 +196,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
     const checkStart = startTime ? startTime.trim() : slot.startTime;
     const checkEnd = endTime ? endTime.trim() : slot.endTime;
     const checkRoom = roomNumber !== undefined ? (roomNumber ? String(roomNumber).trim() : 'Room 101') : slot.roomNumber;
+
+    if (!isValidTimeFormat(checkStart) || !isValidTimeFormat(checkEnd)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid time format. Use standard format like "09:00 AM" or "14:30".',
+      });
+    }
 
     const startMin = parseTimeToMinutes(checkStart);
     const endMin = parseTimeToMinutes(checkEnd);
@@ -284,6 +306,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
  */
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid timetable slot ID',
+      });
+    }
+
     const slot = await Timetable.findById(req.params.id);
     if (!slot) {
       return res.status(404).json({

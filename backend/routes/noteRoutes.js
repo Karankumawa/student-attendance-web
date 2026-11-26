@@ -2,6 +2,7 @@ const express = require('express');
 const Note = require('../models/Note');
 const { protect, requireAdmin } = require('../middleware/authMiddleware');
 const { escapeRegex } = require('../utils/regexHelper');
+const { isValidObjectId } = require('../utils/validationHelper');
 
 const router = express.Router();
 
@@ -108,6 +109,13 @@ router.post('/', requireAdmin, async (req, res) => {
  */
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid note ID',
+      });
+    }
+
     const note = await Note.findById(req.params.id);
     if (!note) {
       return res.status(404).json({
@@ -118,10 +126,28 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
     const { title, subject, semester, content, resourceUrl } = req.body || {};
 
-    if (title !== undefined) note.title = (title || '').toString().trim();
-    if (subject !== undefined) note.subject = (subject || '').toString().trim();
+    if (title !== undefined) {
+      const cleanTitle = (title || '').toString().trim();
+      if (!cleanTitle) {
+        return res.status(400).json({ success: false, message: 'Note title cannot be empty' });
+      }
+      note.title = cleanTitle;
+    }
+    if (subject !== undefined) {
+      const cleanSubject = (subject || '').toString().trim();
+      if (!cleanSubject) {
+        return res.status(400).json({ success: false, message: 'Subject cannot be empty' });
+      }
+      note.subject = cleanSubject;
+    }
     if (semester !== undefined) note.semester = (semester || '').toString().trim();
-    if (content !== undefined) note.content = (content || '').toString().trim();
+    if (content !== undefined) {
+      const cleanContent = (content || '').toString().trim();
+      if (!cleanContent) {
+        return res.status(400).json({ success: false, message: 'Note content cannot be empty' });
+      }
+      note.content = cleanContent;
+    }
     if (resourceUrl !== undefined) {
       let cleanUrl = (resourceUrl || '').toString().trim();
       if (cleanUrl && !/^https?:\/\//i.test(cleanUrl)) {
@@ -154,6 +180,13 @@ router.put('/:id', requireAdmin, async (req, res) => {
  */
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid note ID',
+      });
+    }
+
     const note = await Note.findById(req.params.id);
     if (!note) {
       return res.status(404).json({

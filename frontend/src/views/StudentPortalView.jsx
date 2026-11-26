@@ -41,6 +41,7 @@ import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 import SnitLogo from '../components/SnitLogo';
 import { printElementById } from '../utils/printUtils';
+import { parseTimeToMinutes } from '../utils/dateUtils';
 
 // Permanent Institutional Theme for Student Profile Card & Identity Showcase
 const PROFILE_THEME = {
@@ -54,19 +55,6 @@ const PROFILE_THEME = {
   badgeBg: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
   primaryBtn: 'from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-indigo-500/20',
   ringColor: 'focus:ring-indigo-500/20 focus:border-indigo-600',
-};
-
-const parseTimeToMinutes = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string') return 0;
-  const clean = timeStr.trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp][Mm]))?$/);
-  if (!match) return 0;
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const modifier = match[3] ? match[3].toUpperCase() : null;
-  if (modifier === 'PM' && hours < 12) hours += 12;
-  else if (modifier === 'AM' && hours === 12) hours = 0;
-  return hours * 60 + minutes;
 };
 
 const DAY_SHORT_NAMES = {

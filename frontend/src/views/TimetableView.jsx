@@ -17,33 +17,7 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import ConfirmModal from '../components/ConfirmModal';
-
-const getLocalDateString = (d = new Date()) => {
-  const dateObj = typeof d === 'string' ? new Date(d) : d;
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const parseTimeToMinutes = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string') return 0;
-  const clean = timeStr.trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp][Mm]))?$/);
-  if (!match) return 0;
-
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const modifier = match[3] ? match[3].toUpperCase() : null;
-
-  if (modifier === 'PM' && hours < 12) {
-    hours += 12;
-  } else if (modifier === 'AM' && hours === 12) {
-    hours = 0;
-  }
-
-  return hours * 60 + minutes;
-};
+import { parseTimeToMinutes, getLocalDateString } from '../utils/dateUtils';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -58,27 +32,6 @@ const SEMESTERS = [
   'Semester 8',
 ];
 
-const DEFAULT_SUBJECT_SUGGESTIONS = [
-  'Data Structures & Algorithms',
-  'Operating Systems',
-  'Database Management Systems',
-  'Computer Networks',
-  'Computer Networks Lab',
-  'Software Engineering',
-  'Object Oriented Programming',
-  'Programming in C',
-  'Programming in Python',
-  'Web Technologies',
-  'Artificial Intelligence & Machine Learning',
-  'Cloud Computing & DevOps',
-  'Cyber Security',
-  'Theory of Computation',
-  'Computer Architecture & Organization',
-  'Mobile Application Development',
-  'Digital Logic & Design',
-  'Seminar & Project Mentorship',
-];
-
 export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceSession }) => {
   const [todayName] = useState(() =>
     new Date().toLocaleDateString('en-US', { weekday: 'long' })
@@ -91,7 +44,6 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
   const [viewMode, setViewMode] = useState('day'); // 'day' or 'matrix'
   const [slots, setSlots] = useState([]);
   const [availableSubjects, setAvailableSubjects] = useState([]); // Full Subject model objects
-  const [dbSubjects, setDbSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Modal State
@@ -136,7 +88,6 @@ export const TimetableView = ({ showToast, setActiveView, setSelectedAttendanceS
       const res = await axiosClient.get('/subjects');
       if (res.data.success && res.data.data) {
         setAvailableSubjects(res.data.data);
-        setDbSubjects(res.data.data.map((s) => s.name));
       }
     } catch (err) {
       console.warn('Could not load subjects for timetable dropdown:', err);

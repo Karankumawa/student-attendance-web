@@ -13,25 +13,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
-
-const parseTimeToMinutes = (timeStr) => {
-  if (!timeStr || typeof timeStr !== 'string') return 0;
-  const clean = timeStr.trim();
-  const match = clean.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp][Mm]))?$/);
-  if (!match) return 0;
-
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const modifier = match[3] ? match[3].toUpperCase() : null;
-
-  if (modifier === 'PM' && hours < 12) {
-    hours += 12;
-  } else if (modifier === 'AM' && hours === 12) {
-    hours = 0;
-  }
-
-  return hours * 60 + minutes;
-};
+import { parseTimeToMinutes, getLocalDateString } from '../utils/dateUtils';
 
 const getClassStatus = (startTime, endTime) => {
   const now = new Date();
@@ -61,14 +43,6 @@ const getClassStatus = (startTime, endTime) => {
       dotColor: 'bg-slate-400',
     };
   }
-};
-
-const getLocalDateString = (d = new Date()) => {
-  const dateObj = typeof d === 'string' ? new Date(d) : d;
-  const year = dateObj.getFullYear();
-  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-  const day = String(dateObj.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 };
 
 const LiveClock = React.memo(() => {
