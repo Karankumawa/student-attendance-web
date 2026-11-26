@@ -135,6 +135,7 @@ export const StudentsView = ({ showToast, initialAction, onActionHandled }) => {
 
   // Modal State for Add / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalStep, setModalStep] = useState('academic'); // 'academic' | 'personal' | 'contact' | 'credentials'
   const [editingStudent, setEditingStudent] = useState(null);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -215,6 +216,7 @@ export const StudentsView = ({ showToast, initialAction, onActionHandled }) => {
       address: '',
     });
     setFormError('');
+    setModalStep('academic');
     setIsModalOpen(true);
   }, [selectedSemester]);
 
@@ -247,6 +249,7 @@ export const StudentsView = ({ showToast, initialAction, onActionHandled }) => {
       address: student.address || '',
     });
     setFormError('');
+    setModalStep('academic');
     setIsModalOpen(true);
   };
 
@@ -288,8 +291,27 @@ export const StudentsView = ({ showToast, initialAction, onActionHandled }) => {
     e.preventDefault();
     setFormError('');
 
-    if (!formData.firstName.trim() || !formData.rollNumber.trim()) {
-      setFormError('First Name and Roll Number are required fields.');
+    if (!formData.rollNumber.trim()) {
+      setModalStep('academic');
+      setFormError('Roll Number is required in Academic Placement.');
+      return;
+    }
+
+    if (!formData.firstName.trim()) {
+      setModalStep('personal');
+      setFormError('First Name is required in Personal Information.');
+      return;
+    }
+
+    if (!formData.dob) {
+      setModalStep('personal');
+      setFormError('Date of Birth is required in Personal Information.');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      setModalStep('credentials');
+      setFormError('Login Email is required in Portal Credentials.');
       return;
     }
 
@@ -1011,408 +1033,528 @@ export const StudentsView = ({ showToast, initialAction, onActionHandled }) => {
         </div>
       )}
 
-      {/* Add / Edit Student Modal */}
+      {/* Add / Edit Student Modal — Split-Pane Stepper & Emerald-Slate Theme */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col max-h-[92vh] overflow-hidden my-auto"
+            className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 grid grid-cols-1 md:grid-cols-[275px_1fr] max-h-[92vh] overflow-hidden my-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="px-6 sm:px-8 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 text-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center shadow-lg shadow-indigo-950/50 border border-white/20 shrink-0">
-                  <UserPlus className="w-5 h-5" />
+            {/* Left Sidebar Rail: Theme Showcase, Live Student Card & 1-Click Section Tabs */}
+            <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-teal-950 text-white p-5 sm:p-6 flex flex-col justify-between gap-5 relative overflow-hidden">
+              <div className="absolute -top-16 -left-16 w-48 h-48 bg-teal-500/15 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 space-y-5">
+                {/* Brand / Modal Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-teal-950/60 border border-white/20 shrink-0">
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-teal-300 block">
+                        SNITN Registry
+                      </span>
+                      <h3 className="text-base font-extrabold tracking-tight leading-snug text-white">
+                        {editingStudent ? 'Edit Student' : 'New Student Registration'}
+                      </h3>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="md:hidden p-1.5 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer"
+                    aria-label="Close registration dialog"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
-                <div className="min-w-0">
-                  <h3 className="text-lg sm:text-xl font-extrabold tracking-tight leading-snug truncate">
-                    {editingStudent ? 'Edit Student & Credentials' : 'New Student Registration'}
-                  </h3>
-                  <p className="text-xs text-slate-300 mt-0.5 truncate">
-                    {editingStudent
-                      ? 'Modify student profile details or update portal login credentials'
-                      : 'Enroll a new student and provision instant academic portal credentials'}
-                  </p>
+
+                {/* Live Student ID Preview Card */}
+                <div className="p-3.5 rounded-2xl bg-white/8 border border-white/15 backdrop-blur-md space-y-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-slate-950 font-black text-sm flex items-center justify-center shrink-0 shadow-sm">
+                      {(formData.firstName || formData.name || 'S').trim().charAt(0).toUpperCase() || 'S'}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-extrabold text-white truncate">
+                        {`${formData.firstName} ${formData.lastName}`.trim() || 'Student Name'}
+                      </div>
+                      <div className="text-[11px] text-slate-300 truncate">
+                        {formData.semester}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/10">
+                    <span className="px-2 py-0.5 rounded-md bg-white/10 font-mono text-[10px] font-bold text-teal-200">
+                      {formData.rollNumber.trim() || 'ROLL-PENDING'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/30 font-mono text-[10px] font-bold text-emerald-200">
+                      {formData.rollNumber.trim()
+                        ? `STU-${formData.rollNumber.trim().replace(/[^A-Za-z0-9]/g, '')}`
+                        : 'STU-AUTO'}
+                    </span>
+                  </div>
                 </div>
+
+                {/* 1-Click Section Navigation */}
+                <nav className="grid grid-cols-2 md:grid-cols-1 gap-1.5" aria-label="Registration sections">
+                  {[
+                    {
+                      id: 'academic',
+                      step: '01',
+                      label: 'Academic Placement',
+                      desc: 'Roll #, dept & semester',
+                      icon: GraduationCap,
+                      complete: Boolean(formData.rollNumber.trim() && formData.department && formData.semester),
+                    },
+                    {
+                      id: 'personal',
+                      step: '02',
+                      label: 'Personal Profile',
+                      desc: 'Name, DOB & blood group',
+                      icon: User,
+                      complete: Boolean(formData.firstName.trim() && formData.dob),
+                    },
+                    {
+                      id: 'contact',
+                      step: '03',
+                      label: 'Guardian & Address',
+                      desc: 'Optional contact details',
+                      icon: Phone,
+                      complete: Boolean(formData.guardianName.trim() || formData.guardianPhone.trim() || formData.address.trim()),
+                    },
+                    {
+                      id: 'credentials',
+                      step: '04',
+                      label: 'Portal Credentials',
+                      desc: 'Login email & password',
+                      icon: ShieldCheck,
+                      complete: Boolean(formData.email.trim()),
+                    },
+                  ].map((item) => {
+                    const StepIcon = item.icon;
+                    const isActive = modalStep === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setModalStep(item.id)}
+                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl text-left transition-all cursor-pointer border ${
+                          isActive
+                            ? 'bg-teal-500/20 border-teal-400/50 text-white shadow-sm'
+                            : 'bg-white/0 border-transparent text-slate-300 hover:bg-white/8 hover:text-white'
+                        }`}
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-bold ${
+                            isActive
+                              ? 'bg-teal-400 text-slate-950'
+                              : item.complete
+                              ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/30'
+                              : 'bg-white/10 text-slate-300'
+                          }`}
+                        >
+                          <StepIcon className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold truncate leading-tight">{item.label}</div>
+                          <div className="text-[10px] text-slate-400 truncate hidden md:block">{item.desc}</div>
+                        </div>
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            item.complete ? 'bg-emerald-400' : isActive ? 'bg-teal-300' : 'bg-slate-600'
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </nav>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer shrink-0"
-                aria-label="Close registration dialog"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              <div className="relative z-10 hidden md:block pt-3 border-t border-white/10 text-[11px] text-slate-400 leading-relaxed">
+                Enroll a new student and provision instant academic portal credentials.
+              </div>
             </div>
 
-            {/* Modal Scrollable Form Body */}
-            <form
-              id="student-registration-form"
-              onSubmit={handleFormSubmit}
-              className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-5 bg-slate-50/40"
-            >
-              {formError && (
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs font-medium">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              {/* Live Student Preview Strip */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-extrabold text-base flex items-center justify-center shrink-0 shadow-sm">
-                    {(formData.firstName || formData.name || 'S').trim().charAt(0).toUpperCase() || 'S'}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-extrabold text-slate-900 truncate">
-                      {`${formData.firstName} ${formData.lastName}`.trim() || 'New Student'}
-                    </div>
-                    <div className="text-xs text-slate-500 font-medium truncate">
-                      {formData.department} • {formData.semester}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/80 font-mono text-[11px] font-bold text-slate-700">
-                    {formData.rollNumber.trim() || 'ROLL-PENDING'}
+            {/* Right Pane: Active Section Form & Sticky Footer */}
+            <div className="flex flex-col min-h-0 bg-white">
+              {/* Top Section Header */}
+              <div className="px-6 sm:px-8 py-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-teal-600">
+                    {modalStep === 'academic'
+                      ? 'Step 1 of 4 • Academic Placement'
+                      : modalStep === 'personal'
+                      ? 'Step 2 of 4 • Personal Profile'
+                      : modalStep === 'contact'
+                      ? 'Step 3 of 4 • Guardian & Address'
+                      : 'Step 4 of 4 • Portal Credentials'}
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200/80 font-mono text-[11px] font-bold text-indigo-700">
-                    {formData.rollNumber.trim()
-                      ? `STU-${formData.rollNumber.trim().replace(/[^A-Za-z0-9]/g, '')}`
-                      : 'STU-AUTO'}
-                  </span>
+                  <h4 className="text-base sm:text-lg font-extrabold text-slate-900 mt-0.5">
+                    {modalStep === 'academic'
+                      ? 'Academic Placement & Roll Assignment'
+                      : modalStep === 'personal'
+                      ? 'Personal Identity & Demographics'
+                      : modalStep === 'contact'
+                      ? 'Guardian & Residential Details'
+                      : 'Student Portal Login Access'}
+                  </h4>
                 </div>
-              </div>
-
-              {/* Card 1: Academic & Institutional Placement */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-700">
-                    <GraduationCap className="w-4 h-4" />
-                    <span>Academic Placement</span>
-                  </div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Step 1 of 4</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Roll Number *</span>
-                      <span className="text-[10px] font-semibold text-slate-400 normal-case">Unique ID</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. CS2026-042"
-                      value={formData.rollNumber}
-                      onChange={(e) => handleRollNumberChange(e.target.value)}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Registration ID</span>
-                      <span className="text-[10px] font-semibold text-emerald-600 normal-case">Auto-Generated</span>
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      tabIndex={-1}
-                      value={
-                        formData.rollNumber.trim()
-                          ? `STU-${formData.rollNumber.trim().replace(/[^A-Za-z0-9]/g, '')}`
-                          : 'Generated from Roll Number'
-                      }
-                      className="w-full h-11 px-3.5 bg-slate-100/80 border border-slate-200 rounded-xl text-sm font-mono font-semibold text-slate-600 cursor-default focus:outline-none"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Academic Department *</span>
-                    </label>
-                    <select
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
-                    >
-                      {DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Target Semester *</span>
-                    </label>
-                    <select
-                      value={formData.semester}
-                      onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
-                    >
-                      {SEMESTERS.map((sem) => (
-                        <option key={sem} value={sem}>
-                          {sem}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Personal Profile */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
-                    <User className="w-4 h-4 text-indigo-600" />
-                    <span>Personal Information</span>
-                  </div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Step 2 of 4</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>First Name *</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Aarav"
-                      value={formData.firstName}
-                      onChange={(e) => handleFirstNameChange(e.target.value)}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Last Name / Surname</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Sharma"
-                      value={formData.lastName}
-                      onChange={(e) => handleLastNameChange(e.target.value)}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Date of Birth *</span>
-                      <span className="text-[10px] text-indigo-600 font-semibold normal-case">
-                        {formData.dob ? formatDOB(formData.dob) : 'DD/MM/YYYY'}
-                      </span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={formData.dob}
-                      onChange={(e) => handleDobChange(e.target.value)}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Gender</span>
-                    </label>
-                    <select
-                      value={formData.gender}
-                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
-                    >
-                      <option value="">Select Gender</option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                      <option value="Other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Blood Group</span>
-                    </label>
-                    <select
-                      value={formData.bloodGroup}
-                      onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
-                    >
-                      <option value="">Select Blood Group</option>
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Student Phone</span>
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 3: Guardian & Address Details */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
-                  <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
-                    <Phone className="w-4 h-4 text-indigo-600" />
-                    <span>Guardian & Address Details</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Step 3 of 4 • Optional</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Guardian / Parent Name</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Father's or Guardian's Name"
-                      value={formData.guardianName}
-                      onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Guardian Phone</span>
-                    </label>
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={formData.guardianPhone}
-                      onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Residential Address</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="House / Street, City, State"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 4: Portal Login Credentials */}
-              <div className="p-5 rounded-2xl bg-indigo-50/80 border border-indigo-200/80 space-y-4">
-                <div className="flex items-center justify-between pb-2.5 border-b border-indigo-200/60">
-                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-950">
-                    <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                    <span>Student Portal Login Access</span>
-                  </div>
-                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/90 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    Auto-Provisioned
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>Login Email *</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="student@snitn.edu"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-white border border-indigo-200/80 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                    <span className="text-[11px] text-slate-500 mt-1.5 block">
-                      Auto-generated domain: <strong>@snitn.edu</strong>
-                    </span>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
-                      <span>{editingStudent ? 'New Password (Optional)' : 'Default Password'}</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={editingStudent ? 'Leave blank to keep existing' : (computeDefaultPassword(formData.firstName, formData.dob) || 'FirstnameYear')}
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full h-11 px-3.5 bg-white border border-indigo-200/80 rounded-xl text-sm font-mono font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-                    />
-                    <span className="text-[11px] text-slate-600 mt-1.5 block">
-                      {editingStudent ? (
-                        'Enter at least 6 characters only if resetting password.'
-                      ) : (
-                        <>
-                          Auto rule: <strong>First Name + Birth Year</strong> (e.g.{' '}
-                          <strong className="text-indigo-600 font-mono font-bold">
-                            {computeDefaultPassword(formData.firstName, formData.dob) || 'Aarav2004'}
-                          </strong>
-                          )
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </form>
-
-            {/* Modal Sticky Footer */}
-            <div className="px-6 sm:px-8 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between shrink-0">
-              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
-                * Mandatory fields for academic registration
-              </span>
-              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all cursor-pointer active:scale-95"
+                  className="hidden md:flex p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                  aria-label="Close registration dialog"
                 >
-                  Cancel
+                  <X className="w-5 h-5" />
                 </button>
-                <button
-                  type="submit"
-                  form="student-registration-form"
-                  disabled={submitting}
-                  className="px-6 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 rounded-xl shadow-md shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50 active:scale-98 flex items-center gap-2"
-                >
-                  {submitting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      <span>{editingStudent ? 'Update Student Record' : 'Register Student'}</span>
-                    </>
+              </div>
+
+              {/* Scrollable Form Content */}
+              <form
+                id="student-registration-form"
+                noValidate
+                onSubmit={handleFormSubmit}
+                className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-5"
+              >
+                {formError && (
+                  <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-rose-700 text-xs font-semibold">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                {modalStep === 'academic' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Roll Number *</span>
+                        <span className="text-[10px] font-semibold text-slate-400 normal-case">Unique ID</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. CS2026-042"
+                        value={formData.rollNumber}
+                        onChange={(e) => handleRollNumberChange(e.target.value)}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Registration ID</span>
+                        <span className="text-[10px] font-semibold text-emerald-600 normal-case">Auto-Generated</span>
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        value={
+                          formData.rollNumber.trim()
+                            ? `STU-${formData.rollNumber.trim().replace(/[^A-Za-z0-9]/g, '')}`
+                            : 'Generated from Roll Number'
+                        }
+                        className="w-full h-11 px-3.5 bg-slate-100/80 border border-slate-200 rounded-xl text-sm font-mono font-semibold text-slate-600 cursor-default focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Academic Department *</span>
+                      </label>
+                      <select
+                        value={formData.department}
+                        onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 cursor-pointer transition-all"
+                      >
+                        {DEPARTMENTS.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Target Semester *</span>
+                      </label>
+                      <select
+                        value={formData.semester}
+                        onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 cursor-pointer transition-all"
+                      >
+                        {SEMESTERS.map((sem) => (
+                          <option key={sem} value={sem}>
+                            {sem}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {modalStep === 'personal' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>First Name *</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Aarav"
+                        value={formData.firstName}
+                        onChange={(e) => handleFirstNameChange(e.target.value)}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Last Name / Surname</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Sharma"
+                        value={formData.lastName}
+                        onChange={(e) => handleLastNameChange(e.target.value)}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Date of Birth *</span>
+                        <span className="text-[10px] text-teal-600 font-semibold normal-case">
+                          {formData.dob ? formatDOB(formData.dob) : 'DD/MM/YYYY'}
+                        </span>
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.dob}
+                        onChange={(e) => handleDobChange(e.target.value)}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Gender</span>
+                      </label>
+                      <select
+                        value={formData.gender}
+                        onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 cursor-pointer transition-all"
+                      >
+                        <option value="">Select Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Blood Group</span>
+                      </label>
+                      <select
+                        value={formData.bloodGroup}
+                        onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 cursor-pointer transition-all"
+                      >
+                        <option value="">Select Blood Group</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Student Phone</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="+91 98765 43210"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {modalStep === 'contact' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Guardian / Parent Name</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Father's or Guardian's Name"
+                        value={formData.guardianName}
+                        onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Guardian Phone</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="+91 98765 43210"
+                        value={formData.guardianPhone}
+                        onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                        <span>Residential Address</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="House / Street, City, State"
+                        value={formData.address}
+                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {modalStep === 'credentials' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="p-4 rounded-2xl bg-teal-50/70 border border-teal-200/80 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5 text-xs font-bold text-teal-950">
+                        <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
+                        <span>Instant Student Portal Login Provisioning</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                        Auto-Provisioned
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                          <span>Login Email *</span>
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="student@snitn.edu"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                        />
+                        <span className="text-[11px] text-slate-500 mt-1.5 block">
+                          Auto-generated domain: <strong>@snitn.edu</strong>
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                          <span>{editingStudent ? 'New Password (Optional)' : 'Default Password'}</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={editingStudent ? 'Leave blank to keep existing' : (computeDefaultPassword(formData.firstName, formData.dob) || 'FirstnameYear')}
+                          value={formData.password}
+                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                          className="w-full h-11 px-3.5 bg-slate-50/80 border border-slate-200 rounded-xl text-sm font-mono font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-600 transition-all"
+                        />
+                        <span className="text-[11px] text-slate-600 mt-1.5 block">
+                          {editingStudent ? (
+                            'Enter at least 6 characters only if resetting password.'
+                          ) : (
+                            <>
+                              Auto rule: <strong>First Name + Birth Year</strong> (e.g.{' '}
+                              <strong className="text-teal-700 font-mono font-bold">
+                                {computeDefaultPassword(formData.firstName, formData.dob) || 'Aarav2004'}
+                              </strong>
+                              )
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </form>
+
+              {/* Modal Sticky Footer */}
+              <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/80 flex flex-wrap items-center justify-between gap-3 shrink-0">
+                <div className="flex items-center gap-2">
+                  {modalStep !== 'academic' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const order = ['academic', 'personal', 'contact', 'credentials'];
+                        const idx = order.indexOf(modalStep);
+                        if (idx > 0) setModalStep(order[idx - 1]);
+                      }}
+                      className="px-3.5 py-2 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer"
+                    >
+                      Previous
+                    </button>
                   )}
-                </button>
+                  {modalStep !== 'credentials' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const order = ['academic', 'personal', 'contact', 'credentials'];
+                        const idx = order.indexOf(modalStep);
+                        if (idx < order.length - 1) setModalStep(order[idx + 1]);
+                      }}
+                      className="px-3.5 py-2 text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-xl transition-all cursor-pointer"
+                    >
+                      Next Section
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 ml-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2.5 text-xs font-bold text-slate-600 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    form="student-registration-form"
+                    disabled={submitting}
+                    className="px-5 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 hover:from-teal-700 hover:to-emerald-700 rounded-xl shadow-md shadow-teal-600/20 transition-all cursor-pointer disabled:opacity-50 active:scale-98 flex items-center gap-2"
+                  >
+                    {submitting ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        <span>{editingStudent ? 'Update Student Record' : 'Register Student'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
