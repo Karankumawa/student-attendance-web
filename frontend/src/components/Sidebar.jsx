@@ -81,8 +81,8 @@ export const Sidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOp
         }`}
       >
         {/* Brand / Logo */}
-        <div>
-          <div className="h-20 px-6 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/90 backdrop-blur-md">
+        <div className="flex-1 flex flex-col min-h-0">
+          <div className="h-20 px-6 border-b border-slate-800/80 flex items-center justify-between bg-slate-950/90 backdrop-blur-md shrink-0">
             <div className="flex items-center gap-3.5">
               <div className="p-1.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 shadow-inner">
                 <SnitLogo className="w-9 h-9" size={36} />
@@ -111,7 +111,7 @@ export const Sidebar = ({ activeView, setActiveView, isMobileOpen, setIsMobileOp
           </div>
 
           {/* Navigation Links */}
-          <div className="p-4 space-y-1.5">
+          <div className="p-4 space-y-1.5 overflow-y-auto flex-1">
             <div className="px-3 py-2 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest flex items-center justify-between">
               <span>Main Navigation</span>
               <span className="text-[10px] font-mono text-indigo-400/80">v2.0</span>

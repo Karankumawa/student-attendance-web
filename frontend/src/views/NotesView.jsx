@@ -29,7 +29,7 @@ const SEMESTERS = [
   'Semester 8',
 ];
 
-export const NotesView = ({ showToast }) => {
+export const NotesView = ({ showToast, initialNoteId, onNoteOpened }) => {
   const [notes, setNotes] = useState([]);
   const [subjectsList, setSubjectsList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -103,6 +103,16 @@ export const NotesView = ({ showToast }) => {
   useEffect(() => {
     fetchNotes();
   }, [fetchNotes]);
+
+  useEffect(() => {
+    if (initialNoteId && notes.length > 0) {
+      const target = notes.find((n) => n._id === initialNoteId);
+      if (target) {
+        setViewingNote(target);
+        onNoteOpened?.();
+      }
+    }
+  }, [initialNoteId, notes, onNoteOpened]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

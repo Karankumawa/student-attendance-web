@@ -47,7 +47,7 @@ const DEPARTMENTS = [
   'Civil Engineering',
 ];
 
-export const StudentsView = ({ showToast }) => {
+export const StudentsView = ({ showToast, initialAction, onActionHandled }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -195,7 +195,7 @@ export const StudentsView = ({ showToast }) => {
     setDebouncedSearch(search.trim());
   };
 
-  const openAddModal = () => {
+  const openAddModal = useCallback(() => {
     setEditingStudent(null);
     setFormData({
       firstName: '',
@@ -216,7 +216,14 @@ export const StudentsView = ({ showToast }) => {
     });
     setFormError('');
     setIsModalOpen(true);
-  };
+  }, [selectedSemester]);
+
+  useEffect(() => {
+    if (initialAction === 'add') {
+      openAddModal();
+      onActionHandled?.();
+    }
+  }, [initialAction, openAddModal, onActionHandled]);
 
   const openEditModal = (student) => {
     setEditingStudent(student);
@@ -1006,19 +1013,25 @@ export const StudentsView = ({ showToast }) => {
 
       {/* Add / Edit Student Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col max-h-[92vh] overflow-hidden my-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl border border-slate-200/90 flex flex-col max-h-[92vh] overflow-hidden my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
-            <div className="px-6 sm:px-8 py-5 border-b border-slate-100 bg-white/95 backdrop-blur-md flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20 shrink-0">
+            <div className="px-6 sm:px-8 py-5 border-b border-slate-100 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-950 text-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center shadow-lg shadow-indigo-950/50 border border-white/20 shrink-0">
                   <UserPlus className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                <div className="min-w-0">
+                  <h3 className="text-lg sm:text-xl font-extrabold tracking-tight leading-snug truncate">
                     {editingStudent ? 'Edit Student & Credentials' : 'New Student Registration'}
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-slate-300 mt-0.5 truncate">
                     {editingStudent
                       ? 'Modify student profile details or update portal login credentials'
                       : 'Enroll a new student and provision instant academic portal credentials'}
@@ -1026,8 +1039,9 @@ export const StudentsView = ({ showToast }) => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                className="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer shrink-0"
                 aria-label="Close registration dialog"
               >
                 <X className="w-5 h-5" />
@@ -1035,25 +1049,60 @@ export const StudentsView = ({ showToast }) => {
             </div>
 
             {/* Modal Scrollable Form Body */}
-            <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-6">
+            <form
+              id="student-registration-form"
+              onSubmit={handleFormSubmit}
+              className="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-5 bg-slate-50/40"
+            >
               {formError && (
-                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs">
+                <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-700 text-xs font-medium">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{formError}</span>
                 </div>
               )}
 
+              {/* Live Student Preview Strip */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-extrabold text-base flex items-center justify-center shrink-0 shadow-sm">
+                    {(formData.firstName || formData.name || 'S').trim().charAt(0).toUpperCase() || 'S'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-extrabold text-slate-900 truncate">
+                      {`${formData.firstName} ${formData.lastName}`.trim() || 'New Student'}
+                    </div>
+                    <div className="text-xs text-slate-500 font-medium truncate">
+                      {formData.department} • {formData.semester}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200/80 font-mono text-[11px] font-bold text-slate-700">
+                    {formData.rollNumber.trim() || 'ROLL-PENDING'}
+                  </span>
+                  <span className="px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200/80 font-mono text-[11px] font-bold text-indigo-700">
+                    {formData.rollNumber.trim()
+                      ? `STU-${formData.rollNumber.trim().replace(/[^A-Za-z0-9]/g, '')}`
+                      : 'STU-AUTO'}
+                  </span>
+                </div>
+              </div>
+
               {/* Card 1: Academic & Institutional Placement */}
-              <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-700">
-                  <GraduationCap className="w-4 h-4" />
-                  <span>Academic Placement</span>
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-700">
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Academic Placement</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Step 1 of 4</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Roll Number *
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Roll Number *</span>
+                      <span className="text-[10px] font-semibold text-slate-400 normal-case">Unique ID</span>
                     </label>
                     <input
                       type="text"
@@ -1061,35 +1110,36 @@ export const StudentsView = ({ showToast }) => {
                       placeholder="e.g. CS2026-042"
                       value={formData.rollNumber}
                       onChange={(e) => handleRollNumberChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-mono font-bold text-slate-800 uppercase focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Semester *
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Registration ID</span>
+                      <span className="text-[10px] font-semibold text-emerald-600 normal-case">Auto-Generated</span>
                     </label>
-                    <select
-                      value={formData.semester}
-                      onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
-                    >
-                      {SEMESTERS.map((sem) => (
-                        <option key={sem} value={sem}>
-                          {sem}
-                        </option>
-                      ))}
-                    </select>
+                    <input
+                      type="text"
+                      readOnly
+                      tabIndex={-1}
+                      value={
+                        formData.rollNumber.trim()
+                          ? `STU-${formData.rollNumber.trim().replace(/[^A-Za-z0-9]/g, '')}`
+                          : 'Generated from Roll Number'
+                      }
+                      className="w-full h-11 px-3.5 bg-slate-100/80 border border-slate-200 rounded-xl text-sm font-mono font-semibold text-slate-600 cursor-default focus:outline-none"
+                    />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Department *
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Academic Department *</span>
                     </label>
                     <select
                       value={formData.department}
                       onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all truncate"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
                     >
                       {DEPARTMENTS.map((dept) => (
                         <option key={dept} value={dept}>
@@ -1098,20 +1148,40 @@ export const StudentsView = ({ showToast }) => {
                       ))}
                     </select>
                   </div>
+
+                  <div>
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Target Semester *</span>
+                    </label>
+                    <select
+                      value={formData.semester}
+                      onChange={(e) => setFormData({ ...formData, semester: e.target.value })}
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
+                    >
+                      {SEMESTERS.map((sem) => (
+                        <option key={sem} value={sem}>
+                          {sem}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {/* Card 2: Personal Profile */}
-              <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
-                  <User className="w-4 h-4 text-indigo-600" />
-                  <span>Personal Information</span>
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
+                    <User className="w-4 h-4 text-indigo-600" />
+                    <span>Personal Information</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Step 2 of 4</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      First Name *
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>First Name *</span>
                     </label>
                     <input
                       type="text"
@@ -1119,52 +1189,47 @@ export const StudentsView = ({ showToast }) => {
                       placeholder="e.g. Aarav"
                       value={formData.firstName}
                       onChange={(e) => handleFirstNameChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Last Name / Surname
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Last Name / Surname</span>
                     </label>
                     <input
                       type="text"
                       placeholder="e.g. Sharma"
                       value={formData.lastName}
                       onChange={(e) => handleLastNameChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
                       <span>Date of Birth *</span>
-                      <span className="text-[10px] text-indigo-600 font-semibold normal-case">DD/MM/YYYY</span>
+                      <span className="text-[10px] text-indigo-600 font-semibold normal-case">
+                        {formData.dob ? formatDOB(formData.dob) : 'DD/MM/YYYY'}
+                      </span>
                     </label>
                     <input
                       type="date"
                       required
                       value={formData.dob}
                       onChange={(e) => handleDobChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
-                    {formData.dob && (
-                      <span className="text-[11px] text-slate-500 mt-1 block">
-                        Formatted: <strong>{formatDOB(formData.dob)}</strong>
-                      </span>
-                    )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Gender
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Gender</span>
                     </label>
                     <select
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
                     >
                       <option value="">Select Gender</option>
                       <option value="Male">Male</option>
@@ -1174,13 +1239,13 @@ export const StudentsView = ({ showToast }) => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Blood Group
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Blood Group</span>
                     </label>
                     <select
                       value={formData.bloodGroup}
                       onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 cursor-pointer transition-all"
                     >
                       <option value="">Select Blood Group</option>
                       <option value="A+">A+</option>
@@ -1193,79 +1258,77 @@ export const StudentsView = ({ showToast }) => {
                       <option value="AB-">AB-</option>
                     </select>
                   </div>
-                </div>
-              </div>
 
-              {/* Card 3: Contact & Guardian Information */}
-              <div className="p-5 rounded-2xl bg-slate-50/70 border border-slate-200/80 space-y-4">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-800">
-                  <span className="flex items-center gap-2 uppercase tracking-wider">
-                    <Phone className="w-4 h-4 text-indigo-600" />
-                    <span>Contact & Guardian Details</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase">Optional</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Student Phone
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Student Phone</span>
                     </label>
                     <input
                       type="tel"
                       placeholder="+91 98765 43210"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
+                </div>
+              </div>
 
+              {/* Card 3: Guardian & Address Details */}
+              <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+                  <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-800">
+                    <Phone className="w-4 h-4 text-indigo-600" />
+                    <span>Guardian & Address Details</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Step 3 of 4 • Optional</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Guardian / Parent Name
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Guardian / Parent Name</span>
                     </label>
                     <input
                       type="text"
                       placeholder="Father's or Guardian's Name"
                       value={formData.guardianName}
                       onChange={(e) => setFormData({ ...formData, guardianName: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Guardian Phone
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Guardian Phone</span>
                     </label>
                     <input
                       type="tel"
                       placeholder="+91 98765 43210"
                       value={formData.guardianPhone}
                       onChange={(e) => setFormData({ ...formData, guardianPhone: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Residential Address
+                  <div className="sm:col-span-2">
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Residential Address</span>
                     </label>
                     <input
                       type="text"
-                      placeholder="Residential address / city"
+                      placeholder="House / Street, City, State"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-slate-50/70 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Card 4: Portal Login Credentials */}
-              <div className="p-5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="p-5 rounded-2xl bg-indigo-50/80 border border-indigo-200/80 space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-indigo-200/60">
                   <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-950">
                     <ShieldCheck className="w-4 h-4 text-indigo-600" />
                     <span>Student Portal Login Access</span>
@@ -1277,8 +1340,8 @@ export const StudentsView = ({ showToast }) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      Login Email *
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>Login Email *</span>
                     </label>
                     <input
                       type="email"
@@ -1286,39 +1349,44 @@ export const StudentsView = ({ showToast }) => {
                       placeholder="student@snitn.edu"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-white border border-indigo-200/80 rounded-xl text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
-                    <span className="text-[11px] text-slate-500 mt-1 block">
+                    <span className="text-[11px] text-slate-500 mt-1.5 block">
                       Auto-generated domain: <strong>@snitn.edu</strong>
                     </span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
-                      {editingStudent ? 'New Password (Leave blank to keep)' : 'Default Password'}
+                    <label className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 min-h-[18px]">
+                      <span>{editingStudent ? 'New Password (Optional)' : 'Default Password'}</span>
                     </label>
                     <input
                       type="text"
-                      placeholder={editingStudent ? '••••••••' : (computeDefaultPassword(formData.firstName, formData.dob) || 'FirstnameYear')}
+                      placeholder={editingStudent ? 'Leave blank to keep existing' : (computeDefaultPassword(formData.firstName, formData.dob) || 'FirstnameYear')}
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-mono font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+                      className="w-full h-11 px-3.5 bg-white border border-indigo-200/80 rounded-xl text-sm font-mono font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
                     />
-                    {!editingStudent && (
-                      <span className="text-[11px] text-slate-600 mt-1 block">
-                        Auto rule: <strong>First Name + Birth Year</strong> (e.g.{' '}
-                        <strong className="text-indigo-600 font-mono font-bold">
-                          {computeDefaultPassword(formData.firstName, formData.dob) || 'Aarav2004'}
-                        </strong>).
-                      </span>
-                    )}
+                    <span className="text-[11px] text-slate-600 mt-1.5 block">
+                      {editingStudent ? (
+                        'Enter at least 6 characters only if resetting password.'
+                      ) : (
+                        <>
+                          Auto rule: <strong>First Name + Birth Year</strong> (e.g.{' '}
+                          <strong className="text-indigo-600 font-mono font-bold">
+                            {computeDefaultPassword(formData.firstName, formData.dob) || 'Aarav2004'}
+                          </strong>
+                          )
+                        </>
+                      )}
+                    </span>
                   </div>
                 </div>
               </div>
             </form>
 
             {/* Modal Sticky Footer */}
-            <div className="px-6 sm:px-8 py-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
+            <div className="px-6 sm:px-8 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between shrink-0">
               <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
                 * Mandatory fields for academic registration
               </span>
@@ -1326,13 +1394,13 @@ export const StudentsView = ({ showToast }) => {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-xl transition-all cursor-pointer active:scale-95"
                 >
                   Cancel
                 </button>
                 <button
-                  type="button"
-                  onClick={handleFormSubmit}
+                  type="submit"
+                  form="student-registration-form"
                   disabled={submitting}
                   className="px-6 py-2.5 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-700 hover:to-violet-800 rounded-xl shadow-md shadow-indigo-500/25 transition-all cursor-pointer disabled:opacity-50 active:scale-98 flex items-center gap-2"
                 >

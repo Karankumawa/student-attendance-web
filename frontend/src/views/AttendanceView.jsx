@@ -155,6 +155,10 @@ export const AttendanceView = ({ initialSession, showToast, setActiveView }) => 
   // React to initialSession prop changes dynamically
   useEffect(() => {
     if (initialSession) {
+      if (initialSession.tab === 'summary') {
+        setActiveTab('summary');
+        return;
+      }
       if (initialSession.date) setDate(initialSession.date);
       if (initialSession.semester) setSemester(initialSession.semester);
       if (initialSession.subject) setSubject(initialSession.subject);

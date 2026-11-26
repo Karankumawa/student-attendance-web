@@ -1,4 +1,4 @@
-import React, { useState, useCallback, Suspense, lazy } from 'react';
+import React, { useState, useCallback, useEffect, Suspense, lazy } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
@@ -31,6 +31,12 @@ const MainApp = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [selectedAttendanceSession, setSelectedAttendanceSession] = useState(null);
+  const [selectedNoteId, setSelectedNoteId] = useState(null);
+  const [studentAction, setStudentAction] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeView]);
 
   // Stable callback references to prevent cascading child re-renders & fetch loops
   const showToast = useCallback(({ message, type = 'info' }) => {
@@ -78,6 +84,8 @@ const MainApp = () => {
           <DashboardView
             setActiveView={setActiveView}
             setSelectedAttendanceSession={setSelectedAttendanceSession}
+            setSelectedNoteId={setSelectedNoteId}
+            setStudentAction={setStudentAction}
           />
         );
       case 'attendance':
@@ -91,7 +99,13 @@ const MainApp = () => {
       case 'reports':
         return <ReportsView showToast={showToast} />;
       case 'students':
-        return <StudentsView showToast={showToast} />;
+        return (
+          <StudentsView
+            showToast={showToast}
+            initialAction={studentAction}
+            onActionHandled={() => setStudentAction(null)}
+          />
+        );
       case 'queries':
         return <StudentQueriesView showToast={showToast} setActiveView={setActiveView} />;
       case 'subjects':
@@ -105,12 +119,20 @@ const MainApp = () => {
           />
         );
       case 'notes':
-        return <NotesView showToast={showToast} />;
+        return (
+          <NotesView
+            showToast={showToast}
+            initialNoteId={selectedNoteId}
+            onNoteOpened={() => setSelectedNoteId(null)}
+          />
+        );
       default:
         return (
           <DashboardView
             setActiveView={setActiveView}
             setSelectedAttendanceSession={setSelectedAttendanceSession}
+            setSelectedNoteId={setSelectedNoteId}
+            setStudentAction={setStudentAction}
           />
         );
     }

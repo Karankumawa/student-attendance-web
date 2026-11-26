@@ -11,6 +11,9 @@ import {
   Sparkles,
   ClipboardList,
   FileSpreadsheet,
+  UserPlus,
+  MessageSquare,
+  BarChart3,
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { parseTimeToMinutes, getLocalDateString } from '../utils/dateUtils';
@@ -77,7 +80,12 @@ const LiveClock = React.memo(() => {
   );
 });
 
-export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) => {
+export const DashboardView = ({
+  setActiveView,
+  setSelectedAttendanceSession,
+  setSelectedNoteId,
+  setStudentAction,
+}) => {
   const [stats, setStats] = useState(null);
   const [defaulters, setDefaulters] = useState([]);
   const [recentNotes, setRecentNotes] = useState([]);
@@ -226,57 +234,118 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
         </div>
       </div>
 
-      {/* Quick Access Bar */}
+      {/* One-Click All Sections Launcher */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <button
-          onClick={() => setActiveView('attendance')}
+          onClick={() => {
+            setSelectedAttendanceSession?.(null);
+            setActiveView('attendance');
+          }}
           className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 transition-all shadow-xs group cursor-pointer text-left"
         >
-          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors shrink-0">
             <ClipboardList className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">Mark Attendance</div>
-            <div className="text-[10px] text-slate-500 font-medium">Daily lecture roster</div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 transition-colors truncate">Mark Attendance</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Daily lecture roster</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            setSelectedAttendanceSession?.({ tab: 'summary' });
+            setActiveView('attendance');
+          }}
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-violet-50/70 border border-slate-200/80 hover:border-violet-200 transition-all shadow-xs group cursor-pointer text-left"
+        >
+          <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white transition-colors shrink-0">
+            <BarChart3 className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-violet-700 transition-colors truncate">Attendance Analytics</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Summary & defaulters</div>
           </div>
         </button>
 
         <button
           onClick={() => setActiveView('reports')}
-          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 transition-all shadow-xs group cursor-pointer text-left"
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-emerald-50/70 border border-slate-200/80 hover:border-emerald-200 transition-all shadow-xs group cursor-pointer text-left"
         >
-          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors shrink-0">
             <FileSpreadsheet className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition-colors">Export Reports</div>
-            <div className="text-[10px] text-slate-500 font-medium">Excel & PDF sheets</div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-emerald-700 transition-colors truncate">Export Reports</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Excel & PDF sheets</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            setStudentAction?.('add');
+            setActiveView('students');
+          }}
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-blue-50/70 border border-slate-200/80 hover:border-blue-200 transition-all shadow-xs group cursor-pointer text-left"
+        >
+          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors shrink-0">
+            <UserPlus className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors truncate">Register Student</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Enroll & issue portal ID</div>
           </div>
         </button>
 
         <button
           onClick={() => setActiveView('students')}
-          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 transition-all shadow-xs group cursor-pointer text-left"
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-sky-50/70 border border-slate-200/80 hover:border-sky-200 transition-all shadow-xs group cursor-pointer text-left"
         >
-          <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+          <div className="p-2.5 rounded-xl bg-sky-50 text-sky-600 group-hover:bg-sky-600 group-hover:text-white transition-colors shrink-0">
             <Users className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">Student Roster</div>
-            <div className="text-[10px] text-slate-500 font-medium">Enroll & ID cards</div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-sky-700 transition-colors truncate">Student Roster</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Profiles & ID cards</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveView('queries')}
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-rose-50/70 border border-slate-200/80 hover:border-rose-200 transition-all shadow-xs group cursor-pointer text-left"
+        >
+          <div className="p-2.5 rounded-xl bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white transition-colors shrink-0">
+            <MessageSquare className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-rose-700 transition-colors truncate">Student Queries</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Profile requests & replies</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveView('subjects')}
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-purple-50/70 border border-slate-200/80 hover:border-purple-200 transition-all shadow-xs group cursor-pointer text-left"
+        >
+          <div className="p-2.5 rounded-xl bg-purple-50 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors shrink-0">
+            <BookOpen className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-purple-700 transition-colors truncate">Subjects & Courses</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Course codes & credits</div>
           </div>
         </button>
 
         <button
           onClick={() => setActiveView('notes')}
-          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-200 transition-all shadow-xs group cursor-pointer text-left"
+          className="flex items-center gap-3 p-3.5 rounded-2xl bg-white hover:bg-amber-50/70 border border-slate-200/80 hover:border-amber-200 transition-all shadow-xs group cursor-pointer text-left"
         >
-          <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+          <div className="p-2.5 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors shrink-0">
             <BookOpen className="w-4 h-4" />
           </div>
-          <div>
-            <div className="text-xs font-bold text-slate-800 group-hover:text-amber-700 transition-colors">Course Notes</div>
-            <div className="text-[10px] text-slate-500 font-medium">Syllabus & references</div>
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-slate-800 group-hover:text-amber-700 transition-colors truncate">Course Notes</div>
+            <div className="text-[10px] text-slate-500 font-medium truncate">Syllabus & references</div>
           </div>
         </button>
       </div>
@@ -443,9 +512,14 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
             ) : (
               <div className="space-y-3">
                 {defaulters.map((stud) => (
-                  <div
+                  <button
                     key={stud._id}
-                    className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-white hover:border-slate-200 transition-all flex items-center justify-between shadow-2xs"
+                    type="button"
+                    onClick={() => {
+                      setSelectedAttendanceSession?.({ tab: 'summary' });
+                      setActiveView('attendance');
+                    }}
+                    className="w-full text-left p-3.5 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-white hover:border-indigo-200 transition-all flex items-center justify-between shadow-2xs cursor-pointer"
                   >
                     <div>
                       <div className="text-xs font-bold text-slate-900">{stud.name}</div>
@@ -461,7 +535,7 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
                         {stud.attendedClasses}/{stud.totalClasses} classes
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -469,7 +543,10 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
 
           <div className="pt-5 mt-5 border-t border-slate-100">
             <button
-              onClick={() => setActiveView('attendance')}
+              onClick={() => {
+                setSelectedAttendanceSession?.({ tab: 'summary' });
+                setActiveView('attendance');
+              }}
               className="w-full py-2.5 px-4 rounded-xl bg-slate-100/80 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span>View Full Analytics</span>
@@ -509,7 +586,10 @@ export const DashboardView = ({ setActiveView, setSelectedAttendanceSession }) =
             {recentNotes.map((note) => (
               <div
                 key={note._id}
-                onClick={() => setActiveView('notes')}
+                onClick={() => {
+                  setSelectedNoteId?.(note._id);
+                  setActiveView('notes');
+                }}
                 className="p-5 rounded-2xl border border-slate-100 hover:border-indigo-200 bg-slate-50/60 hover:bg-white hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group"
               >
                 <div>
