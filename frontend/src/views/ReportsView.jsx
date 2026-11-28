@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import SnitLogo from '../components/SnitLogo';
-import { getLocalDateString, escapeHtml } from '../utils/dateUtils';
+import { escapeHtml } from '../utils/dateUtils';
 
 // Permanent Institutional Theme Configuration for Attendance Reports & Audits
 const REPORT_THEME = {
@@ -61,12 +61,14 @@ const MONTH_OPTIONS = [
   { value: '12', label: 'December' },
 ];
 
+const CURRENT_YEAR = new Date().getFullYear();
+const CURRENT_MONTH = new Date().getMonth() + 1;
+
 export const ReportsView = ({ showToast }) => {
   const currentTheme = REPORT_THEME;
 
   // Filter states
   const [reportPeriod, setReportPeriod] = useState('all'); // 'all' (Full Session) | 'month' | 'day'
-  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
   const [selectedMonth, setSelectedMonth] = useState(() => String(new Date().getMonth() + 1).padStart(2, '0'));
 
   const [selectedYear, setSelectedYear] = useState('2026');
@@ -97,6 +99,7 @@ export const ReportsView = ({ showToast }) => {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [students, setStudents] = useState([]);
+  const [reportMeta, setReportMeta] = useState({ monthDays: [], daysInMonth: 0 });
   const [stats, setStats] = useState({
     totalStudents: 0,
     matchedStudents: 0,
@@ -143,13 +146,13 @@ export const ReportsView = ({ showToast }) => {
           reportType: reportType,
           minAttendance: minAttendance,
           reportPeriod: reportPeriod,
-          date: reportPeriod === 'day' ? selectedDate : undefined,
-          month: reportPeriod === 'month' ? selectedMonth : undefined,
+          month: reportPeriod === 'month' || reportPeriod === 'day' ? selectedMonth : undefined,
         },
       });
 
       if (res.data?.success) {
         setStudents(res.data.students || []);
+        setReportMeta(res.data.meta || { monthDays: [], daysInMonth: 0 });
         setStats(
           res.data.stats || {
             totalStudents: 0,
@@ -182,7 +185,6 @@ export const ReportsView = ({ showToast }) => {
     reportType,
     minAttendance,
     reportPeriod,
-    selectedDate,
     selectedMonth,
     showToast,
   ]);
@@ -208,8 +210,7 @@ export const ReportsView = ({ showToast }) => {
           reportType: reportType,
           minAttendance: minAttendance,
           reportPeriod: reportPeriod,
-          date: reportPeriod === 'day' ? selectedDate : undefined,
-          month: reportPeriod === 'month' ? selectedMonth : undefined,
+          month: reportPeriod === 'month' || reportPeriod === 'day' ? selectedMonth : undefined,
         },
         responseType: 'blob',
       });
@@ -222,7 +223,7 @@ export const ReportsView = ({ showToast }) => {
 
       let filename =
         reportPeriod === 'day'
-          ? `Attendance_Report_DayWise_${selectedDate}_${selectedSemester}.xlsx`
+          ? `Attendance_Report_DayWise_${selectedYear}_${selectedMonth}_${selectedSemester}.xlsx`
           : reportPeriod === 'month'
           ? `Attendance_Report_MonthWise_${selectedYear}_${selectedMonth}_${selectedSemester}.xlsx`
           : `Attendance_Report_${selectedYear}_${selectedSemester}.xlsx`;
@@ -304,6 +305,32 @@ export const ReportsView = ({ showToast }) => {
     return MONTH_OPTIONS.find((m) => m.value === selectedMonth)?.label || `Month ${selectedMonth}`;
   }, [selectedMonth]);
 
+  const effectiveYear = useMemo(() => {
+    return selectedYear && selectedYear !== 'All' ? selectedYear : String(CURRENT_YEAR);
+  }, [selectedYear]);
+
+  const effectiveMonthDays = useMemo(() => {
+    if (reportMeta?.monthDays && reportMeta.monthDays.length > 0) {
+      return reportMeta.monthDays;
+    }
+    const yyyyNum = parseInt(effectiveYear, 10) || CURRENT_YEAR;
+    const mmNum = parseInt(selectedMonth, 10) || CURRENT_MONTH;
+    const totalDays = new Date(yyyyNum, mmNum, 0).getDate();
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = [];
+    for (let d = 1; d <= totalDays; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const mmStr = String(mmNum).padStart(2, '0');
+      days.push({
+        day: d,
+        dayStr,
+        date: `${yyyyNum}-${mmStr}-${dayStr}`,
+        weekday: weekdays[new Date(yyyyNum, mmNum - 1, d).getDay()],
+      });
+    }
+    return days;
+  }, [reportMeta, effectiveYear, selectedMonth]);
+
   // Generates standalone, themed HTML document string (supporting Day-wise, Month-wise, and Cumulative)
   const generateThemedHtmlContent = useCallback(() => {
     const theme = REPORT_THEME;
@@ -324,17 +351,28 @@ export const ReportsView = ({ showToast }) => {
 
     const periodHeading =
       reportPeriod === 'day'
-        ? `Daily Attendance Audit Report • Date: ${selectedDate}`
+        ? `Day-wise Attendance Register • ${monthLabel} ${effectiveYear}`
         : reportPeriod === 'month'
-        ? `Monthly Attendance Audit Report • ${monthLabel} ${selectedYear}`
+        ? `Monthly Attendance Audit Report • ${monthLabel} ${effectiveYear}`
         : `Official Institutional Attendance Audit Report - ${selectedYear}`;
 
     const scopeBadge =
       reportPeriod === 'day'
-        ? `Day-wise Audit [${selectedDate}]`
+        ? `Day-wise Register [${monthLabel} ${effectiveYear}]`
         : reportPeriod === 'month'
-        ? `Month-wise Audit [${monthLabel} ${selectedYear}]`
+        ? `Month-wise Audit [${monthLabel} ${effectiveYear}]`
         : `Academic Session [${selectedYear}]`;
+
+    const isDayWise = reportPeriod === 'day';
+
+    const dayHeaderColsHtml = isDayWise
+      ? effectiveMonthDays
+          .map(
+            (md) =>
+              `<th style="text-align: center; padding: 6px 3px; font-size: 9px; min-width: 24px;"><div>${md.dayStr}</div><div style="font-weight: 500; color: #64748b; font-size: 8px;">${md.weekday[0]}</div></th>`
+          )
+          .join('')
+      : '';
 
     const rowsHtml = filteredStudents
       .map((s, idx) => {
@@ -342,37 +380,21 @@ export const ReportsView = ({ showToast }) => {
         let pillStyle = themeStyles.pillDefaulter;
         let statusText = s.status || 'Defaulter';
 
-        if (reportPeriod === 'day') {
-          if (!hasClasses) {
-            pillStyle = 'background: #f1f5f9; color: #64748b; border-color: #cbd5e1;';
-            statusText = 'No Classes';
-          } else if (s.dayStatus === 'Present') {
-            pillStyle = `background: ${themeStyles.pillEligible}`;
-            statusText = 'Present';
-          } else if (s.dayStatus === 'Partial') {
-            pillStyle = `background: ${themeStyles.pillWarning}`;
-            statusText = s.status;
-          } else {
-            pillStyle = `background: ${themeStyles.pillDefaulter}`;
-            statusText = 'Absent';
-          }
-        } else {
-          const isEligible = hasClasses && s.percentage >= minAttendance;
-          const isWarning = hasClasses && s.percentage >= 60 && s.percentage < minAttendance;
+        const isEligible = hasClasses && s.percentage >= minAttendance;
+        const isWarning = hasClasses && s.percentage >= 60 && s.percentage < minAttendance;
 
-          if (!hasClasses) {
-            pillStyle = 'background: #f1f5f9; color: #64748b; border-color: #cbd5e1;';
-            statusText = 'No Classes';
-          } else if (isEligible) {
-            pillStyle = `background: ${themeStyles.pillEligible}`;
-            statusText = 'Eligible';
-          } else if (isWarning) {
-            pillStyle = `background: ${themeStyles.pillWarning}`;
-            statusText = 'Warning';
-          } else {
-            pillStyle = `background: ${themeStyles.pillDefaulter}`;
-            statusText = 'Defaulter';
-          }
+        if (!hasClasses) {
+          pillStyle = 'background: #f1f5f9; color: #64748b; border-color: #cbd5e1;';
+          statusText = 'No Classes';
+        } else if (isEligible) {
+          pillStyle = `background: ${themeStyles.pillEligible}`;
+          statusText = 'Eligible';
+        } else if (isWarning) {
+          pillStyle = `background: ${themeStyles.pillWarning}`;
+          statusText = 'Warning';
+        } else {
+          pillStyle = `background: ${themeStyles.pillDefaulter}`;
+          statusText = 'Defaulter';
         }
 
         const progressColor =
@@ -381,10 +403,39 @@ export const ReportsView = ({ showToast }) => {
         let remarks = 'Compliant';
         if (!hasClasses) {
           remarks = 'No sessions held';
-        } else if (reportPeriod === 'day') {
-          remarks = s.dayStatus === 'Present' ? 'Full Day Present' : s.dayStatus === 'Absent' ? 'Absent all lectures' : `Partial (${s.attendedClasses}/${s.totalClasses})`;
         } else if (s.classesNeededFor75 > 0) {
           remarks = `Shortfall: ${s.classesNeededFor75} lectures`;
+        }
+
+        if (isDayWise) {
+          const dayCellsHtml = effectiveMonthDays
+            .map((md, dIdx) => {
+              const dayInfo = s.dailyAttendance?.[dIdx];
+              const code = dayInfo?.code || '-';
+              let cellStyle = 'color: #94a3b8; background: #f8fafc;';
+              if (dayInfo?.status === 'Present') {
+                cellStyle = 'color: #15803d; background: #dcfce7; font-weight: 800;';
+              } else if (dayInfo?.status === 'Absent') {
+                cellStyle = 'color: #b91c1c; background: #fee2e2; font-weight: 800;';
+              } else if (dayInfo?.status === 'Partial') {
+                cellStyle = 'color: #b45309; background: #fef3c7; font-weight: 800;';
+              }
+              return `<td style="padding: 5px 2px; text-align: center; font-size: 9px; border-left: 1px solid #f1f5f9; ${cellStyle}">${escapeHtml(code)}</td>`;
+            })
+            .join('');
+
+          return `
+          <tr style="border-bottom: 1px solid #e2e8f0; font-size: 10px;">
+            <td style="padding: 6px 6px; color: #64748b; font-weight: 500;">${idx + 1}</td>
+            <td style="padding: 6px 6px; font-family: monospace; font-weight: 700; color: #0f172a; white-space: nowrap;">${escapeHtml(s.rollNumber)}</td>
+            <td style="padding: 6px 6px; font-weight: 700; color: #0f172a; white-space: nowrap;">${escapeHtml(s.name)}</td>
+            <td style="padding: 6px 6px; color: #475569; white-space: nowrap;">${escapeHtml(s.semester)}</td>
+            ${dayCellsHtml}
+            <td style="padding: 6px 6px; text-align: center; font-weight: 600;">${s.totalClasses}</td>
+            <td style="padding: 6px 6px; text-align: center; font-weight: 700; color: #047857;">${s.attendedClasses}</td>
+            <td style="padding: 6px 6px; text-align: center; font-weight: 600; color: #b91c1c;">${s.absentClasses}</td>
+            <td style="padding: 6px 6px; text-align: center; font-weight: 800;">${hasClasses ? `${s.percentage}%` : 'N/A'}</td>
+          </tr>`;
         }
 
         return `
@@ -409,7 +460,7 @@ export const ReportsView = ({ showToast }) => {
               ${escapeHtml(statusText)}
             </span>
           </td>
-          <td style="padding: 8px 10px; font-size: 10px; color: ${s.isDefaulter || s.dayStatus === 'Absent' ? '#b91c1c' : '#047857'}; font-weight: 600;">
+          <td style="padding: 8px 10px; font-size: 10px; color: ${s.isDefaulter ? '#b91c1c' : '#047857'}; font-weight: 600;">
             ${escapeHtml(remarks)}
           </td>
         </tr>`;
@@ -724,8 +775,8 @@ export const ReportsView = ({ showToast }) => {
         max-width: 100% !important;
       }
       @page {
-        size: A4 portrait;
-        margin: 10mm;
+        size: ${isDayWise ? 'A4 landscape' : 'A4 portrait'};
+        margin: ${isDayWise ? '8mm' : '10mm'};
       }
       thead { display: table-header-group; }
       tr { page-break-inside: avoid; }
@@ -767,7 +818,7 @@ export const ReportsView = ({ showToast }) => {
     <div class="metadata-strip">
       <div class="meta-item">
         <strong>Report Scope</strong>
-        <span>${reportPeriod === 'day' ? `Day (${selectedDate})` : reportPeriod === 'month' ? `Month (${monthLabel})` : 'Full Session'}</span>
+        <span>${reportPeriod === 'day' ? `Day-wise (${monthLabel} ${effectiveYear})` : reportPeriod === 'month' ? `Month (${monthLabel})` : 'Full Session'}</span>
       </div>
       <div class="meta-item">
         <strong>Academic Year</strong>
@@ -797,36 +848,50 @@ export const ReportsView = ({ showToast }) => {
         <div class="kpi-val">${stats.matchedStudents}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">${reportPeriod === 'day' ? 'Lectures Held Today' : reportPeriod === 'month' ? 'Month Lectures' : 'Sessions Conducted'}</div>
+        <div class="kpi-label">${reportPeriod === 'day' || reportPeriod === 'month' ? 'Month Lectures' : 'Sessions Conducted'}</div>
         <div class="kpi-val">${stats.totalSessions}</div>
       </div>
       <div class="kpi-card kpi-emerald">
-        <div class="kpi-label">${reportPeriod === 'day' ? 'Day Turnout %' : reportPeriod === 'month' ? 'Monthly Average' : 'Institutional Avg.'}</div>
+        <div class="kpi-label">${reportPeriod === 'day' || reportPeriod === 'month' ? 'Monthly Average' : 'Institutional Avg.'}</div>
         <div class="kpi-val">${stats.overallAvg}%</div>
       </div>
       <div class="kpi-card kpi-rose">
-        <div class="kpi-label">${reportPeriod === 'day' ? 'Absent Students Today' : `Defaulters (&lt;${minAttendance}%)`}</div>
-        <div class="kpi-val">${reportPeriod === 'day' ? (stats.dayAbsentCount || 0) : stats.defaultersCount}</div>
+        <div class="kpi-label">Defaulters (&lt;${minAttendance}%)</div>
+        <div class="kpi-val">${stats.defaultersCount}</div>
       </div>
     </div>
 
     <div class="table-container">
       <table>
         <thead>
-          <tr>
+          ${
+            isDayWise
+              ? `<tr>
+            <th>#</th>
+            <th>Roll No</th>
+            <th>Student Name</th>
+            <th>Sem</th>
+            ${dayHeaderColsHtml}
+            <th style="text-align: center;">Held</th>
+            <th style="text-align: center;">P</th>
+            <th style="text-align: center;">A</th>
+            <th style="text-align: center;">%</th>
+          </tr>`
+              : `<tr>
             <th>#</th>
             <th>Roll No</th>
             <th>Reg ID</th>
             <th>Student Name</th>
             <th>Department</th>
             <th>Sem</th>
-            <th style="text-align: center;">${reportPeriod === 'day' ? 'Today Held' : 'Held'}</th>
+            <th style="text-align: center;">Held</th>
             <th style="text-align: center;">Attended</th>
             <th style="text-align: center;">Absent</th>
-            <th style="text-align: center;">${reportPeriod === 'day' ? 'Daily %' : 'Attendance %'}</th>
-            <th style="text-align: center;">${reportPeriod === 'day' ? 'Day Status' : 'Compliance'}</th>
-            <th>${reportPeriod === 'day' ? 'Daily Note' : 'Academic Note'}</th>
-          </tr>
+            <th style="text-align: center;">Attendance %</th>
+            <th style="text-align: center;">Compliance</th>
+            <th>Academic Note</th>
+          </tr>`
+          }
         </thead>
         <tbody>
           ${rowsHtml}
@@ -871,9 +936,10 @@ export const ReportsView = ({ showToast }) => {
     selectedDepartment,
     selectedSemester,
     selectedYear,
+    effectiveYear,
     selectedSubject,
-    selectedDate,
     monthLabel,
+    effectiveMonthDays,
     reportPeriod,
     stats,
   ]);
@@ -884,9 +950,9 @@ export const ReportsView = ({ showToast }) => {
       const htmlContent = generateThemedHtmlContent();
       const scopePart =
         reportPeriod === 'day'
-          ? `Day_${selectedDate}`
+          ? `DayWise_${effectiveYear}_${selectedMonth}`
           : reportPeriod === 'month'
-          ? `Month_${selectedYear}_${selectedMonth}`
+          ? `Month_${effectiveYear}_${selectedMonth}`
           : `Cumulative_${selectedYear}`;
       const filename = `Attendance_Report_${scopePart}_${selectedSemester.replace(
         /\s+/g,
@@ -1021,7 +1087,7 @@ export const ReportsView = ({ showToast }) => {
 
           <span className="hidden sm:inline-flex text-xs font-semibold px-3 py-1 bg-slate-100 text-slate-700 rounded-full border border-slate-200/60">
             {reportPeriod === 'day'
-              ? `Lectures on Date: ${stats.totalSessions}`
+              ? `Sessions in ${monthLabel.slice(0, 3)}: ${stats.totalSessions}`
               : reportPeriod === 'month'
               ? `Sessions in Month: ${stats.totalSessions}`
               : `Total Sessions: ${stats.totalSessions}`}
@@ -1083,46 +1149,34 @@ export const ReportsView = ({ showToast }) => {
             </div>
           </div>
 
-          {/* Conditional Day-wise Date Picker */}
+          {/* Conditional Day-wise Month Picker */}
           {reportPeriod === 'day' && (
             <div className="pt-3 border-t border-slate-200/70 flex flex-wrap items-center gap-3 animate-fade-in">
-              <div className="flex-1 min-w-[200px] max-w-xs">
+              <div className="flex-1 min-w-[180px] max-w-xs">
                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Select Specific Attendance Date
+                  Select Month (Day-by-Day Register)
                 </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
                   className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 self-end">
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(new Date().toISOString().slice(0, 10))}
-                  className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-indigo-700 transition-all cursor-pointer shadow-2xs"
                 >
-                  Today
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    setSelectedDate(yesterday.toISOString().slice(0, 10));
-                  }}
-                  className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 transition-all cursor-pointer shadow-2xs"
-                >
-                  Yesterday
-                </button>
+                  {MONTH_OPTIONS.map((m) => (
+                    <option key={m.value} value={m.value}>
+                      {m.label} ({m.value})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="text-xs text-slate-600 font-medium self-end py-1.5 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>
-                  Filtering Day Attendance on: <strong className="text-indigo-900">{selectedDate}</strong>
+                  Showing all <strong>{effectiveMonthDays.length} days</strong> of{' '}
+                  <strong className="text-indigo-900">
+                    {monthLabel} {effectiveYear}
+                  </strong>{' '}
+                  for every student
                 </span>
               </div>
             </div>
@@ -1268,7 +1322,7 @@ export const ReportsView = ({ showToast }) => {
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>
-                {reportPeriod === 'day' ? `Absent Today (${stats.dayAbsentCount || 0})` : `Below ${minAttendance}% (${stats.defaultersCount})`}
+                Below {minAttendance}% ({stats.defaultersCount})
               </span>
             </button>
             <button
@@ -1281,7 +1335,7 @@ export const ReportsView = ({ showToast }) => {
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>
-                {reportPeriod === 'day' ? `Present Today (${stats.dayPresentCount || 0})` : `Above ${minAttendance}% (${stats.eligibleCount})`}
+                Above {minAttendance}% ({stats.eligibleCount})
               </span>
             </button>
           </div>
@@ -1321,9 +1375,7 @@ export const ReportsView = ({ showToast }) => {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {reportPeriod === 'day'
-                ? 'Classes Today'
-                : reportPeriod === 'month'
+              {reportPeriod === 'day' || reportPeriod === 'month'
                 ? `Month Classes (${monthLabel.slice(0, 3)})`
                 : selectedSemester === 'All'
                 ? 'Total Sessions'
@@ -1340,25 +1392,23 @@ export const ReportsView = ({ showToast }) => {
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {reportPeriod === 'day' ? 'Day Turnout Rate' : reportPeriod === 'month' ? 'Monthly Avg. Rate' : 'Average Attendance'}
+              {reportPeriod === 'day' || reportPeriod === 'month' ? 'Monthly Avg. Rate' : 'Average Attendance'}
             </p>
             <h3 className="text-2xl font-black text-emerald-600 mt-0.5">{stats.overallAvg}%</h3>
           </div>
         </div>
 
-        {/* Shortfall / Defaulters / Day Absences */}
+        {/* Shortfall / Defaulters */}
         <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
             <ShieldAlert className="w-6 h-6" />
           </div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              {reportPeriod === 'day'
-                ? 'Absent Today'
-                : `Students Below ${minAttendance}%`}
+              Students Below {minAttendance}%
             </p>
             <h3 className="text-2xl font-black text-rose-600 mt-0.5">
-              {reportPeriod === 'day' ? (stats.dayAbsentCount || 0) : stats.defaultersCount}
+              {stats.defaultersCount}
             </h3>
           </div>
         </div>
@@ -1372,17 +1422,17 @@ export const ReportsView = ({ showToast }) => {
               <h3 className="text-base font-bold text-slate-900">Attendance Records Preview</h3>
               <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${currentTheme.badge}`}>
                 {reportPeriod === 'day'
-                  ? `Day: ${selectedDate}`
+                  ? `Day-wise: ${monthLabel} ${effectiveYear}`
                   : reportPeriod === 'month'
-                  ? `Month: ${monthLabel} ${selectedYear}`
+                  ? `Month: ${monthLabel} ${effectiveYear}`
                   : `Year: ${selectedYear}`}
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               {reportPeriod === 'day'
-                ? `Showing day-wise attendance for ${selectedDate} (${selectedSemester}) • Click export to download day report`
+                ? `Showing day-by-day attendance for all ${effectiveMonthDays.length} days of ${monthLabel} ${effectiveYear} (${selectedSemester}) • Click export to download Excel`
                 : reportPeriod === 'month'
-                ? `Showing monthly attendance for ${monthLabel} ${selectedYear} (${selectedSemester}) • Click export to download`
+                ? `Showing monthly attendance for ${monthLabel} ${effectiveYear} (${selectedSemester}) • Click export to download`
                 : `Showing cumulative attendance for Academic Year ${selectedYear} (${selectedSemester}) • Click export to download`}
             </p>
           </div>
@@ -1457,6 +1507,108 @@ export const ReportsView = ({ showToast }) => {
                 No students or attendance records match the selected {reportPeriod === 'day' ? 'date' : reportPeriod === 'month' ? 'month' : 'parameters'}. Try selecting another filter option.
               </p>
             </div>
+          ) : reportPeriod === 'day' ? (
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-3 sticky left-0 bg-slate-50 z-10">#</th>
+                  <th className="py-3 px-3 sticky left-8 bg-slate-50 z-10">Roll No</th>
+                  <th className="py-3 px-3">Student Name</th>
+                  <th className="py-3 px-3">Sem</th>
+                  {effectiveMonthDays.map((md) => (
+                    <th
+                      key={md.date}
+                      className="py-2.5 px-1.5 text-center border-l border-slate-200/60 min-w-[34px]"
+                      title={`${md.date} (${md.weekday})`}
+                    >
+                      <div className="text-[11px] font-extrabold text-slate-700">{md.dayStr}</div>
+                      <div className="text-[9px] font-medium text-slate-400">{md.weekday[0]}</div>
+                    </th>
+                  ))}
+                  <th className="py-3 px-2.5 text-center border-l border-slate-200">Held</th>
+                  <th className="py-3 px-2.5 text-center">P</th>
+                  <th className="py-3 px-2.5 text-center">A</th>
+                  <th className="py-3 px-3 text-center">%</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {filteredStudents.map((s, index) => {
+                  const hasHeldClasses = s.totalClasses > 0;
+                  const isEligible = hasHeldClasses && s.percentage >= minAttendance;
+                  const isWarning = hasHeldClasses && s.percentage >= 60 && s.percentage < minAttendance;
+
+                  return (
+                    <tr key={s.studentId || index} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-2.5 px-3 text-slate-400 font-medium sticky left-0 bg-white z-10">{index + 1}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800 whitespace-nowrap sticky left-8 bg-white z-10">
+                        {s.rollNumber}
+                      </td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">{s.name}</td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md font-semibold text-[11px] bg-slate-100 text-slate-700 border border-slate-200">
+                          {s.semester}
+                        </span>
+                      </td>
+                      {effectiveMonthDays.map((md, dIdx) => {
+                        const dayInfo = s.dailyAttendance?.[dIdx];
+                        const code = dayInfo?.code || '-';
+                        const status = dayInfo?.status || 'No Class';
+                        const badgeClass =
+                          status === 'Present'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : status === 'Absent'
+                            ? 'bg-rose-50 text-rose-700 border-rose-200'
+                            : status === 'Partial'
+                            ? 'bg-amber-50 text-amber-700 border-amber-200'
+                            : 'text-slate-300 border-transparent';
+
+                        return (
+                          <td
+                            key={md.date}
+                            className="py-2 px-1 text-center border-l border-slate-100"
+                            title={
+                              dayInfo && dayInfo.held > 0
+                                ? `${md.date} (${md.weekday}): ${dayInfo.attended}/${dayInfo.held} Present`
+                                : `${md.date} (${md.weekday}): No Classes`
+                            }
+                          >
+                            <span
+                              className={`inline-flex items-center justify-center min-w-[24px] px-1 py-0.5 rounded text-[10px] font-bold border ${badgeClass}`}
+                            >
+                              {code}
+                            </span>
+                          </td>
+                        );
+                      })}
+                      <td className="py-2.5 px-2.5 text-center font-semibold text-slate-700 border-l border-slate-200">
+                        {s.totalClasses}
+                      </td>
+                      <td className="py-2.5 px-2.5 text-center font-bold text-emerald-700">{s.attendedClasses}</td>
+                      <td className="py-2.5 px-2.5 text-center font-semibold text-rose-600">{s.absentClasses}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        {!hasHeldClasses ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[11px] bg-slate-100 text-slate-500">
+                            N/A
+                          </span>
+                        ) : (
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[11px] border ${
+                              isEligible
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : isWarning
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {s.percentage}%
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
@@ -1468,17 +1620,13 @@ export const ReportsView = ({ showToast }) => {
                   <th className="py-3.5 px-4">Department</th>
                   <th className="py-3.5 px-4">Semester</th>
                   <th className="py-3.5 px-4 text-center">
-                    {reportPeriod === 'day' ? 'Today Held' : reportPeriod === 'month' ? 'Month Held' : 'Classes'}
+                    {reportPeriod === 'month' ? 'Month Held' : 'Classes'}
                   </th>
                   <th className="py-3.5 px-4 text-center">Present</th>
                   <th className="py-3.5 px-4 text-center">Absent</th>
-                  <th className="py-3.5 px-4 text-center">
-                    {reportPeriod === 'day' ? 'Day Turnout' : 'Attendance %'}
-                  </th>
+                  <th className="py-3.5 px-4 text-center">Attendance %</th>
                   <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-right">
-                    {reportPeriod === 'day' ? 'Daily Note' : 'Academic Note'}
-                  </th>
+                  <th className="py-3.5 px-4 text-right">Academic Note</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -1511,13 +1659,7 @@ export const ReportsView = ({ showToast }) => {
                           <div className="flex flex-col items-center">
                             <span
                               className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-bold text-xs ${
-                                reportPeriod === 'day'
-                                  ? s.dayStatus === 'Present'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : s.dayStatus === 'Partial'
-                                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                                    : 'bg-rose-50 text-rose-700 border border-rose-200'
-                                  : isEligible
+                                isEligible
                                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : isWarning
                                   ? 'bg-amber-50 text-amber-700 border border-amber-200'
@@ -1547,23 +1689,6 @@ export const ReportsView = ({ showToast }) => {
                             <Clock className="w-3.5 h-3.5 text-slate-400" />
                             <span>No Classes</span>
                           </span>
-                        ) : reportPeriod === 'day' ? (
-                          s.dayStatus === 'Present' ? (
-                            <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Present</span>
-                            </span>
-                          ) : s.dayStatus === 'Partial' ? (
-                            <span className="inline-flex items-center gap-1.5 text-amber-700 font-bold">
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                              <span>{s.status}</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-rose-700 font-bold">
-                              <ShieldAlert className="w-3.5 h-3.5" />
-                              <span>Absent</span>
-                            </span>
-                          )
                         ) : isEligible ? (
                           <span className="inline-flex items-center gap-1.5 text-emerald-700 font-bold">
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1584,14 +1709,6 @@ export const ReportsView = ({ showToast }) => {
                       <td className="py-3.5 px-4 text-right font-medium text-slate-500">
                         {!hasHeldClasses ? (
                           <span className="text-slate-400 text-[11px] font-medium">No sessions</span>
-                        ) : reportPeriod === 'day' ? (
-                          s.dayStatus === 'Present' ? (
-                            <span className="text-emerald-600 text-[11px] font-semibold">Full Turnout</span>
-                          ) : s.dayStatus === 'Absent' ? (
-                            <span className="text-rose-600 text-[11px] font-semibold">Absent All Sessions</span>
-                          ) : (
-                            <span className="text-amber-600 text-[11px] font-semibold">Attended {s.attendedClasses} of {s.totalClasses}</span>
-                          )
                         ) : s.classesNeededFor75 > 0 ? (
                           <span className="text-rose-600 text-[11px] font-semibold">
                             Needs {s.classesNeededFor75} classes for {minAttendance}%
@@ -1613,25 +1730,29 @@ export const ReportsView = ({ showToast }) => {
           <div>
             Showing <span className="font-bold text-slate-700">{filteredStudents.length}</span> students across{' '}
             <span className="font-bold text-slate-700">{stats.totalSessions}</span> sessions{' '}
-            {reportPeriod === 'day' && <span className="text-indigo-600 font-semibold">(Day-wise: {selectedDate})</span>}
+            {reportPeriod === 'day' && (
+              <span className="text-indigo-600 font-semibold">
+                (Day-wise: {monthLabel} {effectiveYear})
+              </span>
+            )}
             {reportPeriod === 'month' && (
               <span className="text-indigo-600 font-semibold">
-                (Month-wise: {monthLabel} {selectedYear})
+                (Month-wise: {monthLabel} {effectiveYear})
               </span>
             )}
           </div>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5 font-semibold text-emerald-700">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-              {reportPeriod === 'day' ? 'Present' : `Eligible (≥${minAttendance}%)`}
+              {reportPeriod === 'day' ? 'P = Present' : `Eligible (≥${minAttendance}%)`}
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-amber-700">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-              {reportPeriod === 'day' ? 'Partial' : `Warning (60-${minAttendance - 1}%)`}
+              {reportPeriod === 'day' ? 'x/y = Partial' : `Warning (60-${minAttendance - 1}%)`}
             </span>
             <span className="flex items-center gap-1.5 font-semibold text-rose-700">
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-              {reportPeriod === 'day' ? 'Absent' : 'Defaulter (<60%)'}
+              {reportPeriod === 'day' ? 'A = Absent (- No Class)' : 'Defaulter (<60%)'}
             </span>
           </div>
         </div>
@@ -1651,9 +1772,9 @@ export const ReportsView = ({ showToast }) => {
                   <h3 className="text-sm font-extrabold text-white">Official Attendance Audit Report</h3>
                   <p className="text-xs text-slate-400">
                     {reportPeriod === 'day'
-                      ? `Day-wise Records for ${selectedDate}`
+                      ? `Day-wise Register for ${monthLabel} ${effectiveYear}`
                       : reportPeriod === 'month'
-                      ? `Monthly Audit for ${monthLabel} ${selectedYear}`
+                      ? `Monthly Audit for ${monthLabel} ${effectiveYear}`
                       : 'Verified institutional records & printable audit documentation'}
                   </p>
                 </div>
@@ -1728,9 +1849,9 @@ export const ReportsView = ({ showToast }) => {
                     <span className="text-[10px] uppercase font-bold text-slate-500 block">Report Scope</span>
                     <span className="font-bold text-slate-900">
                       {reportPeriod === 'day'
-                        ? `Day (${selectedDate})`
+                        ? `Day-wise (${monthLabel} ${effectiveYear})`
                         : reportPeriod === 'month'
-                        ? `Month (${monthLabel} ${selectedYear})`
+                        ? `Month (${monthLabel} ${effectiveYear})`
                         : `Session (Year ${selectedYear})`}
                     </span>
                   </div>
@@ -1764,114 +1885,150 @@ export const ReportsView = ({ showToast }) => {
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-slate-200">
                     <span className="text-[10px] uppercase font-bold text-slate-500">
-                      {reportPeriod === 'day' ? 'Lectures Today' : 'Total Lectures'}
+                      {reportPeriod === 'day' || reportPeriod === 'month' ? 'Month Lectures' : 'Total Lectures'}
                     </span>
                     <p className="text-xl font-black text-slate-900">{stats.totalSessions}</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-slate-200">
                     <span className="text-[10px] uppercase font-bold text-slate-500">
-                      {reportPeriod === 'day' ? 'Day Turnout' : 'Institute Avg.'}
+                      {reportPeriod === 'day' || reportPeriod === 'month' ? 'Monthly Avg.' : 'Institute Avg.'}
                     </span>
                     <p className="text-xl font-black text-emerald-600">{stats.overallAvg}%</p>
                   </div>
                   <div className="p-3 bg-white rounded-xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-500">
-                      {reportPeriod === 'day' ? 'Absent Today' : 'Defaulters'}
-                    </span>
-                    <p className="text-xl font-black text-rose-600">
-                      {reportPeriod === 'day' ? (stats.dayAbsentCount || 0) : stats.defaultersCount}
-                    </p>
+                    <span className="text-[10px] uppercase font-bold text-slate-500">Defaulters</span>
+                    <p className="text-xl font-black text-rose-600">{stats.defaultersCount}</p>
                   </div>
                 </div>
 
                 {/* Students Table */}
                 <div className="p-6 sm:px-8 overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-slate-200 text-[11px] uppercase font-bold text-slate-600 bg-slate-50">
-                        <th className="py-2.5 px-3">#</th>
-                        <th className="py-2.5 px-3">Roll No</th>
-                        <th className="py-2.5 px-3">Reg ID</th>
-                        <th className="py-2.5 px-3">Student Name</th>
-                        <th className="py-2.5 px-3">Sem</th>
-                        <th className="py-2.5 px-3 text-center">
-                          {reportPeriod === 'day' ? 'Attended Today' : 'Attended / Held'}
-                        </th>
-                        <th className="py-2.5 px-3 text-center">
-                          {reportPeriod === 'day' ? 'Day Rate' : 'Attendance %'}
-                        </th>
-                        <th className="py-2.5 px-3">Status</th>
-                        <th className="py-2.5 px-3 text-right">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {filteredStudents.slice(0, 50).map((s, idx) => {
-                        const hasHeldClasses = s.totalClasses > 0;
-                        const isEligible = hasHeldClasses && s.percentage >= minAttendance;
-                        const isWarning = hasHeldClasses && s.percentage >= 60 && s.percentage < minAttendance;
-
-                        return (
+                  {reportPeriod === 'day' ? (
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-slate-200 text-[10px] uppercase font-bold text-slate-600 bg-slate-50">
+                          <th className="py-2 px-2">#</th>
+                          <th className="py-2 px-2">Roll No</th>
+                          <th className="py-2 px-2">Student Name</th>
+                          <th className="py-2 px-2">Sem</th>
+                          {effectiveMonthDays.map((md) => (
+                            <th key={md.date} className="py-2 px-1 text-center border-l border-slate-200/70">
+                              <div>{md.dayStr}</div>
+                              <div className="text-[8px] font-medium text-slate-400">{md.weekday[0]}</div>
+                            </th>
+                          ))}
+                          <th className="py-2 px-2 text-center border-l border-slate-200">Held</th>
+                          <th className="py-2 px-2 text-center">P</th>
+                          <th className="py-2 px-2 text-center">A</th>
+                          <th className="py-2 px-2 text-center">%</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredStudents.slice(0, 50).map((s, idx) => (
                           <tr key={s.studentId || idx} className="hover:bg-slate-50">
-                            <td className="py-2 px-3 text-slate-400">{idx + 1}</td>
-                            <td className="py-2 px-3 font-mono font-bold text-slate-900">{s.rollNumber}</td>
-                            <td className="py-2 px-3 font-mono text-indigo-600 font-semibold">{s.registrationId}</td>
-                            <td className="py-2 px-3 font-bold text-slate-800">{s.name}</td>
-                            <td className="py-2 px-3 text-slate-600">{s.semester}</td>
-                            <td className="py-2 px-3 text-center font-semibold">
-                              {s.attendedClasses} / {s.totalClasses}
-                            </td>
-                            <td className="py-2 px-3 text-center font-bold">
-                              {hasHeldClasses ? `${s.percentage}%` : 'N/A'}
-                            </td>
-                            <td className="py-2 px-3">
-                              <span
-                                className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  !hasHeldClasses
-                                    ? 'bg-slate-100 text-slate-600'
-                                    : reportPeriod === 'day'
-                                    ? s.dayStatus === 'Present'
-                                      ? 'bg-emerald-100 text-emerald-800'
-                                      : s.dayStatus === 'Partial'
-                                      ? 'bg-amber-100 text-amber-800'
-                                      : 'bg-rose-100 text-rose-800'
-                                    : isEligible
-                                    ? 'bg-emerald-100 text-emerald-800'
-                                    : isWarning
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-rose-100 text-rose-800'
-                                }`}
-                              >
-                                {!hasHeldClasses
-                                  ? 'No Classes'
-                                  : reportPeriod === 'day'
-                                  ? s.dayStatus
-                                  : isEligible
-                                  ? 'Eligible'
-                                  : isWarning
-                                  ? 'Warning'
-                                  : 'Defaulter'}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-right text-[11px] font-semibold text-slate-500">
-                              {reportPeriod === 'day' ? (
-                                s.dayStatus === 'Present' ? (
-                                  <span className="text-emerald-700">Present</span>
-                                ) : s.dayStatus === 'Absent' ? (
-                                  <span className="text-rose-600">Absent</span>
-                                ) : (
-                                  <span className="text-amber-700">Partial</span>
-                                )
-                              ) : s.classesNeededFor75 > 0 ? (
-                                <span className="text-rose-600">Needs {s.classesNeededFor75} classes</span>
-                              ) : (
-                                <span className="text-emerald-700">Clear</span>
-                              )}
+                            <td className="py-1.5 px-2 text-slate-400">{idx + 1}</td>
+                            <td className="py-1.5 px-2 font-mono font-bold text-slate-900 whitespace-nowrap">{s.rollNumber}</td>
+                            <td className="py-1.5 px-2 font-bold text-slate-800 whitespace-nowrap">{s.name}</td>
+                            <td className="py-1.5 px-2 text-slate-600 whitespace-nowrap">{s.semester}</td>
+                            {effectiveMonthDays.map((md, dIdx) => {
+                              const dayInfo = s.dailyAttendance?.[dIdx];
+                              const code = dayInfo?.code || '-';
+                              const status = dayInfo?.status || 'No Class';
+                              return (
+                                <td
+                                  key={md.date}
+                                  className={`py-1.5 px-1 text-center font-bold text-[10px] border-l border-slate-100 ${
+                                    status === 'Present'
+                                      ? 'text-emerald-700 bg-emerald-50/70'
+                                      : status === 'Absent'
+                                      ? 'text-rose-700 bg-rose-50/70'
+                                      : status === 'Partial'
+                                      ? 'text-amber-700 bg-amber-50/70'
+                                      : 'text-slate-300'
+                                  }`}
+                                >
+                                  {code}
+                                </td>
+                              );
+                            })}
+                            <td className="py-1.5 px-2 text-center font-semibold border-l border-slate-200">{s.totalClasses}</td>
+                            <td className="py-1.5 px-2 text-center font-bold text-emerald-700">{s.attendedClasses}</td>
+                            <td className="py-1.5 px-2 text-center font-semibold text-rose-600">{s.absentClasses}</td>
+                            <td className="py-1.5 px-2 text-center font-bold">
+                              {s.totalClasses > 0 ? `${s.percentage}%` : 'N/A'}
                             </td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b-2 border-slate-200 text-[11px] uppercase font-bold text-slate-600 bg-slate-50">
+                          <th className="py-2.5 px-3">#</th>
+                          <th className="py-2.5 px-3">Roll No</th>
+                          <th className="py-2.5 px-3">Reg ID</th>
+                          <th className="py-2.5 px-3">Student Name</th>
+                          <th className="py-2.5 px-3">Sem</th>
+                          <th className="py-2.5 px-3 text-center">Attended / Held</th>
+                          <th className="py-2.5 px-3 text-center">Attendance %</th>
+                          <th className="py-2.5 px-3">Status</th>
+                          <th className="py-2.5 px-3 text-right">Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredStudents.slice(0, 50).map((s, idx) => {
+                          const hasHeldClasses = s.totalClasses > 0;
+                          const isEligible = hasHeldClasses && s.percentage >= minAttendance;
+                          const isWarning = hasHeldClasses && s.percentage >= 60 && s.percentage < minAttendance;
+
+                          return (
+                            <tr key={s.studentId || idx} className="hover:bg-slate-50">
+                              <td className="py-2 px-3 text-slate-400">{idx + 1}</td>
+                              <td className="py-2 px-3 font-mono font-bold text-slate-900">{s.rollNumber}</td>
+                              <td className="py-2 px-3 font-mono text-indigo-600 font-semibold">{s.registrationId}</td>
+                              <td className="py-2 px-3 font-bold text-slate-800">{s.name}</td>
+                              <td className="py-2 px-3 text-slate-600">{s.semester}</td>
+                              <td className="py-2 px-3 text-center font-semibold">
+                                {s.attendedClasses} / {s.totalClasses}
+                              </td>
+                              <td className="py-2 px-3 text-center font-bold">
+                                {hasHeldClasses ? `${s.percentage}%` : 'N/A'}
+                              </td>
+                              <td className="py-2 px-3">
+                                <span
+                                  className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    !hasHeldClasses
+                                      ? 'bg-slate-100 text-slate-600'
+                                      : isEligible
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : isWarning
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : 'bg-rose-100 text-rose-800'
+                                  }`}
+                                >
+                                  {!hasHeldClasses
+                                    ? 'No Classes'
+                                    : isEligible
+                                    ? 'Eligible'
+                                    : isWarning
+                                    ? 'Warning'
+                                    : 'Defaulter'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-right text-[11px] font-semibold text-slate-500">
+                                {s.classesNeededFor75 > 0 ? (
+                                  <span className="text-rose-600">Needs {s.classesNeededFor75} classes</span>
+                                ) : (
+                                  <span className="text-emerald-700">Clear</span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
 
                   {filteredStudents.length > 50 && (
                     <div className="py-3 text-center text-xs text-slate-400 italic">

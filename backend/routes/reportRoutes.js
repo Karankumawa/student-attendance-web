@@ -18,10 +18,12 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
 /**
  * Helper to compute date & filter queries
  * Supports:
- * - 'day': specific date (YYYY-MM-DD)
+ * - 'day': every day of a specific month (1-12) and year
  * - 'month': specific month (1-12) and year
  * - 'all' / cumulative: whole year or all records
  */
@@ -48,28 +50,38 @@ const buildReportFilter = (query) => {
   let periodLabel = 'Full Session / Cumulative';
   let resolvedDate = date || null;
   let resolvedMonth = month || null;
+  let resolvedYear = year && year !== 'All' ? String(year) : null;
+  let daysInMonth = 0;
+  let monthDays = [];
 
-  if (period === 'day') {
-    if (!resolvedDate) {
-      resolvedDate = getLocalDateString();
-    }
-    attendanceQuery.date = resolvedDate;
-    periodLabel = `Day-wise: ${resolvedDate}`;
-  } else if (period === 'month') {
-    const yyyy = year && year !== 'All' ? String(year) : String(new Date().getFullYear());
+  if (period === 'day' || period === 'month') {
+    const yyyy = resolvedYear || String(new Date().getFullYear());
+    resolvedYear = yyyy;
     const rawMonthNum = resolvedMonth ? parseInt(resolvedMonth, 10) : new Date().getMonth() + 1;
     const monthNum = Number.isInteger(rawMonthNum) && rawMonthNum >= 1 && rawMonthNum <= 12
       ? rawMonthNum
       : new Date().getMonth() + 1;
     const mm = String(monthNum).padStart(2, '0');
     resolvedMonth = mm;
-    const lastDay = new Date(parseInt(yyyy, 10), monthNum, 0).getDate();
+
+    const yyyyNum = parseInt(yyyy, 10);
+    daysInMonth = new Date(yyyyNum, monthNum, 0).getDate();
     const startDateOfMonth = `${yyyy}-${mm}-01`;
-    const endDateOfMonth = `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`;
+    const endDateOfMonth = `${yyyy}-${mm}-${String(daysInMonth).padStart(2, '0')}`;
     attendanceQuery.date = { $gte: startDateOfMonth, $lte: endDateOfMonth };
 
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = String(d).padStart(2, '0');
+      const dateStr = `${yyyy}-${mm}-${dayStr}`;
+      const weekday = WEEKDAY_SHORT[new Date(yyyyNum, monthNum - 1, d).getDay()];
+      monthDays.push({ day: d, dayStr, date: dateStr, weekday });
+    }
+
     const monthName = MONTH_NAMES[monthNum - 1] || `Month ${mm}`;
-    periodLabel = `Month-wise: ${monthName} ${yyyy}`;
+    periodLabel =
+      period === 'day'
+        ? `Day-wise: ${monthName} ${yyyy}`
+        : `Month-wise: ${monthName} ${yyyy}`;
   } else if (startDate && endDate) {
     attendanceQuery.date = { $gte: startDate, $lte: endDate };
     periodLabel = `Custom Range: ${startDate} to ${endDate}`;
@@ -85,7 +97,9 @@ const buildReportFilter = (query) => {
       reportPeriod: period,
       date: resolvedDate,
       month: resolvedMonth,
-      year: year || null,
+      year: resolvedYear || year || null,
+      daysInMonth,
+      monthDays,
       periodLabel,
     },
   };
@@ -134,6 +148,7 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
     let absent = 0;
     let totalClasses = 0;
     const sessionDetails = [];
+    const byDate = new Map();
 
     for (const sess of sessionLookups) {
       const isSameSemester = sess.sessionSem && studentSem && sess.sessionSem === studentSem;
@@ -144,11 +159,16 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
       if (isSameSemester || recordStatus !== undefined) {
         totalClasses += 1;
         const status = recordStatus || 'Absent';
+        const dayEntry = byDate.get(sess.date) || { held: 0, attended: 0, absent: 0 };
+        dayEntry.held += 1;
         if (status === 'Present') {
           attended++;
+          dayEntry.attended += 1;
         } else {
           absent++;
+          dayEntry.absent += 1;
         }
+        byDate.set(sess.date, dayEntry);
 
         sessionDetails.push({
           date: sess.date,
@@ -163,42 +183,45 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
     let statusLabel = 'Eligible';
     let isDefaulter = false;
     let classesNeededFor75 = 0;
-    let dayStatus = 'No Classes';
 
-    if (meta.reportPeriod === 'day') {
-      if (totalClasses === 0) {
-        statusLabel = 'No Classes Held';
-        dayStatus = 'No Classes';
-        isDefaulter = false;
-      } else if (attended === totalClasses) {
-        statusLabel = 'Present';
-        dayStatus = 'Present';
-        isDefaulter = false;
-      } else if (attended === 0) {
-        statusLabel = 'Absent';
-        dayStatus = 'Absent';
-        isDefaulter = true;
-      } else {
-        statusLabel = `Partial (${attended}/${totalClasses})`;
-        dayStatus = 'Partial';
-        isDefaulter = false;
-      }
-      classesNeededFor75 = absent > 0 ? absent : 0;
+    if (totalClasses === 0) {
+      statusLabel = 'No Classes Held';
+      isDefaulter = false;
+      classesNeededFor75 = 0;
     } else {
-      if (totalClasses === 0) {
-        statusLabel = 'No Classes Held';
-        isDefaulter = false;
-        classesNeededFor75 = 0;
-      } else {
-        if (percentage < 60) {
-          statusLabel = 'Critical Defaulter (<60%)';
-        } else if (percentage < minAttendance) {
-          statusLabel = `Warning (${percentage}%)`;
-        }
-        isDefaulter = percentage < minAttendance;
-        classesNeededFor75 = Math.max(0, Math.ceil((minAttendance / 100) * totalClasses) - attended);
+      if (percentage < 60) {
+        statusLabel = 'Critical Defaulter (<60%)';
+      } else if (percentage < minAttendance) {
+        statusLabel = `Warning (${percentage}%)`;
       }
+      isDefaulter = percentage < minAttendance;
+      classesNeededFor75 = Math.max(0, Math.ceil((minAttendance / 100) * totalClasses) - attended);
     }
+
+    const dailyAttendance =
+      meta.reportPeriod === 'day'
+        ? meta.monthDays.map((md) => {
+            const info = byDate.get(md.date);
+            if (!info || info.held === 0) {
+              return { date: md.date, day: md.day, status: 'No Class', code: '-', held: 0, attended: 0, absent: 0 };
+            }
+            if (info.attended === info.held) {
+              return { date: md.date, day: md.day, status: 'Present', code: 'P', held: info.held, attended: info.attended, absent: info.absent };
+            }
+            if (info.attended === 0) {
+              return { date: md.date, day: md.day, status: 'Absent', code: 'A', held: info.held, attended: info.attended, absent: info.absent };
+            }
+            return {
+              date: md.date,
+              day: md.day,
+              status: 'Partial',
+              code: `${info.attended}/${info.held}`,
+              held: info.held,
+              attended: info.attended,
+              absent: info.absent,
+            };
+          })
+        : undefined;
 
     return {
       sNo: index + 1,
@@ -214,9 +237,9 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
       absentClasses: absent,
       percentage,
       status: statusLabel,
-      dayStatus,
       classesNeededFor75,
       isDefaulter,
+      dailyAttendance,
       sessionDetails,
     };
   });
@@ -231,23 +254,11 @@ const computeReportData = async (filters, reportType = 'all', minAttendance = 75
 
   // Summary Metrics
   const totalStudents = students.length;
-  let defaultersCount = 0;
-  let eligibleCount = 0;
-  let noClassesCount = 0;
-  let dayPresentCount = 0;
-  let dayAbsentCount = 0;
-
-  if (meta.reportPeriod === 'day') {
-    dayPresentCount = studentReports.filter((s) => s.attendedClasses > 0).length;
-    dayAbsentCount = studentReports.filter((s) => s.totalClasses > 0 && s.attendedClasses === 0).length;
-    noClassesCount = studentReports.filter((s) => s.totalClasses === 0).length;
-    defaultersCount = dayAbsentCount;
-    eligibleCount = dayPresentCount;
-  } else {
-    defaultersCount = studentReports.filter((s) => s.isDefaulter).length;
-    eligibleCount = studentReports.filter((s) => s.totalClasses > 0 && !s.isDefaulter).length;
-    noClassesCount = studentReports.filter((s) => s.totalClasses === 0).length;
-  }
+  const defaultersCount = studentReports.filter((s) => s.isDefaulter).length;
+  const eligibleCount = studentReports.filter((s) => s.totalClasses > 0 && !s.isDefaulter).length;
+  const noClassesCount = studentReports.filter((s) => s.totalClasses === 0).length;
+  const dayPresentCount = eligibleCount;
+  const dayAbsentCount = defaultersCount;
 
   const studentsWithClasses = studentReports.filter((s) => s.totalClasses > 0);
   const overallAvg =
@@ -446,62 +457,58 @@ router.get('/export-excel', async (req, res) => {
     const safeSem = semester && semester !== 'All' ? semester.replace(/\s+/g, '_') : 'AllSem';
 
     // ----------------------------------------------------
-    // Scenario A: DAY-WISE EXCEL REPORT
+    // Scenario A: DAY-WISE EXCEL REPORT (Every day of selected month for every student)
     // ----------------------------------------------------
     if (meta.reportPeriod === 'day') {
+      const monthDayHeaders = meta.monthDays.map((md) => `${md.dayStr} (${md.weekday})`);
+      const tableHeaders = [
+        'S.No',
+        'Roll Number',
+        'Registration ID',
+        'Student Name',
+        'Department',
+        'Semester',
+        ...monthDayHeaders,
+        'Classes Held',
+        'Present',
+        'Absent',
+        'Attendance %',
+        'Status',
+      ];
+      const totalCols = tableHeaders.length;
+
       const daySummaryRows = [
         ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN - NATHDWARA)'],
-        [`DAILY ATTENDANCE & AUDIT REPORT • DATE: ${meta.date}`],
+        [`DAY-WISE MONTHLY ATTENDANCE REGISTER • ${meta.periodLabel.toUpperCase()}`],
         ['Approved by AICTE, New Delhi | Affiliated to RTU | Nathdwara, Rajasthan'],
         [
-          `Scope: Day-wise [${meta.date}] | Academic Year [${year || 'All'}] | Semester [${semester || 'All'}] | Department [${
+          `Scope: ${meta.periodLabel} (${meta.daysInMonth} Days) | Academic Year [${meta.year || 'All'}] | Semester [${semester || 'All'}] | Department [${
             department || 'All'
           }] | Subject [${subject || 'All'}]`,
         ],
-        [`Report Generated On: ${formattedDate} | Total Lectures Held Today: ${sessions.length}`],
+        [`Report Generated On: ${formattedDate} | Total Lectures in Month: ${sessions.length} | Legend: P = Present, A = Absent, x/y = Partial, - = No Class`],
         [],
-        ['EXECUTIVE DAILY METRICS DASHBOARD', '', '', '', '', '', '', '', '', '', '', ''],
+        ['EXECUTIVE MONTHLY METRICS', '', '', '', '', '', '', '', '', '', '', ''],
         [
           'Total Students Enrolled',
           stats.totalStudents,
-          'Classes Held Today',
+          'Lectures Held in Month',
           stats.totalSessions,
-          'Daily Attendance Rate',
+          'Monthly Avg. Turnout',
           `${stats.overallAvg}%`,
-          'Present Students Today',
-          stats.dayPresentCount,
-          'Absent Students Today',
-          stats.dayAbsentCount,
-          'Daily Audit Status',
-          stats.dayAbsentCount > 0 ? 'Absences Recorded' : '100% Attendance',
+          `Eligible (>=${threshold}%)`,
+          stats.eligibleCount,
+          `Defaulters (<${threshold}%)`,
+          stats.defaultersCount,
+          'Audit Status',
+          stats.defaultersCount > 0 ? 'Action Required' : 'Fully Compliant',
         ],
         [],
-        [
-          'S.No',
-          'Roll Number',
-          'Registration ID',
-          'Student Name',
-          'Department',
-          'Semester',
-          'Classes Held Today',
-          'Classes Attended',
-          'Classes Absent',
-          'Daily Turnout (%)',
-          'Daily Status',
-          'Remarks / Academic Action',
-        ],
+        tableHeaders,
       ];
 
       students.forEach((s, idx) => {
-        let remarks = 'Full Day Attendance Recorded';
-        if (s.totalClasses === 0) {
-          remarks = 'No lectures scheduled for this student today';
-        } else if (s.dayStatus === 'Absent') {
-          remarks = 'Absent in all lectures today (Debarment flag logged)';
-        } else if (s.dayStatus === 'Partial') {
-          remarks = `Partial Turnout: Attended ${s.attendedClasses} of ${s.totalClasses} classes`;
-        }
-
+        const dayCells = (s.dailyAttendance || []).map((d) => d.code);
         daySummaryRows.push([
           idx + 1,
           s.rollNumber,
@@ -509,51 +516,51 @@ router.get('/export-excel', async (req, res) => {
           s.name,
           s.department,
           s.semester,
+          ...dayCells,
           s.totalClasses,
           s.attendedClasses,
           s.absentClasses,
           s.totalClasses === 0 ? 'N/A' : `${s.percentage}%`,
-          s.dayStatus,
-          remarks,
+          s.status,
         ]);
       });
 
       const daySummarySheet = XLSX.utils.aoa_to_sheet(daySummaryRows);
       daySummarySheet['!cols'] = [
-        { wch: 8 },  // S.No
-        { wch: 16 }, // Roll Number
-        { wch: 20 }, // Registration ID
-        { wch: 28 }, // Student Name
-        { wch: 34 }, // Department
-        { wch: 16 }, // Semester
-        { wch: 20 }, // Classes Today
-        { wch: 18 }, // Attended
-        { wch: 16 }, // Absent
-        { wch: 20 }, // Daily Turnout %
-        { wch: 22 }, // Daily Status
-        { wch: 48 }, // Remarks
+        { wch: 6 },  // S.No
+        { wch: 15 }, // Roll Number
+        { wch: 18 }, // Registration ID
+        { wch: 26 }, // Student Name
+        { wch: 28 }, // Department
+        { wch: 14 }, // Semester
+        ...meta.monthDays.map(() => ({ wch: 9 })),
+        { wch: 13 }, // Classes Held
+        { wch: 10 }, // Present
+        { wch: 10 }, // Absent
+        { wch: 14 }, // Attendance %
+        { wch: 24 }, // Status
       ];
 
       daySummarySheet['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
-        { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
-        { s: { r: 2, c: 0 }, e: { r: 2, c: 11 } },
-        { s: { r: 3, c: 0 }, e: { r: 3, c: 11 } },
-        { s: { r: 4, c: 0 }, e: { r: 4, c: 11 } },
-        { s: { r: 6, c: 0 }, e: { r: 6, c: 11 } },
+        { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: totalCols - 1 } },
+        { s: { r: 4, c: 0 }, e: { r: 4, c: totalCols - 1 } },
+        { s: { r: 6, c: 0 }, e: { r: 6, c: totalCols - 1 } },
       ];
 
       daySummarySheet['!autofilter'] = {
-        ref: `A10:L${daySummaryRows.length}`,
+        ref: `A10:${XLSX.utils.encode_col(totalCols - 1)}${daySummaryRows.length}`,
       };
 
-      XLSX.utils.book_append_sheet(workbook, daySummarySheet, `Day-wise (${meta.date})`);
+      XLSX.utils.book_append_sheet(workbook, daySummarySheet, `Day-wise (${meta.month}-${meta.year})`);
 
-      // Sheet 2: Sessions conducted on that day
+      // Sheet 2: Sessions conducted in that month
       if (sessions.length > 0) {
         const daySessionRows = [
-          ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN) - DAILY LECTURES LOG'],
-          [`Lectures Conducted on [${meta.date}] | Total Sessions: ${sessions.length}`],
+          ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN) - MONTHLY LECTURES LOG'],
+          [`Lectures Conducted in [${meta.periodLabel}] | Total Sessions: ${sessions.length}`],
           [`Generated On: ${formattedDate}`],
           [],
           [
@@ -608,11 +615,11 @@ router.get('/export-excel', async (req, res) => {
         daySessionSheet['!autofilter'] = {
           ref: `A5:H${daySessionRows.length}`,
         };
-        XLSX.utils.book_append_sheet(workbook, daySessionSheet, 'Today Lectures');
+        XLSX.utils.book_append_sheet(workbook, daySessionSheet, 'Sessions Log');
       }
 
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
-      const filename = `Attendance_Report_DayWise_${meta.date}_${safeSem}.xlsx`;
+      const filename = `Attendance_Report_DayWise_${meta.year}_${meta.month || 'M'}_${safeSem}.xlsx`;
 
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
