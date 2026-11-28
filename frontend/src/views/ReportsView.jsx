@@ -487,7 +487,7 @@ export const ReportsView = ({ showToast }) => {
     }
 
     .report-sheet {
-      max-width: 1050px;
+      max-width: ${isDayWise ? '1380px' : '1050px'};
       margin: 0 auto;
       background: #ffffff;
       border-radius: 16px;
@@ -498,7 +498,7 @@ export const ReportsView = ({ showToast }) => {
     }
 
     .controls-bar {
-      max-width: 1050px;
+      max-width: ${isDayWise ? '1380px' : '1050px'};
       margin: 0 auto 16px auto;
       display: flex;
       align-items: center;
@@ -862,6 +862,19 @@ export const ReportsView = ({ showToast }) => {
     </div>
 
     <div class="table-container">
+      ${
+        isDayWise
+          ? `<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 10px; font-weight: 700; color: #334155;">
+              <span>Day-by-Day Attendance Register (${effectiveMonthDays.length} Days)</span>
+              <span style="display: flex; gap: 12px;">
+                <span style="color: #15803d;">P = Present</span>
+                <span style="color: #b91c1c;">A = Absent</span>
+                <span style="color: #b45309;">x/y = Partial</span>
+                <span style="color: #64748b;">- = No Class</span>
+              </span>
+            </div>`
+          : ''
+      }
       <table>
         <thead>
           ${
@@ -1046,12 +1059,25 @@ export const ReportsView = ({ showToast }) => {
             <button
               onClick={handleDownloadExcel}
               disabled={downloading}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r ${currentTheme.btnGradient} text-white text-xs sm:text-sm font-bold shadow-lg shadow-black/30 border border-white/20 transition-all hover:scale-102 active:scale-98 disabled:opacity-50 cursor-pointer`}
+              className="group inline-flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600 hover:from-emerald-400 hover:via-teal-400 hover:to-green-500 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-emerald-900/30 border border-emerald-300/40 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
               title="Download formatted Excel (.xlsx) file"
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>{downloading ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
-              <Download className="w-3.5 h-3.5 text-white/80" />
+              <span className="p-1 rounded-lg bg-white/20">
+                <FileSpreadsheet className="w-4 h-4 text-white" />
+              </span>
+              <span>
+                {downloading
+                  ? 'Generating Excel...'
+                  : reportPeriod === 'day'
+                  ? 'Export Day Register'
+                  : reportPeriod === 'month'
+                  ? 'Export Month Excel'
+                  : 'Export Excel'}
+              </span>
+              <span className="px-1.5 py-0.5 rounded-md bg-black/20 text-[10px] font-mono tracking-tight text-emerald-100">
+                .xlsx
+              </span>
+              <Download className="w-3.5 h-3.5 text-white/90 group-hover:translate-y-0.5 transition-transform" />
             </button>
 
             <button
@@ -1474,20 +1500,25 @@ export const ReportsView = ({ showToast }) => {
             <button
               onClick={handleDownloadExcel}
               disabled={downloading}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r ${currentTheme.btnGradient} text-white text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer active:scale-95 disabled:opacity-50`}
+              className="group inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 hover:from-emerald-500 hover:via-teal-500 hover:to-green-500 text-white text-xs font-extrabold transition-all shadow-md shadow-emerald-600/25 border border-emerald-400/30 shrink-0 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
               title="Download Excel Spreadsheet with auto-filters & KPI dashboard"
             >
-              <FileSpreadsheet className="w-4 h-4" />
+              <span className="p-1 rounded-md bg-white/15">
+                <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
+              </span>
               <span>
                 {downloading
-                  ? 'Exporting...'
+                  ? 'Generating...'
                   : reportPeriod === 'day'
-                  ? 'Export Day Excel'
+                  ? 'Export Day Register'
                   : reportPeriod === 'month'
                   ? 'Export Month Excel'
-                  : 'Export Excel (.xlsx)'}
+                  : 'Export Excel'}
               </span>
-              <Download className="w-3.5 h-3.5 text-white/90" />
+              <span className="px-1.5 py-0.5 rounded bg-black/15 text-[10px] font-mono text-emerald-100">
+                .xlsx
+              </span>
+              <Download className="w-3.5 h-3.5 text-white/90 group-hover:translate-y-0.5 transition-transform" />
             </button>
           </div>
         </div>
@@ -1760,19 +1791,27 @@ export const ReportsView = ({ showToast }) => {
 
       {/* Interactive Official Themed Report Preview Modal */}
       {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-5xl bg-slate-100 rounded-3xl shadow-2xl border border-slate-700/60 flex flex-col max-h-[95vh] overflow-hidden my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div
+            className={`relative w-full ${
+              reportPeriod === 'day' ? 'max-w-[96vw] xl:max-w-7xl' : 'max-w-5xl'
+            } bg-slate-100 rounded-3xl shadow-2xl border border-slate-700/60 flex flex-col max-h-[95vh] overflow-hidden my-auto`}
+          >
             {/* Modal Top Control Bar */}
-            <div className="px-6 py-4 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 shrink-0 text-white">
+            <div className="px-5 sm:px-6 py-4 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4 shrink-0 text-white">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
                   <Award className="w-5 h-5 text-amber-300" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-white">Official Attendance Audit Report</h3>
+                  <h3 className="text-sm font-extrabold text-white">
+                    {reportPeriod === 'day'
+                      ? 'Official Day-wise Monthly Attendance Register'
+                      : 'Official Attendance Audit Report'}
+                  </h3>
                   <p className="text-xs text-slate-400">
                     {reportPeriod === 'day'
-                      ? `Day-wise Register for ${monthLabel} ${effectiveYear}`
+                      ? `${monthLabel} ${effectiveYear} • Complete ${effectiveMonthDays.length}-Day Student Register (${selectedSemester})`
                       : reportPeriod === 'month'
                       ? `Monthly Audit for ${monthLabel} ${effectiveYear}`
                       : 'Verified institutional records & printable audit documentation'}
@@ -1781,7 +1820,17 @@ export const ReportsView = ({ showToast }) => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadExcel}
+                  disabled={downloading}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>{downloading ? 'Exporting...' : 'Export Excel (.xlsx)'}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={handlePrintReport}
@@ -1811,8 +1860,12 @@ export const ReportsView = ({ showToast }) => {
             </div>
 
             {/* Document Body (Physical Paper Simulation) */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-200/80 flex justify-center">
-              <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden text-slate-900 relative">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 bg-slate-200/80 flex justify-center">
+              <div
+                className={`w-full ${
+                  reportPeriod === 'day' ? 'max-w-none' : 'max-w-4xl'
+                } bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden text-slate-900 relative`}
+              >
                 {/* Official College Header */}
                 <div className={`${currentTheme.headerBg} text-white p-6 sm:p-8 relative border-b-4 border-amber-400`}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1831,7 +1884,7 @@ export const ReportsView = ({ showToast }) => {
                     <div className="sm:text-right">
                       <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[11px] font-bold uppercase tracking-wider border border-white/20">
                         {reportPeriod === 'day'
-                          ? 'Daily Attendance Audit'
+                          ? 'Day-wise Attendance Register'
                           : reportPeriod === 'month'
                           ? 'Monthly Attendance Audit'
                           : 'Official Academic Audit'}
@@ -1902,7 +1955,28 @@ export const ReportsView = ({ showToast }) => {
                 </div>
 
                 {/* Students Table */}
-                <div className="p-6 sm:px-8 overflow-x-auto">
+                <div className="p-5 sm:px-8 overflow-x-auto">
+                  {reportPeriod === 'day' && (
+                    <div className="mb-3 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px] font-semibold text-slate-600">
+                      <span className="font-bold text-slate-800">
+                        {monthLabel} {effectiveYear} — {effectiveMonthDays.length}-Day Register
+                      </span>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="inline-flex items-center gap-1 text-emerald-700">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" /> P = Present
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-rose-700">
+                          <span className="w-2 h-2 rounded-full bg-rose-500" /> A = Absent
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-amber-700">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" /> x/y = Partial
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-slate-500">
+                          <span className="w-2 h-2 rounded-full bg-slate-300" /> - = No Class
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {reportPeriod === 'day' ? (
                     <table className="w-full text-left text-[11px] border-collapse">
                       <thead>

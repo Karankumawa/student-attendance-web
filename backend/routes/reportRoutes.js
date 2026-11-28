@@ -486,15 +486,15 @@ router.get('/export-excel', async (req, res) => {
             department || 'All'
           }] | Subject [${subject || 'All'}]`,
         ],
-        [`Report Generated On: ${formattedDate} | Total Lectures in Month: ${sessions.length} | Legend: P = Present, A = Absent, x/y = Partial, - = No Class`],
+        [`Generated On: ${formattedDate} | Total Lectures: ${sessions.length} | Legend: P = Present, A = Absent, x/y = Partial, - = No Class`],
         [],
         ['EXECUTIVE MONTHLY METRICS', '', '', '', '', '', '', '', '', '', '', ''],
         [
-          'Total Students Enrolled',
+          'Total Students',
           stats.totalStudents,
-          'Lectures Held in Month',
+          'Lectures Held',
           stats.totalSessions,
-          'Monthly Avg. Turnout',
+          'Monthly Avg. %',
           `${stats.overallAvg}%`,
           `Eligible (>=${threshold}%)`,
           stats.eligibleCount,
@@ -507,7 +507,15 @@ router.get('/export-excel', async (req, res) => {
         tableHeaders,
       ];
 
+      let sumHeld = 0;
+      let sumPresent = 0;
+      let sumAbsent = 0;
+
       students.forEach((s, idx) => {
+        sumHeld += s.totalClasses || 0;
+        sumPresent += s.attendedClasses || 0;
+        sumAbsent += s.absentClasses || 0;
+
         const dayCells = (s.dailyAttendance || []).map((d) => d.code);
         daySummaryRows.push([
           idx + 1,
@@ -525,21 +533,47 @@ router.get('/export-excel', async (req, res) => {
         ]);
       });
 
+      // Summary / Class Average row at bottom
+      const avgPct = sumHeld > 0 ? Number(((sumPresent / sumHeld) * 100).toFixed(1)) : 0;
+      daySummaryRows.push([
+        '',
+        '',
+        '',
+        `CLASS TOTAL / AVERAGE (${students.length} Students)`,
+        '',
+        '',
+        ...meta.monthDays.map(() => ''),
+        sumHeld,
+        sumPresent,
+        sumAbsent,
+        sumHeld > 0 ? `${avgPct}%` : 'N/A',
+        `Threshold: ${threshold}%`,
+      ]);
+
       const daySummarySheet = XLSX.utils.aoa_to_sheet(daySummaryRows);
       daySummarySheet['!cols'] = [
         { wch: 6 },  // S.No
-        { wch: 15 }, // Roll Number
+        { wch: 16 }, // Roll Number
         { wch: 18 }, // Registration ID
-        { wch: 26 }, // Student Name
-        { wch: 28 }, // Department
+        { wch: 28 }, // Student Name
+        { wch: 30 }, // Department
         { wch: 14 }, // Semester
-        ...meta.monthDays.map(() => ({ wch: 9 })),
-        { wch: 13 }, // Classes Held
+        ...meta.monthDays.map(() => ({ wch: 7 })),
+        { wch: 11 }, // Classes Held
         { wch: 10 }, // Present
         { wch: 10 }, // Absent
         { wch: 14 }, // Attendance %
         { wch: 24 }, // Status
       ];
+
+      daySummarySheet['!rows'] = daySummaryRows.map((_, rIdx) => {
+        if (rIdx === 0) return { hpt: 28 };
+        if (rIdx === 1) return { hpt: 22 };
+        if (rIdx === 6 || rIdx === 7) return { hpt: 21 };
+        if (rIdx === 9) return { hpt: 26 };
+        if (rIdx === daySummaryRows.length - 1) return { hpt: 23 };
+        return { hpt: 19 };
+      });
 
       daySummarySheet['!merges'] = [
         { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
@@ -551,10 +585,91 @@ router.get('/export-excel', async (req, res) => {
       ];
 
       daySummarySheet['!autofilter'] = {
-        ref: `A10:${XLSX.utils.encode_col(totalCols - 1)}${daySummaryRows.length}`,
+        ref: `A10:${XLSX.utils.encode_col(totalCols - 1)}${daySummaryRows.length - 1}`,
       };
 
       XLSX.utils.book_append_sheet(workbook, daySummarySheet, `Day-wise (${meta.month}-${meta.year})`);
+
+      // Sheet 2: Clean 1-Page Student Summary
+      const studentSummaryRows = [
+        ['SHRINATHJI INSTITUTE OF TECHNOLOGY & ENGINEERING (SNITN - NATHDWARA)'],
+        [`MONTHLY STUDENT ATTENDANCE SUMMARY • ${meta.periodLabel.toUpperCase()}`],
+        [`Scope: Semester [${semester || 'All'}] | Department [${department || 'All'}] | Minimum Required: ${threshold}%`],
+        [`Generated On: ${formattedDate}`],
+        [],
+        [
+          'S.No',
+          'Roll Number',
+          'Registration ID',
+          'Student Name',
+          'Department',
+          'Semester',
+          'Classes Held',
+          'Present',
+          'Absent',
+          'Attendance %',
+          'Compliance Status',
+          'Academic Remarks',
+        ],
+      ];
+
+      students.forEach((s, idx) => {
+        let remarks = 'Eligible for Examinations';
+        if (s.totalClasses === 0) {
+          remarks = 'No lectures conducted';
+        } else if (s.percentage < 60) {
+          remarks = `Critical Shortfall: Needs ${s.classesNeededFor75} classes`;
+        } else if (s.percentage < threshold) {
+          remarks = `Warning: Needs ${s.classesNeededFor75} classes for ${threshold}%`;
+        }
+
+        studentSummaryRows.push([
+          idx + 1,
+          s.rollNumber,
+          s.registrationId,
+          s.name,
+          s.department,
+          s.semester,
+          s.totalClasses,
+          s.attendedClasses,
+          s.absentClasses,
+          s.totalClasses === 0 ? 'N/A' : `${s.percentage}%`,
+          s.status,
+          remarks,
+        ]);
+      });
+
+      const studentSummarySheet = XLSX.utils.aoa_to_sheet(studentSummaryRows);
+      studentSummarySheet['!cols'] = [
+        { wch: 7 },
+        { wch: 16 },
+        { wch: 18 },
+        { wch: 28 },
+        { wch: 30 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 11 },
+        { wch: 11 },
+        { wch: 14 },
+        { wch: 24 },
+        { wch: 40 },
+      ];
+      studentSummarySheet['!rows'] = studentSummaryRows.map((_, rIdx) => {
+        if (rIdx === 0) return { hpt: 26 };
+        if (rIdx === 1) return { hpt: 22 };
+        if (rIdx === 5) return { hpt: 24 };
+        return { hpt: 19 };
+      });
+      studentSummarySheet['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 11 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 11 } },
+        { s: { r: 2, c: 0 }, e: { r: 2, c: 11 } },
+        { s: { r: 3, c: 0 }, e: { r: 3, c: 11 } },
+      ];
+      studentSummarySheet['!autofilter'] = {
+        ref: `A6:L${studentSummaryRows.length}`,
+      };
+      XLSX.utils.book_append_sheet(workbook, studentSummarySheet, 'Student Summary');
 
       // Sheet 2: Sessions conducted in that month
       if (sessions.length > 0) {
